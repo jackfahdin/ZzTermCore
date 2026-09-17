@@ -141,10 +141,10 @@
 
 ## PTY / Demo
 
--   [ ] Linux PTY
+-   [x] Linux PTY
 -   [ ] macOS PTY
 -   [ ] Windows ConPTY
--   [ ] bash/zsh
+-   [x] bash/zsh
 -   [ ] PowerShell/cmd
 -   [ ] Terminal Inspector
 -   [ ] VT sequence monitor

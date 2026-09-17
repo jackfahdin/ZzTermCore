@@ -6,7 +6,7 @@ PROJECT_BRIEF          = "独立、跨平台、自研的终端模拟器 Core 组
 OUTPUT_LANGUAGE        = Chinese
 OUTPUT_DIRECTORY       = docs/api-html
 
-INPUT                  = include docs
+INPUT                  = include docs pty
 RECURSIVE              = YES
 FILE_PATTERNS          = *.h *.hpp *.md
 USE_MDFILE_AS_MAINPAGE = docs/API.md

@@ -18,7 +18,7 @@ Frontend semantic events -> InputEncoder -> bytes
 
 Core 平台无关：不依赖 Qt、Windows API、POSIX PTY、OpenGL、网络等任何
 平台头文件。所有公开类型使用 `Zz` 前缀，动态库导出统一使用
-`ZZTERM_API` 宏（`ZzTerm/zzterm_export.h`，静态构建时为空宏）。
+`ZZTERM_API` 宏（`ZzTerm/Export.h`，静态构建时为空宏）。
 
 ## 线程与所有权约定
 
@@ -91,6 +91,18 @@ Cold mmap-file 扩展。Screen 不知道历史后端类型。
 `ZzInputEncoder`，UI 不直接拼 escape sequence。
 
 > 随实现补充。
+
+### PTY（ZzTermPty，Unix）
+
+- 头文件 `ZzPty.h`（target `ZzTermPty`，纯 OS 封装，不依赖 ZzTermCore；
+  仅 Unix 构建，macOS 头文件差异 M5 处理，Windows ConPTY 里程碑靠后）。
+- `ZzPty::spawn(ZzPtyConfig)` 失败返回 nullptr，errno 保留（含子进程 exec
+  失败）；`masterFd()` 供 poll/select/QSocketNotifier 事件驱动。
+- `read` 返回 0 表示 EOF（Linux EIO 归一）；`writeAll` 循环写完或出错；
+  `resize` 即 TIOCSWINSZ；`tryWait` 非阻塞收集退出码（信号杀死为
+  128 + 信号号）。析构 SIGHUP（必要时 SIGKILL）子进程并回收僵尸。
+- 调试工具 `ZzTermSmoke`（`examples/ZzTermSmoke`）：PTY -> ZzTerminal ->
+  stdout 全屏重绘的控制台冒烟 Demo，子进程退出即以其退出码退出。
 
 ### RenderView
 

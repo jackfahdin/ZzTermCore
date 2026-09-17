@@ -39,6 +39,7 @@ ZzTermCore/
 ├── highlight/
 ├── widget/
 ├── pty/{unix,windows}/
+├── examples/ZzTermSmoke/  # 控制台冒烟 Demo（调试工具）
 ├── examples/ZzTermDemo/
 ├── tests/{unit,compatibility,regression}/
 ├── fuzz/
