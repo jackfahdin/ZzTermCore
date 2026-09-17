@@ -1,0 +1,74 @@
+#pragma once
+
+#include <cstdint>
+
+#include "ZzTerm/Export.h"
+
+/**
+ * @file Types.h
+ * @brief ZzTermCore 公共基础类型：坐标、尺寸、矩形区域、光标形状等。
+ *
+ * 坐标约定：除特别注明外，所有公开 API 中的 (row, col) 均为 0 起始，
+ * row 向下递增，col 向右递增；终端协议层面的 1 起始坐标在
+ * Terminal 语义层完成换算，Core 内部不出现 1 起始坐标。
+ */
+
+/// @brief 终端网格尺寸（单位：单元格）。
+struct ZzSize {
+    int cols = 0; ///< 列数（每行单元格数）。
+    int rows = 0; ///< 行数（屏幕行数）。
+
+    /**
+     * @brief 判断尺寸是否合法（均为正）。
+     * @return true 表示 cols 与 rows 均大于 0。
+     */
+    [[nodiscard]] constexpr bool valid() const noexcept { return cols > 0 && rows > 0; }
+
+    /// @brief 相等比较（列数与行数均相等）。
+    friend constexpr bool operator==(ZzSize, ZzSize) noexcept = default;
+};
+
+/// @brief 网格坐标（0 起始）。
+struct ZzPosition {
+    int row = 0; ///< 行号，向下递增。
+    int col = 0; ///< 列号，向右递增。
+
+    /// @brief 相等比较（行号与列号均相等）。
+    friend constexpr bool operator==(ZzPosition, ZzPosition) noexcept = default;
+};
+
+/// @brief 矩形区域（闭区间语义由使用方注明，默认可为空区域）。
+struct ZzRect {
+    int topRow = 0;    ///< 起始行（含）。
+    int leftCol = 0;   ///< 起始列（含）。
+    int bottomRow = -1; ///< 结束行（含）；小于 topRow 表示空区域。
+    int rightCol = -1;  ///< 结束列（含）；小于 leftCol 表示空区域。
+
+    /**
+     * @brief 区域是否为空。
+     * @return true 表示 bottomRow < topRow 或 rightCol < leftCol。
+     */
+    [[nodiscard]] constexpr bool empty() const noexcept
+    {
+        return bottomRow < topRow || rightCol < leftCol;
+    }
+};
+
+/// @brief 行内单元格范围，半开区间 [startCol, endCol)。
+struct ZzCellRange {
+    int startCol = 0; ///< 起始列（含）。
+    int endCol = 0;   ///< 结束列（不含）；endCol <= startCol 表示空范围。
+
+    /**
+     * @brief 范围是否为空。
+     * @return true 表示 endCol <= startCol。
+     */
+    [[nodiscard]] constexpr bool empty() const noexcept { return endCol <= startCol; }
+};
+
+/// @brief 光标形状（对应 DECSCUSR）。
+enum class ZzCursorShape : std::uint8_t {
+    Block,     ///< 方块光标。
+    Underline, ///< 下划线光标。
+    Bar        ///< 竖线（I-Beam）光标。
+};

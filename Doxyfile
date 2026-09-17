@@ -1,0 +1,32 @@
+# ZzTermCore Doxygen 配置（仅列出非默认项，其余取 Doxygen 默认值）
+# CI 中 `doxygen Doxyfile` 必须零 warning 通过（WARN_AS_ERROR = YES）。
+
+PROJECT_NAME           = "ZzTermCore"
+PROJECT_BRIEF          = "独立、跨平台、自研的终端模拟器 Core 组件"
+OUTPUT_LANGUAGE        = Chinese
+OUTPUT_DIRECTORY       = docs/api-html
+
+INPUT                  = include docs
+RECURSIVE              = YES
+FILE_PATTERNS          = *.h *.hpp *.md
+USE_MDFILE_AS_MAINPAGE = docs/API.md
+
+GENERATE_HTML          = YES
+GENERATE_LATEX         = NO
+GENERATE_XML           = NO
+
+EXTRACT_ALL            = NO
+EXTRACT_PRIVATE        = NO
+EXTRACT_STATIC         = NO
+
+# 导出宏对 Doxygen 透明，避免解析噪音。
+PREDEFINED             = ZZTERM_API=
+
+# 公开 API 必须有中文 Doxygen 注释（Architecture.md 第 17 节）：
+# 未注释成员、参数不匹配等一律视为错误。
+WARNINGS               = YES
+WARN_IF_UNDOCUMENTED   = YES
+WARN_IF_DOC_ERROR      = YES
+WARN_NO_PARAMDOC       = YES
+WARN_AS_ERROR          = YES
+QUIET                  = NO
