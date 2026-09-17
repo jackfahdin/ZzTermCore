@@ -134,9 +134,9 @@ void ZzScreen::restoreCursor() noexcept
         return;
     }
     Buffer& buf = active_ == ZzScreenBuffer::Primary ? primary_ : alternate_;
-    setCursorPosition(savedCursor_.position);
     buf.cursor = savedCursor_;
-    buf.wrapPending = savedWrapPending_;
+    setCursorPosition(savedCursor_.position); // 最后钳制，防止 resize 后越界
+    buf.wrapPending = savedWrapPending_;      // setCursorPosition 会清标志，须在其后恢复
 }
 
 bool ZzScreen::wrapPending() const noexcept

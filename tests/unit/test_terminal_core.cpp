@@ -176,6 +176,17 @@ static void testNelScrollsAndResetsColAtBottom()
     ZZ_TEST_EXPECT(term.renderView().scrollbackLineCount() == 1); // 首行入历史
 }
 
+static void testRestoreCursorClampedAfterResize()
+{
+    ZzTerminal term(10, 6, 100);
+    feedStr(term, "\x1b[6;8H"); // CUP：row 5、col 7（0 起始）
+    feedStr(term, "\x1b" "7");  // DECSC 保存光标
+    term.resize(4, 4);          // 缩小网格
+    feedStr(term, "\x1b" "8");  // DECRC 恢复：位置必须钳制到新网格内
+    ZZ_TEST_EXPECT(term.cursor().position.row == 3);
+    ZZ_TEST_EXPECT(term.cursor().position.col == 3);
+}
+
 int main()
 {
     testPrintAscii();
@@ -190,6 +201,7 @@ int main()
     testEscIndNelRiHts();
     testRiScrollsDownAtTop();
     testNelScrollsAndResetsColAtBottom();
+    testRestoreCursorClampedAfterResize();
     if (g_failures == 0)
         std::puts("test_terminal_core: all tests passed");
     return g_failures == 0 ? 0 : 1;
