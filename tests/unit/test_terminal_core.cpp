@@ -1,6 +1,5 @@
 // ZzTerminal print 通路与 pending-wrap 行为测试。
 #include <cstdio>
-#include <cstring>
 #include <span>
 #include <string>
 
@@ -152,7 +151,6 @@ static void testEscIndNelRiHts()
     ZZ_TEST_EXPECT(term.cursor().position.col == 0);
     feedStr(term, "\x1b" "H");      // HTS：当前列设 Tab Stop
     feedStr(term, "\t");
-    ZZ_TEST_EXPECT(term.cursor().position.col == 0 || term.cursor().position.col > 0);
     // HTS 精确语义：col 0 设 stop 后，HT 从 col 0 跳到下一个默认 stop（col 8）。
     ZZ_TEST_EXPECT(term.cursor().position.col == 8);
 }
@@ -164,6 +162,18 @@ static void testRiScrollsDownAtTop()
     feedStr(term, "\x1b" "M"); // 光标在滚动区上沿，RI 向下滚动
     ZZ_TEST_EXPECT(cpAt(term, 1, 0) == U'a');
     ZZ_TEST_EXPECT(term.cursor().position.row == 0);
+}
+
+static void testNelScrollsAndResetsColAtBottom()
+{
+    ZzTerminal term(5, 2, 100);
+    feedStr(term, "ab\x1b" "Ecd"); // NEL 到末行，列非 0
+    ZZ_TEST_EXPECT(term.cursor().position.row == 1);
+    ZZ_TEST_EXPECT(term.cursor().position.col == 2);
+    feedStr(term, "\x1b" "E"); // NEL 在下沿：上滚且 CR 无条件生效（ECMA-48 NEL = CR + IND）
+    ZZ_TEST_EXPECT(term.cursor().position.row == 1);
+    ZZ_TEST_EXPECT(term.cursor().position.col == 0);
+    ZZ_TEST_EXPECT(term.renderView().scrollbackLineCount() == 1); // 首行入历史
 }
 
 int main()
@@ -179,6 +189,7 @@ int main()
     testEscSaveRestore();
     testEscIndNelRiHts();
     testRiScrollsDownAtTop();
+    testNelScrollsAndResetsColAtBottom();
     if (g_failures == 0)
         std::puts("test_terminal_core: all tests passed");
     return g_failures == 0 ? 0 : 1;

@@ -46,6 +46,9 @@ void ZzScreen::resize(int cols, int rows)
     rows_ = rows;
     primary_.resize(cols_, rows_);
     alternate_.resize(cols_, rows_);
+    // resize 后网格内容已变化，wrap-pending 标志无意义，两个缓冲区一并清零。
+    primary_.wrapPending = false;
+    alternate_.wrapPending = false;
     tabStops_.resize(static_cast<std::size_t>(cols_), 0);
     scrollTop_ = 0;
     scrollBottom_ = rows_ - 1;

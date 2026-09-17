@@ -57,7 +57,6 @@ ZzTermChanges ZzTerminal::feed(std::span<const std::byte> data)
     if (scrolledOutPending_ > 0) {
         changes.scrollbackChanged = true;
         changes.scrolledOutLines = scrolledOutPending_;
-        scrolledOutPending_ = 0;
     }
     return changes;
 }
@@ -181,11 +180,13 @@ void ZzTerminal::dispatchEsc(std::string_view intermediates, char final)
             screen_.setCursorPosition(ZzPosition{cur.row - 1, cur.col});
         noteScreenDirty();
         break;
-    case 'E': // NEL：CR + IND
-        if (cur.row == region.endCol - 1)
+    case 'E': // NEL：CR + IND；CR 无条件生效（ECMA-48）
+        if (cur.row == region.endCol - 1) {
             screen_.scrollUp(1, eraseFill());
-        else
+            screen_.setCursorPosition(ZzPosition{cur.row, 0}); // 滚动后行号不变，仍在下沿
+        } else {
             screen_.setCursorPosition(ZzPosition{cur.row + 1, 0});
+        }
         noteScreenDirty();
         break;
     case 'H': // HTS：当前列设 Tab Stop

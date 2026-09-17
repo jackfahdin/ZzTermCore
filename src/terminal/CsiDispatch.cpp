@@ -135,7 +135,7 @@ void ZzTerminal::dispatchCsi(const ZzParamSequence& seq)
         sgr(seq); // 任务 6 实现
         break;
     default:
-        break; // 未知 final 安全忽略
+        return; // 未知 final 安全忽略（不标脏）
     }
     noteScreenDirty();
 }
