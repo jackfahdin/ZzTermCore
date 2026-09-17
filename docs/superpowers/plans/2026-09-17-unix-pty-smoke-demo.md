@@ -1103,10 +1103,14 @@ void ZzScreen::restoreCursor() noexcept
     }
     Buffer& buf = active_ == ZzScreenBuffer::Primary ? primary_ : alternate_;
     buf.cursor = savedCursor_;
-    buf.wrapPending = savedWrapPending_;
-    setCursorPosition(savedCursor_.position); // 最后钳制，防止 resize 后越界
+    setCursorPosition(savedCursor_.position); // 钳制，防止 resize 后越界
+    buf.wrapPending = savedWrapPending_;      // 最后恢复（setCursorPosition 会清 wrapPending）
 }
 ```
+
+注：执行时发现 `setCursorPosition` 无条件清 `wrapPending`，若先恢复
+`savedWrapPending_` 再钳制会导致 `test_wrap_pending` 的 `testSavedWithCursor`
+回归——以上顺序（赋值 → 钳制 → 恢复 wrapPending）为已实施并验证的正确版本。
 
 - [ ] **步骤 3：运行测试确认通过**
 
