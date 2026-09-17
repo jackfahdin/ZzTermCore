@@ -1,0 +1,102 @@
+#include <algorithm>
+
+#include "ZzTerm/Terminal.h"
+#include "ZzTerm/Parser.h"
+
+// CSI 语义（ZzTerminal 成员函数，分文件实现以控制单文件规模）。
+// 约定：参数省略（kOmitted）或 <= 0 一律回退默认值；数值钳到网格范围；
+// DEC 私有序列（privateMarker != 0）与带 intermediate 的序列 M3 处理，
+// 本文件安全忽略。
+
+namespace {
+
+/// 取 CSI 第 i 个参数；省略/0/缺槽回退 fallback。
+int paramOr(const ZzParamSequence& seq, std::size_t i, int fallback)
+{
+    if (i >= seq.params.size())
+        return fallback;
+    const std::int32_t v = seq.params[i];
+    return (v == ZzParamSequence::kOmitted || v <= 0) ? fallback : static_cast<int>(v);
+}
+
+} // namespace
+
+void ZzTerminal::dispatchCsi(const ZzParamSequence& seq)
+{
+    if (seq.privateMarker != 0 || !seq.intermediates.empty())
+        return; // DEC 私有模式 / intermediate 序列：留待 M3，安全忽略
+
+    const ZzSize sz = screen_.size();
+    const ZzCellRange region = screen_.scrollRegionRows();
+    const int regionTop = region.startCol;
+    const int regionBottom = region.endCol - 1;
+    const ZzPosition cur = screen_.cursor().position;
+    const bool inRegion = cur.row >= regionTop && cur.row <= regionBottom;
+
+    switch (seq.final) {
+    case 'A': { // CUU：上移到滚动区上沿为止（在区内时）
+        const int n = paramOr(seq, 0, 1);
+        const int limit = inRegion ? regionTop : 0;
+        screen_.setCursorPosition(ZzPosition{std::max(limit, cur.row - n), cur.col});
+        break;
+    }
+    case 'B': { // CUD：下移
+        const int n = paramOr(seq, 0, 1);
+        const int limit = inRegion ? regionBottom : sz.rows - 1;
+        screen_.setCursorPosition(ZzPosition{std::min(limit, cur.row + n), cur.col});
+        break;
+    }
+    case 'C': // CUF
+        screen_.setCursorPosition(
+            ZzPosition{cur.row, std::min(sz.cols - 1, cur.col + paramOr(seq, 0, 1))});
+        break;
+    case 'D': // CUB
+        screen_.setCursorPosition(
+            ZzPosition{cur.row, std::max(0, cur.col - paramOr(seq, 0, 1))});
+        break;
+    case 'E': { // CNL = CUD + CR
+        const int n = paramOr(seq, 0, 1);
+        const int limit = inRegion ? regionBottom : sz.rows - 1;
+        screen_.setCursorPosition(ZzPosition{std::min(limit, cur.row + n), 0});
+        break;
+    }
+    case 'F': { // CPL = CUU + CR
+        const int n = paramOr(seq, 0, 1);
+        const int limit = inRegion ? regionTop : 0;
+        screen_.setCursorPosition(ZzPosition{std::max(limit, cur.row - n), 0});
+        break;
+    }
+    case 'G': // CHA：绝对列（1 起始）
+        screen_.setCursorPosition(
+            ZzPosition{cur.row, std::clamp(paramOr(seq, 0, 1) - 1, 0, sz.cols - 1)});
+        break;
+    case 'd': // VPA：绝对行（1 起始）
+        screen_.setCursorPosition(
+            ZzPosition{std::clamp(paramOr(seq, 0, 1) - 1, 0, sz.rows - 1), cur.col});
+        break;
+    case 'H': // CUP
+    case 'f': { // HVP
+        int row = paramOr(seq, 0, 1) - 1;
+        const int col = paramOr(seq, 1, 1) - 1;
+        if (screen_.originMode()) {
+            // DECOM：相对滚动区上沿，且钳在滚动区内。
+            row = std::clamp(row + regionTop, regionTop, regionBottom);
+        }
+        screen_.setCursorPosition(ZzPosition{std::clamp(row, 0, sz.rows - 1),
+                                             std::clamp(col, 0, sz.cols - 1)});
+        break;
+    }
+    case 's': // SCOSC（无左右边距模式时 CSI s = 保存光标）
+        screen_.saveCursor();
+        break;
+    case 'u': // SCORC
+        screen_.restoreCursor();
+        break;
+    case 'm':
+        sgr(seq); // 任务 6 实现
+        break;
+    default:
+        break; // 擦除/插删/滚动在任务 5 添加；未知 final 安全忽略
+    }
+    noteScreenDirty();
+}

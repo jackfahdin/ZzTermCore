@@ -151,11 +151,6 @@ void ZzTerminal::executeControl(std::uint8_t control)
     }
 }
 
-void ZzTerminal::dispatchCsi(const ZzParamSequence&)
-{
-    // 空实现：CSI 语义分发归任务 3。
-}
-
 void ZzTerminal::dispatchEsc(std::string_view intermediates, char final)
 {
     if (!intermediates.empty())
@@ -216,7 +211,7 @@ void ZzTerminal::dispatchOsc(std::string_view payload)
 
 void ZzTerminal::sgr(const ZzParamSequence&)
 {
-    // 空实现：SGR 画笔属性归任务 3。
+    // 空实现：SGR 画笔属性归任务 6。
 }
 
 bool ZzTerminal::resize(int cols, int rows)
