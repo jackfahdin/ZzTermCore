@@ -31,4 +31,4 @@
  *       区间表替换本实现，调用方（ZzTerminal::putChar）不变。
  *       grapheme 聚簇（UAX #29）由更高层负责，不在本接口。
  */
-[[nodiscard]] inline constexpr int zzCellWidthOf(char32_t) noexcept { return 1; }
+[[nodiscard]] inline constexpr int zzCellWidthOf(char32_t cp) noexcept { return 1; }
