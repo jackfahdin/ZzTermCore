@@ -104,6 +104,7 @@ void ZzScreen::setCursorPosition(ZzPosition pos) noexcept
     pos.row = std::clamp(pos.row, 0, rows_ - 1);
     pos.col = std::clamp(pos.col, 0, cols_ - 1);
     Buffer& buf = active_ == ZzScreenBuffer::Primary ? primary_ : alternate_;
+    buf.wrapPending = false;
     buf.cursor.position = pos;
 }
 
@@ -117,7 +118,9 @@ void ZzScreen::setCursorStyle(ZzCursorShape shape, bool visible, bool blinking) 
 
 void ZzScreen::saveCursor() noexcept
 {
+    const Buffer& buf = active_ == ZzScreenBuffer::Primary ? primary_ : alternate_;
     savedCursor_ = cursor();
+    savedWrapPending_ = buf.wrapPending;
     hasSavedCursor_ = true;
 }
 
@@ -130,6 +133,19 @@ void ZzScreen::restoreCursor() noexcept
     Buffer& buf = active_ == ZzScreenBuffer::Primary ? primary_ : alternate_;
     setCursorPosition(savedCursor_.position);
     buf.cursor = savedCursor_;
+    buf.wrapPending = savedWrapPending_;
+}
+
+bool ZzScreen::wrapPending() const noexcept
+{
+    const Buffer& buf = active_ == ZzScreenBuffer::Primary ? primary_ : alternate_;
+    return buf.wrapPending;
+}
+
+void ZzScreen::setWrapPending(bool pending) noexcept
+{
+    Buffer& buf = active_ == ZzScreenBuffer::Primary ? primary_ : alternate_;
+    buf.wrapPending = pending;
 }
 
 void ZzScreen::setScrollRegion(int topRow, int bottomRow) noexcept
@@ -199,6 +215,7 @@ void ZzScreen::eraseInLine(ZzEraseMode mode, const ZzCell& fill) noexcept
     case ZzEraseMode::All:       break;
     }
     Buffer& buf = active_ == ZzScreenBuffer::Primary ? primary_ : alternate_;
+    buf.wrapPending = false;
     ZzLine& line = buf.lines[static_cast<std::size_t>(cur.row)];
     for (int c = from; c <= to; ++c)
         line.setCell(c, fill);
@@ -210,6 +227,7 @@ void ZzScreen::eraseInDisplay(ZzEraseMode mode, const ZzCell& fill) noexcept
 {
     const ZzPosition cur = cursor().position;
     Buffer& buf = active_ == ZzScreenBuffer::Primary ? primary_ : alternate_;
+    buf.wrapPending = false;
     ZzLine& cursorLine = buf.lines[static_cast<std::size_t>(cur.row)];
     switch (mode) {
     case ZzEraseMode::ToEnd:
@@ -242,6 +260,7 @@ void ZzScreen::insertCells(int count, const ZzCell& fill) noexcept
 {
     const ZzPosition cur = cursor().position;
     Buffer& buf = active_ == ZzScreenBuffer::Primary ? primary_ : alternate_;
+    buf.wrapPending = false;
     buf.lines[static_cast<std::size_t>(cur.row)].insertCells(cur.col, count, fill);
     markDirty(cur.row, cur.col);
     markDirty(cur.row, cols_ - 1);
@@ -251,6 +270,7 @@ void ZzScreen::deleteCells(int count, const ZzCell& fill) noexcept
 {
     const ZzPosition cur = cursor().position;
     Buffer& buf = active_ == ZzScreenBuffer::Primary ? primary_ : alternate_;
+    buf.wrapPending = false;
     buf.lines[static_cast<std::size_t>(cur.row)].eraseCells(cur.col, count, fill);
     markDirty(cur.row, cur.col);
     markDirty(cur.row, cols_ - 1);
@@ -261,6 +281,8 @@ void ZzScreen::insertLines(int count, const ZzCell& fill)
     const int row = cursor().position.row;
     if (row < scrollTop_ || row > scrollBottom_)
         return;
+    Buffer& buf = active_ == ZzScreenBuffer::Primary ? primary_ : alternate_;
+    buf.wrapPending = false;
     scrollRegionDown(row, scrollBottom_, count, fill);
 }
 
@@ -269,16 +291,22 @@ void ZzScreen::deleteLines(int count, const ZzCell& fill)
     const int row = cursor().position.row;
     if (row < scrollTop_ || row > scrollBottom_)
         return;
+    Buffer& buf = active_ == ZzScreenBuffer::Primary ? primary_ : alternate_;
+    buf.wrapPending = false;
     scrollRegionUp(row, scrollBottom_, count, fill);
 }
 
 void ZzScreen::scrollUp(int count, const ZzCell& fill)
 {
+    Buffer& buf = active_ == ZzScreenBuffer::Primary ? primary_ : alternate_;
+    buf.wrapPending = false;
     scrollRegionUp(scrollTop_, scrollBottom_, count, fill);
 }
 
 void ZzScreen::scrollDown(int count, const ZzCell& fill)
 {
+    Buffer& buf = active_ == ZzScreenBuffer::Primary ? primary_ : alternate_;
+    buf.wrapPending = false;
     scrollRegionDown(scrollTop_, scrollBottom_, count, fill);
 }
 

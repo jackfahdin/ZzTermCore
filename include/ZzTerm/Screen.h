@@ -162,6 +162,21 @@ public:
     /// @brief 恢复光标（DECRC / SCORC）；若无已保存状态则复位到左上角。
     void restoreCursor() noexcept;
 
+    /**
+     * @brief wrap-pending 标志（xterm 行尾延迟换行语义）。
+     * @return true 表示光标停在最后一列且下一个可打印字符将触发换行。
+     * @note 本状态按缓冲区独立保存；Save/Restore Cursor 连带保存恢复；
+     *       setCursorPosition、erase/insert/delete/scroll 各原语会清除它。
+     *       置位逻辑由 ZzTerminal 的写入流程负责，Screen 不自动置位。
+     */
+    [[nodiscard]] bool wrapPending() const noexcept;
+
+    /**
+     * @brief 设置 wrap-pending 标志。
+     * @param pending true 置位，false 清除。
+     */
+    void setWrapPending(bool pending) noexcept;
+
     // ---- 滚动区 / Tab Stops / 模式位 ----
 
     /**
@@ -345,6 +360,7 @@ private:
         ZzCursorState       cursor;                         ///< 光标。
         std::vector<char>   dirtyRows;                      ///< 行脏标记（0/1）。
         std::vector<ZzCellRange> dirtyRanges;               ///< 行内脏列合并区间。
+        bool wrapPending = false; ///< wrap-pending 标志（见 wrapPending()）。
 
         void resize(int cols, int rows);
     };
@@ -364,6 +380,7 @@ private:
     ZzScreenBuffer      active_       = ZzScreenBuffer::Primary;
     ZzCursorState       savedCursor_;           ///< DECSC 保存的光标。
     bool                hasSavedCursor_ = false;
+    bool savedWrapPending_ = false; ///< saveCursor 保存的 wrap-pending。
     int                 cols_ = 0;
     int                 rows_ = 0;
     int                 scrollTop_    = 0;      ///< 滚动区上沿（含）。
