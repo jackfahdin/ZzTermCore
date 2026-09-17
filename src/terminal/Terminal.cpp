@@ -209,11 +209,6 @@ void ZzTerminal::dispatchOsc(std::string_view payload)
         activeChanges_->titleChanged = true;
 }
 
-void ZzTerminal::sgr(const ZzParamSequence&)
-{
-    // 空实现：SGR 画笔属性归任务 6。
-}
-
 bool ZzTerminal::resize(int cols, int rows)
 {
     if (cols <= 0 || rows <= 0)
