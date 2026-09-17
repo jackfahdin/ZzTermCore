@@ -19,36 +19,36 @@
 -   [x] BEL / BS / HT
 -   [x] LF / VT / FF / CR
 -   [x] ESC
--   [ ] IND / NEL / RI / HTS
+-   [x] IND / NEL / RI / HTS
 
 ## Cursor / CSI
 
--   [ ] CUU / CUD / CUF / CUB
--   [ ] CNL / CPL
--   [ ] CHA / VPA
--   [ ] CUP / HVP
--   [ ] Save / Restore Cursor
+-   [x] CUU / CUD / CUF / CUB
+-   [x] CNL / CPL
+-   [x] CHA / VPA
+-   [x] CUP / HVP
+-   [x] Save / Restore Cursor
 
 ## Erase / Insert / Delete / Scroll
 
--   [ ] ED 0/1/2/3
--   [ ] EL 0/1/2
--   [ ] ECH
--   [ ] ICH / DCH
--   [ ] IL / DL
--   [ ] SU / SD
+-   [x] ED 0/1/2/3（ED 3 清历史除外）
+-   [x] EL 0/1/2
+-   [x] ECH
+-   [x] ICH / DCH
+-   [x] IL / DL
+-   [x] SU / SD
 
 ## SGR
 
--   [ ] Reset
--   [ ] Bold / Faint
--   [ ] Italic
+-   [x] Reset
+-   [x] Bold / Faint
+-   [x] Italic
 -   [ ] Underline variants
--   [ ] Blink / Inverse / Invisible / Strikethrough
--   [ ] ANSI 16 / Bright
--   [ ] 256 colors
--   [ ] RGB TrueColor
--   [ ] Default FG/BG
+-   [x] Blink / Inverse / Invisible / Strikethrough
+-   [x] ANSI 16 / Bright
+-   [x] 256 colors
+-   [x] RGB TrueColor
+-   [x] Default FG/BG
 -   [ ] Underline color
 
 ## DEC/xterm Modes
@@ -73,7 +73,7 @@
 
 ## OSC / DCS
 
--   [ ] Window/Icon title
+-   [x] Window/Icon title
 -   [ ] Palette/default colors
 -   [ ] OSC 8 hyperlink
 -   [ ] BEL/ST termination
