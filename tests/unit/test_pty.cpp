@@ -1,4 +1,6 @@
 // ZzTermPty（Unix PTY 封装）测试。
+#if defined(__unix__) && !defined(__APPLE__)
+
 #include <cerrno>
 #include <cstddef>
 #include <cstdio>
@@ -122,3 +124,14 @@ int main()
     if (g_failures == 0) std::printf("test_pty: all tests passed\n");
     return g_failures == 0 ? 0 : 1;
 }
+
+#else
+// 非 Linux 平台：PTY 模块不构建，本测试空跑通过（macOS PTY 见 M5，Windows ConPTY 里程碑靠后）。
+#include <cstdio>
+
+int main()
+{
+    std::printf("test_pty: skipped (PTY unsupported on this platform)\n");
+    return 0;
+}
+#endif
