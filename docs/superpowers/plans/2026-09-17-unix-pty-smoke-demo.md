@@ -22,7 +22,7 @@
 | `pty/unix/ZzPty.h` | 新建。ZzPtyConfig / ZzPty 公开头，全中文 Doxygen。 |
 | `pty/unix/ZzPty.cpp` | 新建。openpty + fork + execvp 实现，含 exec 失败回报管道。 |
 | `pty/CMakeLists.txt` | 新建。`ZzTermPty` target（别名 `ZzTerm::Pty`），不链接 ZzTermCore。 |
-| `CMakeLists.txt` | 修改。`if(UNIX)` 下 `add_subdirectory(pty)` / `add_subdirectory(examples)`。 |
+| `CMakeLists.txt` | 修改。`if(UNIX AND NOT APPLE)` 下 `add_subdirectory(pty)` / `add_subdirectory(examples)`。 |
 | `tests/CMakeLists.txt` | 修改。单元测试在 `TARGET ZzTermPty` 存在时同时链接 ZzTermPty；新增 `ZzTermSmokeEcho` 冒烟测试。 |
 | `tests/unit/test_pty.cpp` | 新建。PTY 四项测试（cat round-trip / resize ioctl / 退出码 42 / spawn 失败）。 |
 | `examples/CMakeLists.txt` | 新建。`add_subdirectory(ZzTermSmoke)`。 |
@@ -43,7 +43,7 @@
 4. **demo 读 master 必须非阻塞**：poll 报告可读后要循环读到 EAGAIN 为止（一次 POLLIN 可能对应多段数据；若只读一次，剩余数据要等下一事件，EOF 场景会卡住）。spawn 后用 `fcntl(O_NONBLOCK)` 设置 masterFd。因此 `ZzPty::read` 返回 -1 时 errno 可能是 EAGAIN（暂不可读），demo 按"回到 poll"处理。
 5. **退出顺序**：子进程退出（tryWait 命中）后立即非阻塞排空 master 残余输出 → 最后渲染一次 → 退出。不等待 slave 引用全部关闭（子进程的子进程可能持有 slave，等 EOF 会挂死）。
 6. **raw 语义**：demo 对外层 stdin 终端 `cfmakeraw`（关 OPOST），因此渲染输出换行必须显式 `\r\n`；PTY slave 由 ZzPty 默认置 raw，交互程序（bash readline/vim/less）会自行重设 termios，不受影响。
-7. **构建门槛**：PTY 与 demo 是 Unix 专属，根 CMake 用 `if(UNIX)` 包裹，保证 Windows/macOS configure 不炸。openpty 在部分平台位于 libutil（glibc ≥ 2.34 已并入 libc），用 `find_library(util)` 找到才链接。
+7. **构建门槛**：PTY 与 demo 是 Linux 专属（本里程碑），根 CMake 用 `if(UNIX AND NOT APPLE)` 包裹（macOS 同为 UNIX 会误入 `if(UNIX)`，其 PTY 头文件差异 M5 处理）；`tests/unit/test_pty.cpp` 全文以 `#if defined(__unix__) && !defined(__APPLE__)` 守卫（Windows 上 ZzTermPty 目标不存在，`if(TARGET)` 只保护链接不保护编译），`#else` 分支提供平凡 main 空跑通过。openpty 在部分平台位于 libutil（glibc ≥ 2.34 已并入 libc），用 `find_library(util)` 找到才链接。（执行后经最终审查修正，原 `if(UNIX)` 方案对 macOS/Windows 均有漏洞。）
 
 ---
 
@@ -357,13 +357,14 @@ if(ZZTERM_UTIL_LIBRARY)
 endif()
 ```
 
-修改根 `CMakeLists.txt`，在测试块（第 72-75 行 `if(ZZTERM_BUILD_TESTS) ... endif()`）之后追加：
+修改根 `CMakeLists.txt`，在测试块（`if(ZZTERM_BUILD_TESTS) ... endif()`）**之前**插入（顺序约束：`tests/CMakeLists.txt` 的 `if(TARGET ZzTermPty)` 在 configure 期按 add_subdirectory 顺序求值，pty 必须先于 tests 处理；实际实施时经实现者核实并纠正了原计划"测试块之后"的写法）：
 
 ```cmake
 # ---------------------------------------------------------------------------
-# PTY 与示例（仅 Unix；macOS 头文件差异 M5 处理，Windows ConPTY 里程碑靠后）
+# PTY 与示例（仅 Linux；macOS 头文件差异 M5 处理，Windows ConPTY 里程碑靠后；
+# 必须先于 tests 处理：tests/CMakeLists.txt 的 if(TARGET ZzTermPty) 依赖此顺序）
 # ---------------------------------------------------------------------------
-if(UNIX)
+if(UNIX AND NOT APPLE)
     add_subdirectory(pty)
     add_subdirectory(examples)
 endif()
