@@ -92,11 +92,50 @@ void ZzTerminal::dispatchCsi(const ZzParamSequence& seq)
     case 'u': // SCORC
         screen_.restoreCursor();
         break;
+    case 'J': { // ED 0/1/2；ED 3（清历史）不在 M1 范围，忽略
+        const int p = paramOr(seq, 0, 0);
+        if (p <= 2)
+            screen_.eraseInDisplay(static_cast<ZzEraseMode>(p), eraseFill());
+        break;
+    }
+    case 'K': { // EL 0/1/2
+        const int p = paramOr(seq, 0, 0);
+        if (p <= 2)
+            screen_.eraseInLine(static_cast<ZzEraseMode>(p), eraseFill());
+        break;
+    }
+    case 'X': { // ECH：原位擦除 n 格。Screen 无"原位擦除"原语，
+                // 用 deleteCells + insertCells 组合实现：先删 n 格（左移、
+                // 行尾补空），再在光标处插回 n 个空格（右移、截掉行尾补位），
+                // 净效果即 [col, col+n) 置空、其余单元格不动。
+        const int n = paramOr(seq, 0, 1);
+        screen_.deleteCells(n, eraseFill());
+        screen_.insertCells(n, eraseFill());
+        break;
+    }
+    case '@': // ICH
+        screen_.insertCells(paramOr(seq, 0, 1), eraseFill());
+        break;
+    case 'P': // DCH
+        screen_.deleteCells(paramOr(seq, 0, 1), eraseFill());
+        break;
+    case 'L': // IL
+        screen_.insertLines(paramOr(seq, 0, 1), eraseFill());
+        break;
+    case 'M': // DL
+        screen_.deleteLines(paramOr(seq, 0, 1), eraseFill());
+        break;
+    case 'S': // SU
+        screen_.scrollUp(paramOr(seq, 0, 1), eraseFill());
+        break;
+    case 'T': // SD
+        screen_.scrollDown(paramOr(seq, 0, 1), eraseFill());
+        break;
     case 'm':
         sgr(seq); // 任务 6 实现
         break;
     default:
-        break; // 擦除/插删/滚动在任务 5 添加；未知 final 安全忽略
+        break; // 未知 final 安全忽略
     }
     noteScreenDirty();
 }

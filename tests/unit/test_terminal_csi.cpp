@@ -31,6 +31,11 @@ static bool posEq(ZzPosition p, int row, int col)
     return p.row == row && p.col == col;
 }
 
+static char32_t cpAt(const ZzTerminal& term, int row, int col)
+{
+    return term.renderView().lineAt(row).cellAt(col).codePoint();
+}
+
 static void testCupAndHvp()
 {
     ZzTerminal term(10, 4, 100);
@@ -122,6 +127,89 @@ static void testVpa()
     ZZ_TEST_EXPECT(posEq(cursorOf(term), 5, 4));
 }
 
+static void testEraseInLine()
+{
+    ZzTerminal term(10, 4, 100);
+    feedStr(term, "0123456789");
+    feedStr(term, "\x1b[1G\x1b[K");   // 光标到行首；EL 0：擦到行尾
+    ZZ_TEST_EXPECT(cpAt(term, 0, 0) == 0);
+    ZZ_TEST_EXPECT(cpAt(term, 0, 9) == 0);
+
+    feedStr(term, "0123456789");
+    feedStr(term, "\x1b[6G\x1b[1K");  // EL 1：从行首擦到光标（含）
+    ZZ_TEST_EXPECT(cpAt(term, 0, 0) == 0);
+    ZZ_TEST_EXPECT(cpAt(term, 0, 5) == 0);
+    ZZ_TEST_EXPECT(cpAt(term, 0, 6) == U'6');
+
+    feedStr(term, "\x1b[2K");         // EL 2：整行
+    ZZ_TEST_EXPECT(cpAt(term, 0, 6) == 0);
+}
+
+static void testEraseInDisplay()
+{
+    ZzTerminal term(5, 3, 100);
+    feedStr(term, "aaa\r\nbbb\r\nccc");
+    feedStr(term, "\x1b[2;2H\x1b[J"); // ED 0：光标（含）到屏尾
+    ZZ_TEST_EXPECT(cpAt(term, 0, 2) == U'a'); // 行 0 不受 ED 0 影响（简报原文断言 (0,4)，该行仅 3 字符宽，(0,4) 恒为空格，此处按语义修正到行尾字符 (0,2)）
+    ZZ_TEST_EXPECT(cpAt(term, 1, 0) == U'b');
+    ZZ_TEST_EXPECT(cpAt(term, 1, 1) == 0);
+    ZZ_TEST_EXPECT(cpAt(term, 2, 0) == 0);
+
+    feedStr(term, "\x1b[2J");         // ED 2：整屏
+    ZZ_TEST_EXPECT(cpAt(term, 0, 0) == 0);
+    ZZ_TEST_EXPECT(cpAt(term, 0, 4) == 0);
+}
+
+static void testEchIchDch()
+{
+    ZzTerminal term(10, 4, 100);
+    feedStr(term, "0123456789\r");
+    feedStr(term, "\x1b[3G\x1b[2X");  // ECH 2：原位擦除两格，其余不动
+    ZZ_TEST_EXPECT(cpAt(term, 0, 1) == U'1');
+    ZZ_TEST_EXPECT(cpAt(term, 0, 2) == 0);
+    ZZ_TEST_EXPECT(cpAt(term, 0, 3) == 0);
+    ZZ_TEST_EXPECT(cpAt(term, 0, 4) == U'4');
+
+    feedStr(term, "\x1b[2J\x1b[H");
+    feedStr(term, "012345\r");
+    feedStr(term, "\x1b[2G\x1b[2@");  // ICH 2：插入两格，后续右移截断
+    ZZ_TEST_EXPECT(cpAt(term, 0, 0) == U'0');
+    ZZ_TEST_EXPECT(cpAt(term, 0, 1) == 0);
+    ZZ_TEST_EXPECT(cpAt(term, 0, 3) == U'1');
+
+    feedStr(term, "\x1b[2J\x1b[H");
+    feedStr(term, "012345\r");
+    feedStr(term, "\x1b[2G\x1b[2P");  // DCH 2：删除两格，左侧补位
+    ZZ_TEST_EXPECT(cpAt(term, 0, 0) == U'0');
+    ZZ_TEST_EXPECT(cpAt(term, 0, 1) == U'3');
+    ZZ_TEST_EXPECT(cpAt(term, 0, 4) == 0);
+}
+
+static void testIlDlSuSd()
+{
+    ZzTerminal term(5, 3, 100);
+    feedStr(term, "aaa\r\nbbb\r\nccc");
+    feedStr(term, "\x1b[2;1H\x1b[L"); // IL 1：光标行处插入一行
+    ZZ_TEST_EXPECT(cpAt(term, 1, 0) == 0);
+    ZZ_TEST_EXPECT(cpAt(term, 2, 0) == U'b'); // 原 bbb 下移，ccc 被丢弃
+
+    feedStr(term, "\x1b[2J\x1b[H");
+    feedStr(term, "aaa\r\nbbb\r\nccc");
+    feedStr(term, "\x1b[2;1H\x1b[M"); // DL 1：删除光标行
+    ZZ_TEST_EXPECT(cpAt(term, 1, 0) == U'c');
+    ZZ_TEST_EXPECT(cpAt(term, 2, 0) == 0);
+
+    feedStr(term, "\x1b[2J\x1b[H");
+    feedStr(term, "aaa\r\nbbb\r\nccc");
+    feedStr(term, "\x1b[S");          // SU 1：滚动区上滚一行
+    ZZ_TEST_EXPECT(cpAt(term, 0, 0) == U'b');
+    ZZ_TEST_EXPECT(cpAt(term, 2, 0) == 0);
+
+    feedStr(term, "\x1b[T");          // SD 1：滚动区下滚一行
+    ZZ_TEST_EXPECT(cpAt(term, 0, 0) == 0);
+    ZZ_TEST_EXPECT(cpAt(term, 1, 0) == U'b');
+}
+
 int main()
 {
     testCupAndHvp();
@@ -131,6 +219,10 @@ int main()
     testScrollRegionClamping();
     testOriginMode();
     testVpa();
+    testEraseInLine();
+    testEraseInDisplay();
+    testEchIchDch();
+    testIlDlSuSd();
     if (g_failures == 0)
         std::puts("test_terminal_csi: all tests passed");
     return g_failures == 0 ? 0 : 1;
