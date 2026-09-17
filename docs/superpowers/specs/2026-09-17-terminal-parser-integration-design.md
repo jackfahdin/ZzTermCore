@@ -34,7 +34,7 @@
 
 ``` text
 ZzTerminal
-├── ZzVtParser parser_          // 按值持有，构造/析构定义在 .cpp
+├── std::unique_ptr<ZzVtParser> parser_ // 构造/析构定义在 .cpp，前置声明即可
 ├── struct Sink : ZzParserSink  // 嵌套私有类，定义在 .cpp，持有 ZzTerminal&
 ├── ZzUtf8Decoder utf8_         // print 通道：onPrint(byte) -> utf8_.feed -> putChar(char32_t)
 └── 画笔状态 pen_               // ZzCellAttributes + 前景/背景 ZzColor
