@@ -15,3 +15,13 @@ foreach(test_source IN LISTS ZZTERM_UNIT_TEST_SOURCES)
     endif()
     add_test(NAME ${test_name} COMMAND ${test_name})
 endforeach()
+
+# 脚本化冒烟：PTY 驱动 Core 全链路——真实 bash 输出经 ZzTerminal 渲染回 stdout，
+# 断言标记串出现且以子进程退出码 0 退出（仅 Unix 构建存在 demo 目标时）。
+if(TARGET ZzTermSmoke)
+    add_test(NAME ZzTermSmokeEcho
+        COMMAND ZzTermSmoke -- bash -c "echo zz-smoke-ok")
+    set_tests_properties(ZzTermSmokeEcho PROPERTIES
+        PASS_REGULAR_EXPRESSION "zz-smoke-ok"
+        TIMEOUT 30)
+endif()
