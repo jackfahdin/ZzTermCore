@@ -90,6 +90,82 @@ static void testNoWrapWhenAutoWrapOff()
     ZZ_TEST_EXPECT(!term.renderView().lineAt(0).wrapped());
 }
 
+static void testC0()
+{
+    ZzTerminal term(10, 4, 100);
+    feedStr(term, "ab\rcd");        // CR 回列首
+    ZZ_TEST_EXPECT(cpAt(term, 0, 0) == U'c');
+    ZZ_TEST_EXPECT(cpAt(term, 0, 1) == U'd');
+
+    feedStr(term, "\n");            // LF 下移一行
+    ZZ_TEST_EXPECT(term.cursor().position.row == 1);
+
+    feedStr(term, "x\by");          // BS 左移后覆盖（y 覆盖 x 所在格）
+    ZZ_TEST_EXPECT(cpAt(term, 1, 2) == U'y');
+    ZZ_TEST_EXPECT(term.cursor().position.col == 3);
+
+    feedStr(term, "\t");            // HT 到下一个 Tab Stop（默认每 8 列）
+    ZZ_TEST_EXPECT(term.cursor().position.col == 8);
+
+    const ZzTermChanges ch = term.feed(std::span<const std::byte>(
+        reinterpret_cast<const std::byte*>("\a"), 1));
+    ZZ_TEST_EXPECT(ch.bell);        // BEL 置响铃标志
+}
+
+static void testLfScrollsAtRegionBottom()
+{
+    ZzTerminal term(5, 2, 100);
+    feedStr(term, "one\r\ntwo\r\n"); // 第二行使出滚动区下沿 -> 上滚
+    ZZ_TEST_EXPECT(cpAt(term, 0, 0) == U't'); // "two" 顶到第 0 行
+    ZZ_TEST_EXPECT(term.renderView().scrollbackLineCount() == 1); // "one" 入历史
+}
+
+static void testOscTitle()
+{
+    ZzTerminal term(10, 4, 100);
+    feedStr(term, "\x1b]2;my title\x07"); // OSC 2 ; title BEL
+    ZZ_TEST_EXPECT(term.title() == "my title");
+    feedStr(term, "\x1b]0;both\x1b\\");   // OSC 0，ST 终止
+    ZZ_TEST_EXPECT(term.title() == "both");
+}
+
+static void testEscSaveRestore()
+{
+    ZzTerminal term(10, 4, 100);
+    feedStr(term, "abc");
+    feedStr(term, "\x1b" "7");      // DECSC
+    feedStr(term, "\r\nxyz");
+    feedStr(term, "\x1b" "8");      // DECRC
+    ZZ_TEST_EXPECT(term.cursor().position.row == 0);
+    ZZ_TEST_EXPECT(term.cursor().position.col == 3);
+}
+
+static void testEscIndNelRiHts()
+{
+    ZzTerminal term(10, 4, 100);
+    feedStr(term, "\x1b" "D");      // IND：下移一行
+    ZZ_TEST_EXPECT(term.cursor().position.row == 1);
+    feedStr(term, "\x1b" "M");      // RI：上移一行
+    ZZ_TEST_EXPECT(term.cursor().position.row == 0);
+    feedStr(term, "\x1b" "E");      // NEL：回列首并下移
+    ZZ_TEST_EXPECT(term.cursor().position.row == 1);
+    ZZ_TEST_EXPECT(term.cursor().position.col == 0);
+    feedStr(term, "\x1b" "H");      // HTS：当前列设 Tab Stop
+    feedStr(term, "\t");
+    ZZ_TEST_EXPECT(term.cursor().position.col == 0 || term.cursor().position.col > 0);
+    // HTS 精确语义：col 0 设 stop 后，HT 从 col 0 跳到下一个默认 stop（col 8）。
+    ZZ_TEST_EXPECT(term.cursor().position.col == 8);
+}
+
+static void testRiScrollsDownAtTop()
+{
+    ZzTerminal term(5, 2, 100);
+    feedStr(term, "ab");
+    feedStr(term, "\x1b" "M"); // 光标在滚动区上沿，RI 向下滚动
+    ZZ_TEST_EXPECT(cpAt(term, 1, 0) == U'a');
+    ZZ_TEST_EXPECT(term.cursor().position.row == 0);
+}
+
 int main()
 {
     testPrintAscii();
@@ -97,6 +173,12 @@ int main()
     testPendingWrap();
     testPendingWrapClearedByCR();
     testNoWrapWhenAutoWrapOff();
+    testC0();
+    testLfScrollsAtRegionBottom();
+    testOscTitle();
+    testEscSaveRestore();
+    testEscIndNelRiHts();
+    testRiScrollsDownAtTop();
     if (g_failures == 0)
         std::puts("test_terminal_core: all tests passed");
     return g_failures == 0 ? 0 : 1;

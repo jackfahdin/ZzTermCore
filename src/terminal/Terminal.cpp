@@ -117,10 +117,38 @@ void ZzTerminal::putChar(char32_t cp)
 
 void ZzTerminal::executeControl(std::uint8_t control)
 {
-    // C0 控制的完整语义（LF/BS/HT/BEL 等）归任务 3；此处仅实现 CR，
-    // 因为 pending-wrap 语义要求 CR 立即清除 wrap-pending 并回列首。
-    if (control == '\r')
-        screen_.setCursorPosition(ZzPosition{screen_.cursor().position.row, 0});
+    const ZzCellRange region = screen_.scrollRegionRows(); // [top, bottom+1)
+    const ZzPosition cur = screen_.cursor().position;
+
+    switch (control) {
+    case 0x07: // BEL
+        if (activeChanges_)
+            activeChanges_->bell = true;
+        break;
+    case 0x08: // BS：左移一格（不越行首）
+        screen_.setCursorPosition(ZzPosition{cur.row, cur.col > 0 ? cur.col - 1 : 0});
+        noteScreenDirty();
+        break;
+    case 0x09: // HT：下一个 Tab Stop
+        screen_.setCursorPosition(ZzPosition{cur.row, screen_.nextTabStop(cur.col)});
+        noteScreenDirty();
+        break;
+    case 0x0A: // LF
+    case 0x0B: // VT
+    case 0x0C: // FF：index——滚动区下沿上滚，否则下移一行
+        if (cur.row == region.endCol - 1)
+            screen_.scrollUp(1, eraseFill());
+        else
+            screen_.setCursorPosition(ZzPosition{cur.row + 1, cur.col});
+        noteScreenDirty();
+        break;
+    case 0x0D: // CR：回列首（经 setCursorPosition 连带清除 wrap-pending）
+        screen_.setCursorPosition(ZzPosition{cur.row, 0});
+        noteScreenDirty();
+        break;
+    default:
+        break; // 其余 C0 安全忽略
+    }
 }
 
 void ZzTerminal::dispatchCsi(const ZzParamSequence&)
@@ -128,14 +156,62 @@ void ZzTerminal::dispatchCsi(const ZzParamSequence&)
     // 空实现：CSI 语义分发归任务 3。
 }
 
-void ZzTerminal::dispatchEsc(std::string_view, char)
+void ZzTerminal::dispatchEsc(std::string_view intermediates, char final)
 {
-    // 空实现：ESC 语义分发归任务 3。
+    if (!intermediates.empty())
+        return; // charset 选择（ESC ( X 等）随 M2 字符集设计实现
+
+    const ZzCellRange region = screen_.scrollRegionRows(); // [top, bottom+1)
+    const ZzPosition cur = screen_.cursor().position;
+
+    switch (final) {
+    case '7': // DECSC
+        screen_.saveCursor();
+        break;
+    case '8': // DECRC
+        screen_.restoreCursor();
+        noteScreenDirty();
+        break;
+    case 'D': // IND：同 LF
+        if (cur.row == region.endCol - 1)
+            screen_.scrollUp(1, eraseFill());
+        else
+            screen_.setCursorPosition(ZzPosition{cur.row + 1, cur.col});
+        noteScreenDirty();
+        break;
+    case 'M': // RI：滚动区上沿下滚，否则上移一行
+        if (cur.row == region.startCol)
+            screen_.scrollDown(1, eraseFill());
+        else if (cur.row > 0)
+            screen_.setCursorPosition(ZzPosition{cur.row - 1, cur.col});
+        noteScreenDirty();
+        break;
+    case 'E': // NEL：CR + IND
+        if (cur.row == region.endCol - 1)
+            screen_.scrollUp(1, eraseFill());
+        else
+            screen_.setCursorPosition(ZzPosition{cur.row + 1, 0});
+        noteScreenDirty();
+        break;
+    case 'H': // HTS：当前列设 Tab Stop
+        screen_.setTabStop(cur.col);
+        break;
+    default:
+        break; // 其余 ESC 序列安全忽略
+    }
 }
 
-void ZzTerminal::dispatchOsc(std::string_view)
+void ZzTerminal::dispatchOsc(std::string_view payload)
 {
-    // 空实现：OSC 语义（标题等）归任务 4。
+    const std::size_t sep = payload.find(';');
+    if (sep == std::string_view::npos)
+        return;
+    const std::string_view code = payload.substr(0, sep);
+    if (code != "0" && code != "1" && code != "2")
+        return; // 仅窗口/图标标题（OSC 0/1/2），其余安全忽略
+    title_ = std::string(payload.substr(sep + 1));
+    if (activeChanges_)
+        activeChanges_->titleChanged = true;
 }
 
 void ZzTerminal::sgr(const ZzParamSequence&)
