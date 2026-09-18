@@ -283,6 +283,156 @@
 -   [x] Core and PTY Grid Size Consistency
 
 
+## Terminal Color / Theme
+
+### Color Semantic
+
+-   [x] Default Foreground
+-   [x] Default Background
+-   [x] Indexed Color
+-   [x] RGB TrueColor
+-   [ ] Underline Color
+-   [x] ANSI Color Semantic 不提前转换为固定 RGB
+-   [x] TrueColor 保留原始 RGB
+
+### ANSI Palette
+
+-   [ ] ANSI Color 0～7
+-   [ ] Bright Color 8～15
+-   [ ] Theme ANSI Palette
+-   [ ] ANSI Palette Runtime Change
+-   [ ] Historical ANSI Colors Follow Theme Change
+
+### xterm 256 Color
+
+-   [ ] Indexed 0～15 使用 Theme Palette
+-   [ ] Indexed 16～231 Color Cube
+-   [ ] Indexed 232～255 Grayscale
+-   [x] 256-color Foreground
+-   [x] 256-color Background
+-   [ ] 256-color Underline
+
+### TrueColor
+
+-   [x] `38;2;R;G;B`
+-   [x] `48;2;R;G;B`
+-   [ ] Underline TrueColor
+-   [ ] TrueColor 不受 Terminal Theme ANSI Palette 影响
+
+### Default Color
+
+-   [x] SGR 39 Default Foreground
+-   [x] SGR 49 Default Background
+-   [ ] Default Underline Color
+-   [ ] Theme Change 更新 Default FG/BG
+-   [ ] Scrollback Default Color 跟随 Theme Change
+
+### ZzTermTheme
+
+-   [ ] Theme Name
+-   [ ] Foreground
+-   [ ] Background
+-   [ ] ANSI 16 Colors
+-   [ ] Cursor Color
+-   [ ] Cursor Text Color
+-   [ ] Selection Background
+-   [ ] Selection Foreground
+-   [ ] Theme Model 无 Qt 类型
+-   [ ] Theme Model 可独立于 Renderer 使用
+
+### Built-in Theme
+
+-   [ ] Default Dark
+-   [ ] Default Light
+-   [ ] ANSI Color Verification
+-   [ ] Dark/Light Regression Test
+
+### iTerm2 Color Scheme
+
+-   [ ] `.itermcolors` Loader
+-   [ ] Foreground Color
+-   [ ] Background Color
+-   [ ] ANSI 0～15
+-   [ ] Cursor Color
+-   [ ] Cursor Text Color
+-   [ ] Selection Color
+-   [ ] Missing Field Handling
+-   [ ] Invalid File Handling
+-   [ ] Import Regression Test
+
+### Runtime Theme Switching
+
+-   [ ] Runtime `setTerminalTheme()`
+-   [ ] 不重建 ZzTermCore
+-   [ ] 不清空 Scrollback
+-   [ ] 不重新解析历史
+-   [ ] 不重新创建 PTY
+-   [ ] Visible Screen Immediate Repaint
+-   [ ] Scrollback Immediate Theme Update
+-   [ ] Theme Cache Invalidation
+-   [ ] Repeated Theme Switching Stability
+
+### Theme Cache
+
+-   [ ] Theme Generation / Version
+-   [ ] Color Cache Invalidation
+-   [ ] Brush Cache Invalidation
+-   [ ] Text Run Cache Invalidation
+-   [ ] Background Run Cache Invalidation
+-   [ ] 无旧 Theme 残留
+
+### Cursor
+
+-   [ ] Cursor Color
+-   [ ] Cursor Text Color
+-   [ ] Cursor Shape 与 Cursor Color 解耦
+-   [ ] Block Cursor
+-   [ ] Underline Cursor
+-   [ ] Bar Cursor
+-   [ ] Theme Change 更新 Cursor Color
+
+### Selection / Decoration
+
+-   [ ] Selection Background
+-   [ ] Selection Foreground
+-   [ ] Keyword Decoration
+-   [ ] Regex Decoration
+-   [ ] Search Match Decoration
+-   [ ] Current Search Match Decoration
+-   [ ] Hyperlink Hover Decoration
+-   [ ] Decoration 不修改原始 VT Cell Attribute
+
+### Render Priority
+
+-   [ ] Terminal VT Attribute
+-   [ ] Terminal Theme Resolution
+-   [ ] Keyword / Regex
+-   [ ] Search Match
+-   [ ] Selection
+-   [ ] Hyperlink Hover
+-   [ ] Cursor
+-   [ ] 多 Decoration 冲突规则确定且有测试
+
+### Theme / Application Boundary
+
+-   [ ] Terminal Theme 独立于 Application Theme
+-   [ ] Application Dark/Light 不进入 ZzTermCore
+-   [ ] Toolbar Theme 不进入 ZzTermCore
+-   [ ] Tab Theme 不进入 ZzTermCore
+-   [ ] Button Theme 不进入 ZzTermCore
+-   [ ] Background Blur/Image 不进入 Core
+-   [ ] Qt `QColor` 不进入 Theme Core Model
+-   [ ] Qt `QPalette` 不进入 Theme Core Model
+
+### Cross-platform
+
+-   [ ] Linux Theme
+-   [ ] Windows Theme
+-   [ ] macOS Theme
+-   [ ] Theme Model 不依赖 OS
+-   [ ] OpenHarmony Renderer 可消费相同 ZzTermTheme
+
+
 ## 单项完成记录模板
 
 ``` text

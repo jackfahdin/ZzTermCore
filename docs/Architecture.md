@@ -37,6 +37,7 @@ ZzTermCore/
 ├── include/ZzTerm/
 ├── src/{parser,unicode,screen,history,input,terminal}/
 ├── highlight/
+├── theme/                 # ZzTermTheme：配色主题/Palette/iTerm2 导入（见第 24 节）
 ├── widget/
 ├── pty/{unix,windows}/
 ├── examples/ZzTermSmoke/  # 控制台冒烟 Demo（调试工具）
@@ -47,7 +48,7 @@ ZzTermCore/
 └── docs/
 ```
 
-Targets：`ZzTermCore`、`ZzTermHighlight`、`ZzTermWidget`、`ZzTermPty`、`ZzTermDemo`。依赖只能由外向内。
+Targets：`ZzTermCore`、`ZzTermHighlight`、`ZzTermTheme`、`ZzTermWidget`、`ZzTermPty`、`ZzTermDemo`。依赖只能由外向内。
 
 ## 4. CMake、Presets、静态/动态库
 
@@ -894,3 +895,1023 @@ Logical Position 模型 → M4；Font Zoom / DPI / Font Metrics / Fallback →
 
 以上职责边界属于架构约束，后续不得为了实现方便将字体、DPI 或像素概念引入 ZzTermCore。
 
+## 24. Terminal Theme / Color System
+
+终端配色主题属于 ZzTermCore 项目的正式能力，但不属于应用程序 UI Theme。
+
+必须严格区分：
+
+```text
+Terminal Theme
+```
+
+与：
+
+```text
+Application UI Theme
+```
+
+Terminal Theme 负责终端内容区域的颜色语义与 Palette。
+
+Application UI Theme 负责 Toolbar、Tab、Button、Dialog、Navigation、Menu 等客户端 UI。
+
+ZzTermCore 不负责应用程序整体 Dark/Light Theme。
+
+---
+
+### 24.1 模块职责
+
+新增独立模块：
+
+```text
+ZzTermTheme
+├── ZzTermColor
+├── ZzTermPalette
+├── ZzTermTheme
+├── ZzTermThemeLoader
+└── ZzItermColorSchemeLoader
+```
+
+整体关系：
+
+```text
+                     ZzTermCore
+                         ▲
+                         │
+                    ZzTermTheme
+                         ▲
+                         │
+                   ZzTermWidget
+                         ▲
+                         │
+                    ZzTermDemo
+```
+
+ZzTermCore 负责保存 Terminal Color Semantic。
+
+ZzTermTheme 负责：
+
+-   ANSI Palette；
+-   Default Foreground；
+-   Default Background；
+-   Cursor Color；
+-   Cursor Text Color；
+-   Terminal Selection 默认配色；
+-   Terminal Theme 加载；
+-   iTerm2 Color Scheme 加载。
+
+ZzTermWidget / Renderer 负责将：
+
+```text
+Color Semantic
+       +
+Terminal Theme
+```
+
+解析为最终绘制颜色。
+
+---
+
+### 24.2 Terminal Color Semantic
+
+Core 不应将所有颜色立即转换为最终 RGB。
+
+必须保留颜色来源和语义。
+
+建议颜色模型：
+
+```cpp
+enum class ZzTermColorType : uint8_t
+{
+    DefaultForeground,
+    DefaultBackground,
+    Indexed,
+    Rgb
+};
+
+struct ZzRgbColor
+{
+    uint8_t red;
+    uint8_t green;
+    uint8_t blue;
+};
+
+struct ZzTermColor
+{
+    ZzTermColorType type;
+
+    union
+    {
+        uint8_t index;
+        ZzRgbColor rgb;
+    };
+};
+```
+
+具体实现允许调整，但必须能够无损表达：
+
+```text
+Default Foreground
+Default Background
+ANSI Indexed Color
+xterm 256 Color
+RGB TrueColor
+```
+
+注：该语义模型已在 Core 落地——`ZzColor`（include/ZzTerm/Cell.h）即
+Default/Indexed/Rgb 三态的 32 位紧凑编码；Cell 的 foreground/background
+两个独立字段即承载 DefaultForeground/DefaultBackground 语义（SGR 39/49
+已映射为 `ZzColor::Default()`，见 Sgr.cpp）。实现主题系统时沿用/扩展
+`ZzColor` 与 `ZzRgbColor` 语义，不再引入并行的 `ZzTermColor` 类型。
+
+禁止 Parser 在收到：
+
+```text
+ESC[31m
+```
+
+时直接保存某个固定 RGB，例如：
+
+```text
+#FF0000
+```
+
+Core 应保存：
+
+```text
+Indexed Color 1
+```
+
+最终 RGB 由当前 Terminal Theme 决定。
+
+---
+
+### 24.3 Default Foreground / Background
+
+必须将：
+
+```text
+DefaultForeground
+DefaultBackground
+```
+
+作为独立颜色语义保存。
+
+例如：
+
+```text
+ESC[39m
+```
+
+表示：
+
+```text
+Default Foreground
+```
+
+而不是：
+
+```text
+White
+```
+
+同理：
+
+```text
+ESC[49m
+```
+
+表示：
+
+```text
+Default Background
+```
+
+而不是：
+
+```text
+Black
+```
+
+这样用户运行时切换 Terminal Theme 时：
+
+```text
+Dracula
+   ↓
+Solarized Dark
+```
+
+历史内容无需重新解析即可立即应用新主题。
+
+---
+
+### 24.4 ANSI 16 Color Palette
+
+ANSI 0～15 色必须由 Terminal Theme 提供。
+
+推荐结构：
+
+```cpp
+struct ZzTermPalette
+{
+    std::array<ZzRgbColor, 16> ansiColors;
+};
+```
+
+映射：
+
+```text
+0  Black
+1  Red
+2  Green
+3  Yellow
+4  Blue
+5  Magenta
+6  Cyan
+7  White
+
+8  Bright Black
+9  Bright Red
+10 Bright Green
+11 Bright Yellow
+12 Bright Blue
+13 Bright Magenta
+14 Bright Cyan
+15 Bright White
+```
+
+注意这些名称表示 ANSI color slot，而不是固定 RGB。
+
+例如：
+
+```text
+ANSI Red
+```
+
+在不同 Terminal Theme 中允许对应不同 RGB。
+
+---
+
+### 24.5 xterm 256 Color
+
+Indexed Color：
+
+```text
+0 ～ 255
+```
+
+必须支持完整 xterm 256-color 模型。
+
+推荐解析规则：
+
+```text
+Indexed 0～15
+      ↓
+Terminal Theme ANSI Palette
+
+Indexed 16～231
+      ↓
+xterm 6×6×6 Color Cube
+
+Indexed 232～255
+      ↓
+xterm Grayscale Ramp
+```
+
+其中：
+
+```text
+0～15
+```
+
+必须允许 Terminal Theme 覆盖。
+
+```text
+16～255
+```
+
+默认按照标准 xterm 256-color Palette 解析。
+
+禁止将所有 256 色在 Parser 阶段提前转换并永久写死为 RGB。
+
+---
+
+### 24.6 RGB TrueColor
+
+必须支持：
+
+```text
+24-bit RGB TrueColor
+```
+
+例如：
+
+```text
+CSI 38;2;R;G;B m
+CSI 48;2;R;G;B m
+```
+
+TrueColor 属于显式颜色，不经过 ANSI Theme Palette 替换。
+
+例如：
+
+```text
+ESC[38;2;123;45;67m
+```
+
+必须保存为：
+
+```text
+RGB(123, 45, 67)
+```
+
+Theme 切换不得改变该颜色。
+
+---
+
+### 24.7 Underline Color
+
+颜色模型应支持独立：
+
+```text
+Underline Color
+```
+
+例如现代 xterm 扩展：
+
+```text
+CSI 58;...m
+CSI 59m
+```
+
+Cell Attributes 中：
+
+```text
+Foreground
+Background
+UnderlineColor
+```
+
+必须是独立语义。
+
+Underline Color 也应支持：
+
+```text
+Default
+Indexed
+RGB
+```
+
+存储位置遵循 Cell.h 的既有决策：不内嵌进 `ZzCell`（避免增大
+sizeof(ZzCell)），采用按行稀疏侧表，Cell 属性位的 12-15 预留位为扩展点。
+
+---
+
+### 24.8 ZzTermTheme
+
+建议主题模型至少包含：
+
+```cpp
+struct ZzTermTheme
+{
+    std::string name;
+
+    ZzRgbColor foreground;
+    ZzRgbColor background;
+
+    std::array<ZzRgbColor, 16> ansiColors;
+
+    ZzRgbColor cursor;
+    ZzRgbColor cursorText;
+
+    ZzRgbColor selectionBackground;
+    ZzRgbColor selectionForeground;
+};
+```
+
+实际实现可以扩展，但不得让 ZzTermTheme 依赖 Qt 类型。
+
+禁止：
+
+```cpp
+QColor
+QString
+QPalette
+```
+
+进入 ZzTermTheme 的基础数据模型。
+
+建议全部使用：
+
+```text
+std::string
+uint8_t
+std::array
+ZzRgbColor
+```
+
+保证未来可以直接用于：
+
+```text
+Qt
+macOS Native
+OpenHarmony
+其他 Renderer
+```
+
+---
+
+### 24.9 Terminal Theme 与 Decoration
+
+必须区分：
+
+```text
+Terminal Theme
+```
+
+与：
+
+```text
+Decoration
+```
+
+Terminal Theme 负责：
+
+```text
+Default FG/BG
+ANSI Palette
+Cursor
+Terminal Selection Default
+```
+
+Decoration 负责：
+
+```text
+Keyword Highlight
+Regex Highlight
+Search Match
+Current Search Match
+Hyperlink Hover
+```
+
+推荐最终绘制流程：
+
+```text
+Terminal Cell
+     ↓
+Resolve Terminal Color
+     ↓
+Terminal Theme
+     ↓
+Keyword / Regex Decoration
+     ↓
+Search Highlight
+     ↓
+Selection
+     ↓
+Hyperlink Hover
+     ↓
+Cursor
+     ↓
+Final Render Style
+```
+
+Decoration 不允许修改 Cell 中保存的原始 VT Attribute。
+
+---
+
+### 24.10 Application Theme
+
+Application Theme 不属于 ZzTermCore。
+
+例如：
+
+```text
+Toolbar
+Tab
+Navigation
+Button
+Menu
+Dialog
+Title Bar
+Settings Page
+Application Background
+```
+
+全部由最终客户端负责。
+
+例如未来：
+
+```text
+ZzClawTerm Dark Theme
+```
+
+可以搭配：
+
+```text
+Dracula Terminal Theme
+```
+
+也可以搭配：
+
+```text
+Solarized Light Terminal Theme
+```
+
+两者必须完全独立。
+
+---
+
+### 24.11 iTerm2 Color Scheme
+
+ZzTermTheme 必须正式支持导入：
+
+```text
+*.itermcolors
+```
+
+建议实现：
+
+```text
+ZzItermColorSchemeLoader
+```
+
+对外接口示例：
+
+```cpp
+ZzTermTheme theme =
+    ZzItermColorSchemeLoader::load(path);
+```
+
+Loader 负责将 iTerm2 Color Scheme 转换为标准：
+
+```text
+ZzTermTheme
+```
+
+Widget 不直接解析 `.itermcolors`。
+
+Renderer 同样不直接解析文件。
+
+正确流程：
+
+```text
+.itermcolors
+      ↓
+ZzItermColorSchemeLoader
+      ↓
+ZzTermTheme
+      ↓
+ZzTermWidget
+      ↓
+Renderer
+```
+
+---
+
+### 24.12 Theme Loader 与文件格式扩展
+
+Theme Loader 应设计为可扩展结构。
+
+第一阶段必须支持：
+
+```text
+Built-in Theme
+iTerm2 .itermcolors
+```
+
+未来可以增加：
+
+```text
+ZzTerm JSON Theme
+Windows Terminal Scheme
+其他 Terminal Theme Format
+```
+
+但 Core 不得依赖具体 Theme 文件格式。
+
+推荐结构：
+
+```text
+Theme File
+    ↓
+Format Loader
+    ↓
+ZzTermTheme
+```
+
+所有外部格式最终转换为统一 `ZzTermTheme`。
+
+---
+
+### 24.13 Built-in Themes
+
+ZzTermDemo 应提供少量内置 Theme 用于验证。
+
+至少建议：
+
+```text
+Default Dark
+Default Light
+```
+
+其他 Theme 可以通过外部文件导入，不要求将大量第三方主题直接编译进项目。
+
+内置 Theme 的主要目的不是提供完整主题商店，而是：
+
+-   Regression Test；
+-   Dark/Light 验证；
+-   ANSI Palette 验证；
+-   Runtime Theme Switching 验证。
+
+---
+
+### 24.14 Runtime Theme Switching
+
+必须支持运行时切换 Terminal Theme。
+
+例如：
+
+```cpp
+terminalWidget->setTerminalTheme(theme);
+```
+
+Theme 切换不得：
+
+-   重建 Terminal；
+-   清空 Scrollback；
+-   重新连接 PTY；
+-   重新解析历史字节流；
+-   修改原始 Cell Attribute。
+
+正确流程：
+
+```text
+Theme Changed
+      ↓
+Update Theme
+      ↓
+Invalidate Resolved Color Cache
+      ↓
+Repaint Visible Terminal
+```
+
+历史数据必须立即按照新 Theme 显示。
+
+---
+
+### 24.15 Theme 与 Scrollback
+
+Scrollback 中不得永久保存已经经过 Theme 解析的最终 ANSI RGB。
+
+例如：
+
+```text
+ESC[31mERROR
+```
+
+历史数据应保存：
+
+```text
+Foreground = Indexed(1)
+```
+
+而不是：
+
+```text
+Foreground = RGB(255, 0, 0)
+```
+
+否则切换 Theme 后历史颜色无法同步变化。
+
+显式 TrueColor 除外。
+
+---
+
+### 24.16 Theme 与 Renderer Cache
+
+Renderer 可以缓存颜色解析结果，但 Cache 必须与 Theme Generation 绑定。
+
+例如：
+
+```text
+Theme Generation = 42
+```
+
+切换 Theme：
+
+```text
+Generation 42
+      ↓
+Generation 43
+```
+
+所有依赖 Theme 的：
+
+```text
+Brush Cache
+Color Cache
+Text Run Cache
+Background Run Cache
+```
+
+必须失效或能够识别 Generation 变化。
+
+禁止使用永久 RGB Cache 导致 Theme 切换后部分历史仍显示旧颜色。
+
+---
+
+### 24.17 Background 与透明度
+
+第一阶段 Terminal Theme 以不透明 Background 为基线。
+
+数据结构可以为未来：
+
+```text
+Opacity
+Background Image
+Blur
+Acrylic
+Transparency
+```
+
+保留扩展空间，但这些能力不应进入 Terminal Core。
+
+透明度、背景图片、Blur 等属于 Widget/客户端视觉效果。
+
+Core 只保存：
+
+```text
+DefaultBackground
+```
+
+语义。
+
+---
+
+### 24.18 Cursor Theme
+
+Terminal Theme 应支持：
+
+```text
+Cursor Color
+Cursor Text Color
+```
+
+Cursor Shape 不属于 Theme Color 本身。
+
+Cursor Shape 属于 Terminal State / Renderer，例如：
+
+```text
+Block
+Underline
+Bar
+```
+
+因此：
+
+```text
+Cursor Shape
+```
+
+与：
+
+```text
+Cursor Color
+```
+
+必须解耦。
+
+远端应用通过 VT/xterm sequence 修改 Cursor Shape 时，不应覆盖用户配置的 Cursor Color，除非协议明确要求颜色变化。
+
+---
+
+### 24.19 Selection Color
+
+Selection 默认颜色可以由 ZzTermTheme 提供：
+
+```text
+Selection Background
+Selection Foreground
+```
+
+但 Selection 状态属于 Widget。
+
+即：
+
+```text
+ZzTermTheme
+      ↓
+Selection Colors
+
+ZzTermWidget
+      ↓
+Selection Range / Interaction
+```
+
+Theme 不保存 Selection Range。
+
+---
+
+### 24.20 Theme 与 Keyword Highlight
+
+Keyword Highlight 的颜色不得写入 Terminal Theme 的 ANSI Palette。
+
+例如：
+
+```text
+ERROR
+```
+
+高亮成红色属于：
+
+```text
+ZzTermHighlight
+```
+
+而不是修改：
+
+```text
+ANSI Red
+```
+
+推荐：
+
+```text
+ZzKeywordRule
+├── pattern
+└── ZzDecorationStyle
+```
+
+这样 Terminal Theme 切换与 Keyword Rule 可以独立配置。
+
+---
+
+### 24.21 Theme 与 Search Highlight
+
+Search Highlight 同样属于 Decoration。
+
+建议至少区分：
+
+```text
+Search Match
+Current Search Match
+```
+
+例如：
+
+```text
+普通匹配
+    ↓
+黄色背景
+
+当前匹配
+    ↓
+橙色背景
+```
+
+具体颜色可以来自 Widget Profile 或 Decoration Theme，但不得污染 Terminal Cell Attribute。
+
+---
+
+### 24.22 颜色优先级
+
+Renderer 必须明确颜色覆盖优先级。
+
+建议：
+
+```text
+1. Terminal VT Attribute
+2. Terminal Theme Resolution
+3. Keyword / Regex Decoration
+4. Search Match
+5. Selection
+6. Hyperlink Hover
+7. Cursor
+```
+
+当多个 Decoration 同时作用于同一 Cell 时，必须有确定性规则。
+
+禁止依赖：
+
+```text
+谁最后 paint 谁覆盖
+```
+
+这种隐式行为。
+
+---
+
+### 24.23 Theme API
+
+建议提供类似：
+
+```cpp
+class ZzTermWidget
+{
+public:
+    void setTerminalTheme(const ZzTermTheme &theme);
+
+    [[nodiscard]]
+    const ZzTermTheme &terminalTheme() const noexcept;
+};
+```
+
+Theme Loader：
+
+```cpp
+class ZzItermColorSchemeLoader
+{
+public:
+    static ZzTermTheme load(const std::filesystem::path &path);
+};
+```
+
+实际错误处理方式根据项目统一 Error Policy 决定。
+
+所有公开 API 必须按照项目规范提供中文 Doxygen 文档。
+
+---
+
+### 24.24 Theme 测试
+
+必须建立独立 Theme Test。
+
+至少覆盖：
+
+```text
+Default FG/BG
+ANSI 0～15
+Indexed 16～255
+TrueColor
+Underline Color
+Cursor
+Selection
+Theme Switching
+Scrollback Theme Switching
+iTerm2 Import
+Invalid Theme File
+Missing Theme Fields
+```
+
+Golden Test 应验证：
+
+```text
+VT Input
+   ↓
+Color Semantic
+   ↓
+Theme
+   ↓
+Expected Resolved Color
+```
+
+特别必须验证：
+
+```text
+ANSI Indexed Color
+```
+
+会随着 Theme 改变，而：
+
+```text
+Explicit RGB TrueColor
+```
+
+不会随着 Theme 改变。
+
+---
+
+### 24.25 模块职责总结
+
+| 功能                          | 所属模块                         |
+| --------------------------- | ---------------------------- |
+| VT Color Semantic           | ZzTermCore                   |
+| Default FG/BG Semantic      | ZzTermCore                   |
+| ANSI Indexed Color Semantic | ZzTermCore                   |
+| RGB TrueColor Semantic      | ZzTermCore                   |
+| ANSI 0～15 Palette           | ZzTermTheme                  |
+| xterm 16～255 Palette        | ZzTermTheme / Color Resolver |
+| Cursor Color                | ZzTermTheme                  |
+| Selection Default Color     | ZzTermTheme                  |
+| iTerm2 `.itermcolors`       | ZzTermTheme                  |
+| Theme File Loader           | ZzTermTheme                  |
+| Runtime Theme Switching     | ZzTermTheme + ZzTermWidget   |
+| Theme Color Resolution      | Renderer / Theme Resolver    |
+| Keyword Highlight           | ZzTermHighlight              |
+| Regex Highlight             | ZzTermHighlight              |
+| Search Highlight            | ZzTermWidget / Decoration    |
+| Application Dark/Light      | 最终客户端                        |
+| Toolbar/Tab/Button Theme    | 最终客户端                        |
+| Background Blur/Image       | Widget / 最终客户端               |
+| Qt 类型进入 Theme Core Model    | **禁止**                       |
+
+里程碑归属：Core 侧颜色语义已随 M1 落地（`ZzColor` + SGR 全色域 + 39/49
+Default 语义，均有测试）；`ZzTermTheme` 模块、Theme Loader、iTerm2 导入、
+运行时切换与 Renderer 颜色解析 → 随 ZzTermWidget 迭代（M4 之后）。
+
+核心原则：
+
+> ZzTermCore 保存终端颜色的语义，ZzTermTheme 定义这些语义如何映射为实际颜色，ZzTermWidget 负责绘制，最终客户端负责应用程序 UI Theme。
+
+该边界不得为了实现方便而破坏。
