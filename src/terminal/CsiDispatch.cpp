@@ -5,8 +5,10 @@
 
 // CSI 语义（ZzTerminal 成员函数，分文件实现以控制单文件规模）。
 // 约定：参数省略（kOmitted）或 <= 0 一律回退默认值；数值钳到网格范围；
-// DEC 私有序列（privateMarker != 0）与带 intermediate 的序列 M3 处理，
-// 本文件安全忽略。
+// DEC 私有序列（privateMarker != 0）与带 intermediate 的序列本文件安全忽略：
+// 备用屏幕（1049/1047/1048）、DECAWM（?7）、DECTCEM（?25）属 M2，
+// 其余 DEC 私有模式（mouse/bracketed paste 等）与 intermediate 序列属 M3
+//（里程碑划分见 Architecture.md 第 19 节）。
 
 namespace {
 
@@ -24,7 +26,7 @@ int paramOr(const ZzParamSequence& seq, std::size_t i, int fallback)
 void ZzTerminal::dispatchCsi(const ZzParamSequence& seq)
 {
     if (seq.privateMarker != 0 || !seq.intermediates.empty())
-        return; // DEC 私有模式 / intermediate 序列：留待 M3，安全忽略
+        return; // DEC 私有 / intermediate 序列：安全忽略（M2/M3 处理，见文件头注释）
 
     const ZzSize sz = screen_.size();
     const ZzCellRange region = screen_.scrollRegionRows();
