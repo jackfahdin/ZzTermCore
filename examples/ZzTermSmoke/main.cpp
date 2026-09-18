@@ -219,6 +219,10 @@ int run(const std::vector<std::string>& command)
     cfg.argv = command;
     cfg.cols = termSize.cols;
     cfg.rows = termSize.rows;
+    // 真实终端语义：slave 保留默认 termios（ISIG/ICANON/ECHO/OPOST），
+    // Ctrl+C 等作业控制信号才生效；交互程序（bash/vim/less）会自行重设。
+    // rawMode=true 仅服务于 Core 自动化验证（test_pty 字节级 round-trip）。
+    cfg.rawMode = false;
     auto pty = ZzPty::spawn(cfg);
     if (!pty) {
         std::fprintf(stderr, "ZzTermSmoke: spawn 失败：%s\n", std::strerror(errno));
@@ -233,7 +237,9 @@ int run(const std::vector<std::string>& command)
 
     ZzTerminal term(termSize.cols, termSize.rows, 1000);
 
-    if (::pipe(g_winchPipe) != 0) {
+    // O_NONBLOCK 两端都要：读端供主循环排空（否则排空循环在管道读空后阻塞，
+    // demo 在首个 SIGWINCH 后永久挂起）；写端防止信号处理器在管道写满时阻塞。
+    if (::pipe2(g_winchPipe, O_NONBLOCK | O_CLOEXEC) != 0) {
         std::fprintf(stderr, "ZzTermSmoke: pipe 失败：%s\n", std::strerror(errno));
         return 1;
     }
