@@ -24,4 +24,25 @@ if(TARGET ZzTermSmoke)
     set_tests_properties(ZzTermSmokeEcho PROPERTIES
         PASS_REGULAR_EXPRESSION "zz-smoke-ok"
         TIMEOUT 30)
+
+    # 交互式冒烟：pexpect 驱动真实 PTY + pyte 独立终端模拟器交叉验证渲染
+    #（bash 提示符/echo/ls 着色/SIGWINCH/less/vim/Ctrl+C/退出码）。
+    # 依赖 python3 + pexpect + pyte，缺失时静默跳过（不影响基础套件）。
+    find_program(ZZTERM_PYTHON3 NAMES python3)
+    if(ZZTERM_PYTHON3)
+        execute_process(
+            COMMAND ${ZZTERM_PYTHON3} -c "import pexpect, pyte"
+            RESULT_VARIABLE ZZTERM_PY_DEPS
+            OUTPUT_QUIET ERROR_QUIET)
+        if(ZZTERM_PY_DEPS EQUAL 0)
+            add_test(NAME ZzTermSmokeInteractive
+                COMMAND ${ZZTERM_PYTHON3}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/interactive/verify_smoke.py
+                    $<TARGET_FILE:ZzTermSmoke>
+                    ${CMAKE_CURRENT_BINARY_DIR}/interactive-scratch)
+            set_tests_properties(ZzTermSmokeInteractive PROPERTIES TIMEOUT 180)
+        else()
+            message(STATUS "python3 pexpect/pyte 不可用，跳过 ZzTermSmokeInteractive")
+        endif()
+    endif()
 endif()
