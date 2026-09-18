@@ -178,6 +178,111 @@
 -   [x] Install/Export CMake package
 -   [ ] Version / ABI policy
 
+
+## Wrap / Reflow
+
+-   [x] Hard Newline
+-   [x] Soft Wrap
+-   [x] Logical Line / Physical Row
+-   [ ] DECAWM Enable
+-   [ ] DECAWM Disable
+-   [x] Wrap Pending
+-   [x] Last Column Printable Character
+-   [x] CR while Wrap Pending
+-   [ ] LF while Wrap Pending
+-   [ ] BS while Wrap Pending
+-   [x] Cursor Movement while Wrap Pending
+-   [ ] CJK Wide Character at Right Boundary
+-   [ ] Combining Character at Right Boundary
+-   [ ] WideContinuation Consistency
+-   [ ] Grow Columns Reflow
+-   [ ] Shrink Columns Reflow
+-   [ ] Grow Rows
+-   [ ] Shrink Rows
+-   [ ] Cursor Mapping after Reflow
+-   [ ] Selection Mapping after Reflow
+-   [ ] Search Match Mapping after Reflow
+-   [ ] Scrollback View Anchor after Reflow
+-   [ ] Alternate Screen Resize Behavior
+-   [ ] 100k-line Reflow Benchmark
+-   [ ] 1M-line Reflow Benchmark
+
+## Terminal Font Zoom
+
+-   [ ] Increase Font Size
+-   [ ] Decrease Font Size
+-   [ ] Reset Font Size
+-   [ ] Ctrl + `+`
+-   [ ] Ctrl + `-`
+-   [ ] Ctrl + `0`
+-   [ ] Ctrl + MouseWheel
+-   [ ] Configurable Minimum Font Size
+-   [ ] Configurable Maximum Font Size
+-   [ ] Recalculate Font Metrics
+-   [ ] Recalculate Cell Geometry
+-   [ ] Recalculate Grid Size
+-   [ ] Core Resize after Font Zoom
+-   [ ] PTY Resize after Font Zoom
+-   [ ] Preserve Scrollback View Anchor
+-   [ ] Preserve Selection
+-   [ ] Preserve Search Match
+-   [ ] No Bitmap Scaling
+-   [ ] Clear Glyph Cache after Font Change
+
+## High DPI / Application Scale
+
+-   [ ] Qt High DPI
+-   [ ] Windows 125%
+-   [ ] Windows 150%
+-   [ ] Windows 175%
+-   [ ] Windows 200%
+-   [ ] Linux HiDPI
+-   [ ] macOS Retina
+-   [ ] Device Pixel Ratio != 1
+-   [ ] Runtime DPI Change
+-   [ ] Move Window Between Different-DPI Displays
+-   [ ] Font Metrics Recalculation after DPI Change
+-   [ ] Grid Recalculation after DPI Change
+-   [ ] Core Resize after DPI Change
+-   [ ] PTY Resize after DPI Change
+-   [ ] No DPI Information inside ZzTermCore
+-   [ ] No Pixel Geometry inside ZzTermCore
+
+## Font / Glyph
+
+-   [ ] Primary Monospace Font
+-   [ ] CJK Font Fallback
+-   [ ] Emoji Font Fallback
+-   [ ] Combining Mark Rendering
+-   [ ] Narrow Cell Geometry Stable
+-   [ ] Wide Cell Geometry Stable
+-   [ ] Fallback Glyph Does Not Change Grid Width
+-   [ ] Baseline
+-   [ ] Ascent / Descent
+-   [ ] Underline Position
+-   [ ] Strikeout Position
+-   [ ] Configurable Line Spacing
+-   [ ] Font Metrics Cache
+-   [ ] Glyph Cache
+-   [ ] Cache Invalidation after Font Change
+-   [ ] Cache Invalidation after DPI Change
+
+## Window / Grid Resize
+
+-   [ ] Window Resize
+-   [ ] Viewport Pixel Geometry Calculation
+-   [ ] Margin Deduction
+-   [ ] Scrollbar Deduction
+-   [ ] Pixel Size → Columns/Rows
+-   [ ] Minimum Grid 1×1
+-   [ ] Rapid Resize Stability
+-   [ ] Resize Event Coalescing
+-   [x] Linux PTY `TIOCSWINSZ`
+-   [ ] macOS PTY `TIOCSWINSZ`（M5）
+-   [ ] Windows ConPTY Resize
+-   [x] Core and PTY Grid Size Consistency
+
+
 ## 单项完成记录模板
 
 ``` text

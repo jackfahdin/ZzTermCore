@@ -292,3 +292,605 @@ Cell；禁止每帧扫描全部历史；禁止 resize
 
 第一次正式设计评审必须优先审查
 Cell、Line、Screen、Scrollback、RenderView 和公开 API 生命周期模型。
+
+## 23. 换行、字体缩放、DPI 与终端网格尺寸
+
+本章节属于 ZzTermCore 的正式设计要求。实现时必须严格区分 Terminal Core 的字符网格语义与 GUI 层的像素、字体、DPI 语义。
+
+### 23.1 设计原则
+
+ZzTermCore Core 只处理终端字符网格，不感知：
+
+-   字体名称；
+-   字体大小；
+-   DPI；
+-   Device Pixel Ratio；
+-   Widget 像素宽高；
+-   应用 UI 缩放比例；
+-   Retina / HiDPI；
+-   操作系统显示缩放。
+
+Core 对终端尺寸的唯一认知应为 columns × rows 的字符网格尺寸。该载体
+已存在：`ZzSize`（include/ZzTerm/Types.h，`int cols` / `int rows`），
+`ZzTerminal::resize(int cols, int rows)` 与 `ZzPty::resize(int cols, int rows)`
+均以它为语义基准——本节不引入并行类型，实现时继续使用 `ZzSize`。
+
+禁止向 Core 传递以下信息：
+
+```text
+pixelWidth
+pixelHeight
+fontSize
+dpi
+devicePixelRatio
+uiScale
+```
+
+正确的职责关系为：
+
+```text
+Window / DPI / Font
+        ↓
+ZzTermWidget
+        ↓
+ZzFontMetrics
+        ↓
+计算 columns × rows
+        ↓
+   ┌────┴────┐
+   ↓         ↓
+ZzTermCore  ZzTermPty
+ resize()    resize()
+   ↓
+Reflow
+```
+
+该设计必须保证未来 Qt、macOS Native UI、OpenHarmony UI 或其他 Renderer 均可使用相同 ZzTermCore。
+
+---
+
+### 23.2 Hard Newline 与 Soft Wrap
+
+终端必须严格区分：
+
+```text
+Hard Newline
+```
+
+与：
+
+```text
+Soft Wrap
+```
+
+Hard Newline 表示应用实际产生的逻辑换行。
+
+Soft Wrap 表示由于当前终端列数不足，由终端显示系统自动产生的物理换行。
+
+例如终端宽度为 10 columns：
+
+```text
+1234567890ABCDE
+```
+
+可能显示为：
+
+```text
+1234567890
+ABCDE
+```
+
+但逻辑内容仍然是：
+
+```text
+1234567890ABCDE
+```
+
+第二个 physical row 不得被视为包含真实 `\n`。
+
+当终端宽度扩大后，应允许重新排版为：
+
+```text
+1234567890ABCDE
+```
+
+而真实输入：
+
+```text
+1234567890\nABCDE
+```
+
+必须始终保持两个 logical lines。
+
+因此 Line 模型必须永久保留：
+
+-   hard newline；
+-   soft wrap；
+-   logical line；
+-   physical row；
+
+之间的关系。
+
+Copy、Search、Selection、Resize 和 Reflow 均必须基于该语义。
+
+---
+
+### 23.3 Auto Wrap 与 Wrap Pending
+
+必须正确实现 DEC Auto Wrap Mode（DECAWM）。
+
+特别注意终端右边界的 `wrap pending` 状态。
+
+字符写入最后一列后，不应简单立即执行换行。终端可能进入 pending wrap 状态，并在后续 printable character 到达时执行自动换行。
+
+必须建立专门测试覆盖：
+
+-   最后一列写入；
+-   最后一列后继续写入；
+-   CR；
+-   LF；
+-   BS；
+-   Cursor Movement；
+-   Erase；
+-   DECAWM 开/关；
+-   CJK 双宽字符位于右边界；
+-   combining character 位于右边界；
+-   wide character continuation。
+
+禁止使用简单：
+
+```cpp
+if (++column >= columns)
+    newLine();
+```
+
+作为完整 Auto Wrap 实现。
+
+---
+
+### 23.4 Window Resize
+
+用户调整窗口尺寸时：
+
+```text
+Widget Pixel Size
+        ↓
+扣除 margin / scrollbar / UI
+        ↓
+Terminal Viewport Pixel Size
+        ↓
+Cell Width / Cell Height
+        ↓
+columns × rows
+        ↓
+ZzTermCore::resize()
+        +
+ZzTermPty::resize()
+```
+
+Core 与 PTY 接收的均为字符网格尺寸，而不是像素尺寸。
+
+PTY resize：
+
+```text
+Linux/macOS
+    ↓
+TIOCSWINSZ / PTY
+
+Windows
+    ↓
+ConPTY Resize
+```
+
+窗口 resize 过程中必须避免高频重复执行昂贵的完整历史 Reflow。
+
+允许 Widget 层进行 resize 合并、延迟或 debounce，但最终尺寸必须正确同步给 Core 和 PTY。
+
+---
+
+### 23.5 Resize Reflow
+
+终端列数变化时必须支持 Reflow。
+
+基本规则：
+
+-   Hard Newline 不参与跨逻辑行合并；
+-   Soft Wrap 可以重新排版；
+-   Wide Grapheme 不允许被拆成非法 Cell；
+-   Cursor 必须映射到新的 logical position；
+-   Selection anchor 必须保持；
+-   Search Match 必须保持；
+-   当前 Scrollback View Position 应尽可能保持；
+-   Alternate Screen 的 Reflow 行为必须单独定义并测试。
+
+位置模型应优先使用：
+
+```text
+Logical Line ID
++
+Logical Character/Grapheme Offset
+```
+
+而不是只保存：
+
+```text
+physical row + column
+```
+
+否则 Resize 后 Selection/Search/View Anchor 很容易失效。
+
+---
+
+### 23.6 Terminal Font Zoom
+
+ZzTermWidget 必须支持独立的 Terminal Font Zoom。
+
+建议默认快捷键：
+
+```text
+Ctrl + +
+Ctrl + -
+Ctrl + 0
+Ctrl + MouseWheel
+```
+
+其中：
+
+```text
+Ctrl + +
+```
+
+增大终端字体。
+
+```text
+Ctrl + -
+```
+
+减小终端字体。
+
+```text
+Ctrl + 0
+```
+
+恢复默认字体大小。
+
+Font Zoom 只影响 Terminal 内容，不应自动改变应用 Toolbar、Tab、Menu、Icon 等 UI 元素。
+
+字体缩放流程必须是：
+
+```text
+Font Size Changed
+        ↓
+重新计算 Font Metrics
+        ↓
+重新计算 Cell Geometry
+        ↓
+重新计算 columns × rows
+        ↓
+ZzTermCore::resize()
+        ↓
+Reflow
+        ↓
+ZzTermPty::resize()
+        ↓
+重新 Rasterize / Paint
+```
+
+禁止简单放大已经绘制好的 Terminal Bitmap。
+
+字体必须重新 rasterize，以保证 125%、150%、175%、200% 等比例以及 HiDPI/Retina 环境下保持清晰。
+
+---
+
+### 23.7 Font Zoom 范围
+
+建议提供可配置字体缩放范围，例如：
+
+```text
+Minimum: 6 pt
+Default: User Profile
+Maximum: 72 pt
+```
+
+具体上下限允许后续调整，但必须防止：
+
+-   0 或负数；
+-   极端字体导致 columns/rows 为 0；
+-   超大字体造成异常内存分配；
+-   高频滚轮造成重复昂贵 Reflow。
+
+Widget 应对连续 Font Zoom 请求进行合理处理。
+
+---
+
+### 23.8 Application/UI Scale
+
+必须区分：
+
+```text
+Terminal Font Zoom
+```
+
+与：
+
+```text
+Application/UI Scale
+```
+
+Terminal Font Zoom 只影响终端字符。
+
+Application/UI Scale 影响：
+
+-   Toolbar；
+-   Tab；
+-   Icon；
+-   Padding；
+-   Scrollbar；
+-   Dialog；
+-   Terminal Widget；
+-   其他 UI 元素。
+
+Application/UI Scale 原则上交由 Qt High DPI 和操作系统 DPI 系统处理。
+
+ZzTermCore Core 不得知道 Application Scale。
+
+---
+
+### 23.9 High DPI / Device Pixel Ratio
+
+ZzTermWidget 必须正确支持：
+
+-   Windows Display Scaling；
+-   Linux HiDPI；
+-   macOS Retina；
+-   Qt Device Pixel Ratio；
+-   多显示器不同 DPI。
+
+Renderer 应使用 Qt logical coordinate system，并正确处理实际 rasterization。
+
+禁止假设：
+
+```text
+1 logical pixel == 1 physical pixel
+```
+
+也禁止缓存永久依赖启动时 DPI 的 Font Metrics。
+
+---
+
+### 23.10 Runtime DPI Change
+
+必须支持应用运行过程中 DPI 变化。
+
+典型场景：
+
+```text
+Laptop Display @ 125%
+        ↓
+拖动窗口
+        ↓
+4K Display @ 200%
+```
+
+发生 DPI / Screen Change 后：
+
+```text
+DPI Changed
+    ↓
+Invalidate Font/Glyph Metrics
+    ↓
+Recalculate Cell Geometry
+    ↓
+Recalculate Grid Size
+    ↓
+Core Resize
+    ↓
+PTY Resize
+    ↓
+Repaint
+```
+
+不得要求用户重启应用才能正确显示。
+
+---
+
+### 23.11 Font Fallback
+
+Renderer 必须支持字体 fallback。
+
+典型情况：
+
+```text
+ASCII
+    ↓
+Primary Monospace Font
+
+CJK
+    ↓
+CJK Fallback Font
+
+Emoji
+    ↓
+Emoji Fallback Font
+```
+
+例如：
+
+```text
+A 中 😀
+```
+
+三个 grapheme 可能由三个不同字体实际绘制。
+
+但字体 fallback 不允许破坏 Terminal Grid。
+
+无论实际 Glyph 来源为何：
+
+-   Narrow Cell 仍占一个 Cell；
+-   Wide Cell 仍占两个 Cell；
+-   Combining Mark 不额外占 Cell；
+-   Glyph advance 不得反向改变 Terminal Cell Width。
+
+Terminal Grid Geometry 必须由终端自己的 Cell Metrics 控制，而不是由每个 fallback glyph 的自然 advance 决定。
+
+---
+
+### 23.12 Font Metrics
+
+建议 `ZzTermWidget` 内部建立独立：
+
+```text
+ZzFontMetrics
+```
+
+负责：
+
+-   Cell Width；
+-   Cell Height；
+-   Baseline；
+-   Ascent；
+-   Descent；
+-   Underline Position；
+-   Strikeout Position；
+-   DPI；
+-   Font Fallback；
+-   Glyph Metrics Cache。
+
+Renderer 不应在每个 Cell 绘制时重新查询完整字体信息。
+
+字体、DPI 或 fallback 配置改变时必须使相关缓存失效。
+
+---
+
+### 23.13 Line Spacing
+
+允许 Terminal Profile 配置适量 Line Spacing。
+
+Line Spacing 属于 Renderer/Grid Geometry，不属于 ZzTermCore。
+
+改变 Line Spacing 后应重新计算：
+
+```text
+Cell Height
+    ↓
+Rows
+    ↓
+Core Resize
+    ↓
+PTY Resize
+```
+
+不得直接修改 Core 的 Line 数据结构。
+
+---
+
+### 23.14 Font Zoom 时保持用户位置
+
+如果用户当前位于 Scrollback 历史区域：
+
+```text
+History Line ~80000
+```
+
+执行 Font Zoom 或 DPI Change 后，不应无条件跳回 Terminal Bottom。
+
+应尽量保持当前视图对应的 logical anchor。
+
+同样适用于：
+
+-   Selection；
+-   Search Match；
+-   Hyperlink；
+-   Keyword Highlight。
+
+建议 Viewport 使用稳定 logical anchor，而不是只记录 physical scroll row。
+
+---
+
+### 23.15 Grid Size 边界
+
+必须处理极端窗口尺寸。
+
+例如窗口过小时：
+
+```text
+columns < 1
+rows < 1
+```
+
+不得向 Core 或 PTY 传递非法尺寸。
+
+建议最低有效 Terminal Grid：
+
+```text
+1 × 1
+```
+
+Widget 可以在无法显示有效 Cell 时暂时停止内容绘制，但不得造成除零、负尺寸或超大 unsigned 转换。
+
+---
+
+### 23.16 性能要求
+
+以下操作不得导致不必要的全历史扫描：
+
+-   Window Resize；
+-   Font Zoom；
+-   DPI Change；
+-   Scroll；
+-   Cursor Blink。
+
+Reflow 可以是昂贵操作，因此必须建立独立 Benchmark。
+
+至少测试：
+
+```text
+1,000 lines
+10,000 lines
+100,000 lines
+1,000,000 lines
+```
+
+关注：
+
+-   Reflow Time；
+-   Peak Memory；
+-   Allocation Count；
+-   UI Blocking Time。
+
+对于百万行历史，应允许采用分块、lazy reflow 或其他增量策略。
+
+---
+
+### 23.17 模块职责总结
+
+| 功能                 | 所属模块                                 |
+| ------------------ | ------------------------------------ |
+| Hard Newline       | ZzTermCore                           |
+| Soft Wrap          | ZzTermCore                           |
+| DECAWM             | ZzTermCore                           |
+| Wrap Pending       | ZzTermCore                           |
+| Resize Reflow      | ZzTermCore                           |
+| CJK/Wide 边界换行      | ZzTermCore                           |
+| Font Zoom          | ZzTermWidget                         |
+| Ctrl +/-/0         | ZzTermWidget                         |
+| Ctrl + MouseWheel  | ZzTermWidget                         |
+| Font Fallback      | ZzTermRenderer                       |
+| High DPI           | ZzTermWidget / Qt                    |
+| Runtime DPI Change | ZzTermWidget                         |
+| Retina             | ZzTermWidget / Qt                    |
+| Window Resize      | ZzTermWidget                         |
+| PTY Resize         | ZzTermPty                            |
+| View Anchor        | ZzTermWidget + Core Logical Position |
+| Font/DPI 信息进入 Core | **禁止**                               |
+| Pixel Size 进入 Core | **禁止**                               |
+
+注：`ZzTermRenderer` 指 ZzTermWidget 内部的渲染子组件（ZzFontMetrics /
+Glyph Cache 的所在地），不是第 3 节 target 清单里的独立模块。
+
+里程碑归属：Wrap Pending / DECAWM / 宽字符右边界 → M2；Resize Reflow 与
+Logical Position 模型 → M4；Font Zoom / DPI / Font Metrics / Fallback →
+随 ZzTermWidget 迭代（M4 之后）。
+
+以上职责边界属于架构约束，后续不得为了实现方便将字体、DPI 或像素概念引入 ZzTermCore。
+
