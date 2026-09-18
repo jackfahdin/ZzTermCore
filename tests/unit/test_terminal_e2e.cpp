@@ -91,11 +91,34 @@ static void testSplitInvariance()
     }
 }
 
+static void testScrollThenWriteRemainsVisible()
+{
+    // 底部行写入 + LF 滚动后，新写入的行必须可见。
+    // 回归场景：滚动移位留下被 move 掏空的行，clear 不恢复列数，
+    // 后续写入被 ZzLine::setCell 的边界检查静默丢弃（屏幕"冻结"）。
+    ZzTerminal term(10, 4, 100);
+    feedStr(term, "\x1b[4;1H"); // 光标到底部行
+    feedStr(term, "A\r\nB\r\nC\r\nD");
+    ZZ_TEST_EXPECT(screenText(term) == "A         \nB         \nC         \nD         \n");
+}
+
+static void testScrollDownThenWriteRemainsVisible()
+{
+    // 反方向：IL（scrollRegionDown）移位同样产生掏空行，腾出的空行必须可写。
+    ZzTerminal term(10, 4, 100);
+    feedStr(term, "A\r\nB\r\nC\r\nD"); // 写满 4 行（无滚动）
+    feedStr(term, "\x1b[1;1H\x1b[L"); // 光标回 row 0，插入一行（D 滚出底部）
+    feedStr(term, "X");
+    ZZ_TEST_EXPECT(screenText(term) == "X         \nA         \nB         \nC         \n");
+}
+
 int main()
 {
     testColoredLs();
     testVimStyleRedraw();
     testSplitInvariance();
+    testScrollThenWriteRemainsVisible();
+    testScrollDownThenWriteRemainsVisible();
     if (g_failures == 0)
         std::puts("test_terminal_e2e: all tests passed");
     return g_failures == 0 ? 0 : 1;

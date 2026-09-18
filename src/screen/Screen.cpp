@@ -411,8 +411,12 @@ void ZzScreen::scrollRegionUp(int top, int bottom, int count, const ZzCell& fill
     const auto first = buf.lines.begin() + top;
     const auto last = buf.lines.begin() + bottom + 1;
     std::move(first + count, last, first);
-    for (auto it = last - count; it != last; ++it)
+    for (auto it = last - count; it != last; ++it) {
+        // std::move 移位留下被掏空的行（cells_ 为空的 husk），
+        // clear 只是 std::fill 无法恢复列数，必须先 resize 回满列。
+        it->resize(cols_, fill);
         it->clear(fill);
+    }
     for (int r = top; r <= bottom; ++r)
         markRowDirty(r);
 }
@@ -426,8 +430,11 @@ void ZzScreen::scrollRegionDown(int top, int bottom, int count, const ZzCell& fi
     const auto first = buf.lines.begin() + top;
     const auto last = buf.lines.begin() + bottom + 1;
     std::move_backward(first, last - count, last);
-    for (auto it = first; it != first + count; ++it)
+    for (auto it = first; it != first + count; ++it) {
+        // 同 scrollRegionUp：恢复被 move 掏空的行到满列。
+        it->resize(cols_, fill);
         it->clear(fill);
+    }
     for (int r = top; r <= bottom; ++r)
         markRowDirty(r);
 }
