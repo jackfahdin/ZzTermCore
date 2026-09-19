@@ -36,7 +36,7 @@ static char32_t cpAt(const ZzTerminal& term, int row, int col)
 
 static void testPrintAscii()
 {
-    ZzTerminal term(10, 4, 100);
+    ZzTerminal term(10, 4, ZzBackendKind::Native, 100);
     const ZzTermChanges changes = [&term] {
         const std::string s = "hi";
         return term.feed(std::span<const std::byte>(
@@ -51,7 +51,7 @@ static void testPrintAscii()
 
 static void testPrintUtf8()
 {
-    ZzTerminal term(10, 4, 100);
+    ZzTerminal term(10, 4, ZzBackendKind::Native, 100);
     feedStr(term, "中文"); // M1 宽度占位：均按窄格落格
     ZZ_TEST_EXPECT(cpAt(term, 0, 0) == U'中');
     ZZ_TEST_EXPECT(cpAt(term, 0, 1) == U'文');
@@ -60,7 +60,7 @@ static void testPrintUtf8()
 
 static void testPendingWrap()
 {
-    ZzTerminal term(5, 3, 100);
+    ZzTerminal term(5, 3, ZzBackendKind::Native, 100);
     feedStr(term, "abcde");
     // 写满最后一列：光标停在最后一列，暂不换行（xterm pending-wrap）。
     ZZ_TEST_EXPECT(term.cursor().position.row == 0);
@@ -77,7 +77,7 @@ static void testPendingWrap()
 
 static void testPendingWrapClearedByCR()
 {
-    ZzTerminal term(5, 3, 100);
+    ZzTerminal term(5, 3, ZzBackendKind::Native, 100);
     feedStr(term, "abcde");
     feedStr(term, "\rX"); // CR 清除 pending-wrap：X 覆盖行首而非换行
     ZZ_TEST_EXPECT(cpAt(term, 0, 0) == U'X');
@@ -87,7 +87,7 @@ static void testPendingWrapClearedByCR()
 
 static void testNoWrapWhenAutoWrapOff()
 {
-    ZzTerminal term(5, 3, 100);
+    ZzTerminal term(5, 3, ZzBackendKind::Native, 100);
     term.screen().setAutoWrapMode(false); // DECAWM 关
     feedStr(term, "abcdefg");
     // 不换行：后续字符持续覆盖最后一列。
@@ -99,7 +99,7 @@ static void testNoWrapWhenAutoWrapOff()
 
 static void testC0()
 {
-    ZzTerminal term(10, 4, 100);
+    ZzTerminal term(10, 4, ZzBackendKind::Native, 100);
     feedStr(term, "ab\rcd");        // CR 回列首
     ZZ_TEST_EXPECT(cpAt(term, 0, 0) == U'c');
     ZZ_TEST_EXPECT(cpAt(term, 0, 1) == U'd');
@@ -121,7 +121,7 @@ static void testC0()
 
 static void testLfScrollsAtRegionBottom()
 {
-    ZzTerminal term(5, 2, 100);
+    ZzTerminal term(5, 2, ZzBackendKind::Native, 100);
     feedStr(term, "one\r\ntwo\r\n"); // 第二行使出滚动区下沿 -> 上滚
     ZZ_TEST_EXPECT(cpAt(term, 0, 0) == U't'); // "two" 顶到第 0 行
     ZZ_TEST_EXPECT(term.scrollback().lineCount() == 1); // "one" 入历史
@@ -129,7 +129,7 @@ static void testLfScrollsAtRegionBottom()
 
 static void testOscTitle()
 {
-    ZzTerminal term(10, 4, 100);
+    ZzTerminal term(10, 4, ZzBackendKind::Native, 100);
     feedStr(term, "\x1b]2;my title\x07"); // OSC 2 ; title BEL
     ZZ_TEST_EXPECT(term.title() == "my title");
     feedStr(term, "\x1b]0;both\x1b\\");   // OSC 0，ST 终止
@@ -138,7 +138,7 @@ static void testOscTitle()
 
 static void testEscSaveRestore()
 {
-    ZzTerminal term(10, 4, 100);
+    ZzTerminal term(10, 4, ZzBackendKind::Native, 100);
     feedStr(term, "abc");
     feedStr(term, "\x1b" "7");      // DECSC
     feedStr(term, "\r\nxyz");
@@ -149,7 +149,7 @@ static void testEscSaveRestore()
 
 static void testEscIndNelRiHts()
 {
-    ZzTerminal term(10, 4, 100);
+    ZzTerminal term(10, 4, ZzBackendKind::Native, 100);
     feedStr(term, "\x1b" "D");      // IND：下移一行
     ZZ_TEST_EXPECT(term.cursor().position.row == 1);
     feedStr(term, "\x1b" "M");      // RI：上移一行
@@ -165,7 +165,7 @@ static void testEscIndNelRiHts()
 
 static void testRiScrollsDownAtTop()
 {
-    ZzTerminal term(5, 2, 100);
+    ZzTerminal term(5, 2, ZzBackendKind::Native, 100);
     feedStr(term, "ab");
     feedStr(term, "\x1b" "M"); // 光标在滚动区上沿，RI 向下滚动
     ZZ_TEST_EXPECT(cpAt(term, 1, 0) == U'a');
@@ -174,7 +174,7 @@ static void testRiScrollsDownAtTop()
 
 static void testNelScrollsAndResetsColAtBottom()
 {
-    ZzTerminal term(5, 2, 100);
+    ZzTerminal term(5, 2, ZzBackendKind::Native, 100);
     feedStr(term, "ab\x1b" "Ecd"); // NEL 到末行，列非 0
     ZZ_TEST_EXPECT(term.cursor().position.row == 1);
     ZZ_TEST_EXPECT(term.cursor().position.col == 2);
@@ -186,7 +186,7 @@ static void testNelScrollsAndResetsColAtBottom()
 
 static void testRestoreCursorClampedAfterResize()
 {
-    ZzTerminal term(10, 6, 100);
+    ZzTerminal term(10, 6, ZzBackendKind::Native, 100);
     feedStr(term, "\x1b[6;8H"); // CUP：row 5、col 7（0 起始）
     feedStr(term, "\x1b" "7");  // DECSC 保存光标
     term.resize(4, 4);          // 缩小网格

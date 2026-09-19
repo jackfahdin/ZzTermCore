@@ -7,8 +7,10 @@
 //（例如 renderView 的返回类型随 ZzRenderView/ZzCellView 设计演化）。
 
 #include <cstddef>
+#include <functional>
 #include <span>
 #include <string>
+#include <string_view>
 
 #include "ZzTerm/RenderView.h"
 #include "ZzTerm/Screen.h"
@@ -29,4 +31,6 @@ public:
     [[nodiscard]] virtual bool isAlternateScreen() const noexcept = 0;
     [[nodiscard]] virtual const std::string& title() const noexcept = 0;
     virtual void clearDirty() noexcept = 0;
+    /// \brief 设置终端回传字节（DA 响应、光标上报等）的输出通道；native 暂为空实现。
+    virtual void setOutputHandler(std::function<void(std::string_view)> handler) = 0;
 };

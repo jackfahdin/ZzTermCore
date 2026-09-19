@@ -40,8 +40,13 @@ public:
     bool isAlternateScreen() const noexcept override { return false; }
     const std::string& title() const noexcept override { return title_; }
     void clearDirty() noexcept override { ++clearCount; }
+    void setOutputHandler(std::function<void(std::string_view)> handler) override
+    {
+        outputHandlerSet = static_cast<bool>(handler);
+    }
 
     std::size_t fedBytes = 0;
+    bool outputHandlerSet = false;
     ZzSize lastSize{80, 24};
     FakeRenderView view_;
     std::string title_;
@@ -65,5 +70,12 @@ int main()
     assert(!base.isAlternateScreen());
     base.clearDirty();
     assert(backend.clearCount == 1);
+
+    backend.setOutputHandler([](std::string_view) {});
+    assert(backend.outputHandlerSet);
+
+    // ZzBackendKind 显式构造签名（双后端 facade）编译期用法。
+    ZzTerminal term(10, 4, ZzBackendKind::Native, 100);
+    assert(term.size() == (ZzSize { 10, 4 }));
     return 0;
 }

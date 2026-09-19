@@ -209,7 +209,7 @@ int run(const std::vector<std::string>& command)
         (void)::fcntl(pty->masterFd(), F_SETFL, flags | O_NONBLOCK);
     }
 
-    ZzTerminal term(termSize.cols, termSize.rows, 1000);
+    ZzTerminal term(termSize.cols, termSize.rows, ZzBackendKind::Native, 1000);
 
     // O_NONBLOCK 两端都要：读端供主循环排空（否则排空循环在管道读空后阻塞，
     // demo 在首个 SIGWINCH 后永久挂起）；写端防止信号处理器在管道写满时阻塞。

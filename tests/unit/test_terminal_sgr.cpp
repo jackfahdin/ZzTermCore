@@ -28,7 +28,7 @@ static ZzCellView cellAt(const ZzTerminal& term, int row, int col)
 
 static void testBasicAttributes()
 {
-    ZzTerminal term(10, 4, 100);
+    ZzTerminal term(10, 4, ZzBackendKind::Native, 100);
     feedStr(term, "\x1b[1;3mAB");     // bold + italic
     ZZ_TEST_EXPECT(cellAt(term, 0, 0).attributes.bold());
     ZZ_TEST_EXPECT(cellAt(term, 0, 0).attributes.italic());
@@ -45,7 +45,7 @@ static void testBasicAttributes()
 
 static void testColors()
 {
-    ZzTerminal term(10, 4, 100);
+    ZzTerminal term(10, 4, ZzBackendKind::Native, 100);
     feedStr(term, "\x1b[31mA");       // ANSI 红
     ZZ_TEST_EXPECT(cellAt(term, 0, 0).foreground == ZzColor::Indexed(1));
     feedStr(term, "\x1b[91mB");       // bright 红 = 索引 9
@@ -65,7 +65,7 @@ static void testColors()
 
 static void testSgrDoesNotTouchExistingCells()
 {
-    ZzTerminal term(10, 4, 100);
+    ZzTerminal term(10, 4, ZzBackendKind::Native, 100);
     feedStr(term, "A");               // 默认属性落格
     feedStr(term, "\x1b[1m");         // 之后改画笔
     ZZ_TEST_EXPECT(!cellAt(term, 0, 0).attributes.bold()); // 旧格不受影响
@@ -75,7 +75,7 @@ static void testSgrDoesNotTouchExistingCells()
 
 static void testUnderlineAndBlink()
 {
-    ZzTerminal term(10, 4, 100);
+    ZzTerminal term(10, 4, ZzBackendKind::Native, 100);
     feedStr(term, "\x1b[4mA");        // 单下划线
     ZZ_TEST_EXPECT(cellAt(term, 0, 0).attributes.underline() == ZzUnderlineStyle::Single);
     feedStr(term, "\x1b[5mB");        // 慢闪

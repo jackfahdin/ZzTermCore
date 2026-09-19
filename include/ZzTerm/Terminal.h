@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <span>
 #include <string>
@@ -61,6 +62,12 @@ struct ZzTermChanges {
     }
 };
 
+/// \brief 终端引擎后端选择（运行期）。
+enum class ZzBackendKind {
+    Native,  ///< 自研引擎（一等后端，兼容性对照基准）
+    Contour  ///< Contour vtbackend（默认方向；需 ZZTERM_WITH_CONTOUR=ON 构建）
+};
+
 /**
  * @brief 终端模拟器顶层对象。
  */
@@ -70,9 +77,10 @@ public:
      * @brief 构造终端。
      * @param cols 列数（> 0）。
      * @param rows 行数（> 0）。
+     * @param backend 后端选择（显式，无默认值）。OFF 构建传 Contour 抛 std::logic_error。
      * @param scrollbackMaxLines 历史容量上限（行），0 表示不保留历史。
      */
-    ZzTerminal(int cols, int rows, std::size_t scrollbackMaxLines = 10000);
+    ZzTerminal(int cols, int rows, ZzBackendKind backend, std::size_t scrollbackMaxLines = 10000);
 
     ~ZzTerminal();
 
@@ -141,23 +149,31 @@ public:
      */
     void clearDirty() noexcept;
 
+    /**
+     * @brief 设置终端回传字节的输出通道（DA 响应、光标上报等）。
+     * @param handler 输出回调；Contour 后端有效，native 暂不回传。
+     */
+    void setOutputHandler(std::function<void(std::string_view)> handler);
+
     // ---- Core 内部访问（供 parser/terminal 模块协作，不属于 Renderer API） ----
 
     /**
-     * @brief 可变访问工作区（Core 内部使用）。
+     * @brief 可变访问工作区（Core 内部使用；仅 Native 后端可用）。
      * @return 工作区可变引用。
+     * @note 仅 Native 后端可用，Contour 后端调用抛 std::logic_error。
      */
-    [[nodiscard]] ZzScreen& screen() noexcept;
+    [[nodiscard]] ZzScreen& screen();
 
     /**
-     * @brief 可变访问历史后端（Core 内部使用）。
+     * @brief 可变访问历史后端（Core 内部使用；仅 Native 后端可用）。
      * @return 历史后端可变引用。
+     * @note 仅 Native 后端可用，Contour 后端调用抛 std::logic_error。
      */
-    [[nodiscard]] ZzScrollback& scrollback() noexcept;
+    [[nodiscard]] ZzScrollback& scrollback();
 
 private:
-    // PImpl：实现细节（含 native 引擎全部状态）定义在内部头
-    // src/terminal/TerminalImpl.h；公开 API 不暴露任何后端类型
+    // PImpl：实现细节定义在 src/terminal/Terminal.cpp（持有后端接口指针，
+    // 运行期按 ZzBackendKind 分派）；公开 API 不暴露任何后端类型
     //（docs/Architecture-v2.md §7）。Backend 抽象见 src/backend/ZzTerminalBackend.h。
     class Impl;
     std::unique_ptr<Impl> impl_;

@@ -1,242 +1,63 @@
-#include "TerminalImpl.h"
+#include <ZzTerm/Terminal.h>
 
-#include "ZzTerm/UnicodeWidth.h"
+#include "../backend/ZzTerminalBackend.h"
+#include "../backend/native/ZzNativeBackend.h"
+#ifdef ZZTERM_WITH_CONTOUR
+#include "../backend/contour/ZzContourBackendAdapter.h" // 任务 4 创建；本任务先 #ifdef 占位
+#endif
 
-// ZzTerminal 实现：Parser 已接入，feed 的真实链路为
-//   bytes -> ZzVtParser（语法） -> Sink -> Terminal 语义 -> ZzScreen。
-// print 通道字节经 ZzUtf8Decoder 解码为码点后由 putChar 落格。
+#include <stdexcept>
+#include <utility>
 
-/// 嵌套私有类：把解析事件转发为 Terminal 的语义方法调用。
-/// DCS 不覆盖（基类默认空实现 = 安全忽略）。
-struct ZzTerminal::Impl::Sink : ZzParserSink {
-    explicit Sink(Impl& impl) : impl_(impl) {}
-
-    void onPrint(char byte) override
+class ZzTerminal::Impl {
+public:
+    Impl(int cols, int rows, ZzBackendKind kind, std::size_t scrollbackMaxLines)
     {
-        impl_.utf8_.feed(std::string_view(&byte, 1),
-                         [this](char32_t cp) { impl_.putChar(cp); });
+        switch (kind) {
+        case ZzBackendKind::Native:
+            backend = std::make_unique<ZzNativeBackend>(cols, rows, scrollbackMaxLines);
+            break;
+        case ZzBackendKind::Contour:
+#ifdef ZZTERM_WITH_CONTOUR
+            throw std::logic_error("Contour 后端接入中（任务 4）");
+#else
+            throw std::logic_error("ZzBackendKind::Contour 需要 ZZTERM_WITH_CONTOUR=ON 构建");
+#endif
+            break;
+        }
     }
-    void onExecute(std::uint8_t control) override { impl_.executeControl(control); }
-    void onCsiDispatch(const ZzParamSequence& seq) override { impl_.dispatchCsi(seq); }
-    void onEscDispatch(std::string_view intermediates, char final) override
-    {
-        impl_.dispatchEsc(intermediates, final);
-    }
-    void onOscDispatch(std::string_view payload) override { impl_.dispatchOsc(payload); }
-
-    Impl& impl_;
+    std::unique_ptr<ZzTerminalBackend> backend;
 };
 
-ZzTerminal::Impl::Impl(int cols, int rows, std::size_t scrollbackMaxLines)
-    : screen_(cols, rows)
-    , scrollback_(zzCreateChunkedScrollback(scrollbackMaxLines))
-    , renderView_(screen_)
-    , sink_(std::make_unique<Sink>(*this))
-    , parser_(std::make_unique<ZzVtParser>(sink_.get()))
-{
-    // Screen 不知道历史后端：滚出行经回调上移到 Terminal，由 Terminal 入栈。
-    screen_.setScrollOutCallback([this](std::vector<ZzLine> lines) {
-        scrolledOutPending_ += lines.size();
-        scrollback_->append(std::move(lines));
-    });
-}
-
-ZzTermChanges ZzTerminal::Impl::feed(std::span<const std::byte> data)
-{
-    ZzTermChanges changes;
-    scrolledOutPending_ = 0;
-    activeChanges_ = &changes;
-
-    const auto* chars = reinterpret_cast<const char*>(data.data());
-    parser_->feed(std::string_view(chars, data.size()));
-
-    activeChanges_ = nullptr;
-    if (scrolledOutPending_ > 0) {
-        changes.scrollbackChanged = true;
-        changes.scrolledOutLines = scrolledOutPending_;
-    }
-    return changes;
-}
-
-void ZzTerminal::Impl::noteScreenDirty() noexcept
-{
-    if (activeChanges_)
-        activeChanges_->screenDirty = true;
-}
-
-ZzCell ZzTerminal::Impl::eraseFill() const noexcept
-{
-    // 擦除/滚动填充：携带当前画笔背景（bce 语义），无文本无属性。
-    ZzCell fill;
-    fill.setBackground(penBg_);
-    return fill;
-}
-
-void ZzTerminal::Impl::putChar(char32_t cp)
-{
-    const ZzSize sz = screen_.size();
-    const ZzCellRange region = screen_.scrollRegionRows(); // [top, bottom+1)
-    ZzPosition cur = screen_.cursor().position;
-
-    // xterm pending-wrap：上一字符写在最后一列时，先换行再落格。
-    if (screen_.wrapPending()) {
-        screen_.setWrapPending(false);
-        if (screen_.autoWrapMode()) {
-            screen_.setLineWrapped(cur.row, true);
-            if (cur.row == region.endCol - 1)
-                screen_.scrollUp(1, eraseFill());
-            else
-                ++cur.row;
-            cur.col = 0;
-        }
-    }
-
-    ZzCell cell;
-    // zzCellWidthOf 为 M1 占位（恒窄）；M2 接入真实 EAW 表后，
-    // 宽字符需在此处补写 WideContinuation 续格（M2 任务，非本次范围）。
-    cell.setWidth(zzCellWidthOf(cp) == 2 ? ZzCellWidth::WideLead : ZzCellWidth::Narrow);
-    cell.setCodePoint(cp);
-    cell.setForeground(penFg_);
-    cell.setBackground(penBg_);
-    cell.setAttributes(penAttrs_);
-    screen_.putCell(cur, cell);
-    noteScreenDirty();
-
-    if (cur.col < sz.cols - 1) {
-        screen_.setCursorPosition(ZzPosition{cur.row, cur.col + 1});
-    } else if (screen_.autoWrapMode()) {
-        // 最后一列：光标不动，置 wrap-pending（下一个可打印字符才换行）。
-        screen_.setWrapPending(true);
-    }
-    // DECAWM 关闭时在最后一列：光标不动、不置标志，后续字符覆盖该格。
-}
-
-void ZzTerminal::Impl::executeControl(std::uint8_t control)
-{
-    const ZzCellRange region = screen_.scrollRegionRows(); // [top, bottom+1)
-    const ZzPosition cur = screen_.cursor().position;
-
-    switch (control) {
-    case 0x07: // BEL
-        if (activeChanges_)
-            activeChanges_->bell = true;
-        break;
-    case 0x08: // BS：左移一格（不越行首）
-        screen_.setCursorPosition(ZzPosition{cur.row, cur.col > 0 ? cur.col - 1 : 0});
-        noteScreenDirty();
-        break;
-    case 0x09: // HT：下一个 Tab Stop
-        screen_.setCursorPosition(ZzPosition{cur.row, screen_.nextTabStop(cur.col)});
-        noteScreenDirty();
-        break;
-    case 0x0A: // LF
-    case 0x0B: // VT
-    case 0x0C: // FF：index——滚动区下沿上滚，否则下移一行
-        if (cur.row == region.endCol - 1)
-            screen_.scrollUp(1, eraseFill());
-        else
-            screen_.setCursorPosition(ZzPosition{cur.row + 1, cur.col});
-        noteScreenDirty();
-        break;
-    case 0x0D: // CR：回列首（经 setCursorPosition 连带清除 wrap-pending）
-        screen_.setCursorPosition(ZzPosition{cur.row, 0});
-        noteScreenDirty();
-        break;
-    default:
-        break; // 其余 C0 安全忽略
-    }
-}
-
-void ZzTerminal::Impl::dispatchEsc(std::string_view intermediates, char final)
-{
-    if (!intermediates.empty())
-        return; // charset 选择（ESC ( X 等）随 M2 字符集设计实现
-
-    const ZzCellRange region = screen_.scrollRegionRows(); // [top, bottom+1)
-    const ZzPosition cur = screen_.cursor().position;
-
-    switch (final) {
-    case '7': // DECSC
-        screen_.saveCursor();
-        break;
-    case '8': // DECRC
-        screen_.restoreCursor();
-        noteScreenDirty();
-        break;
-    case 'D': // IND：同 LF
-        if (cur.row == region.endCol - 1)
-            screen_.scrollUp(1, eraseFill());
-        else
-            screen_.setCursorPosition(ZzPosition{cur.row + 1, cur.col});
-        noteScreenDirty();
-        break;
-    case 'M': // RI：滚动区上沿下滚，否则上移一行
-        if (cur.row == region.startCol)
-            screen_.scrollDown(1, eraseFill());
-        else if (cur.row > 0)
-            screen_.setCursorPosition(ZzPosition{cur.row - 1, cur.col});
-        noteScreenDirty();
-        break;
-    case 'E': // NEL：CR + IND；CR 无条件生效（ECMA-48）
-        if (cur.row == region.endCol - 1) {
-            screen_.scrollUp(1, eraseFill());
-            screen_.setCursorPosition(ZzPosition{cur.row, 0}); // 滚动后行号不变，仍在下沿
-        } else {
-            screen_.setCursorPosition(ZzPosition{cur.row + 1, 0});
-        }
-        noteScreenDirty();
-        break;
-    case 'H': // HTS：当前列设 Tab Stop
-        screen_.setTabStop(cur.col);
-        break;
-    default:
-        break; // 其余 ESC 序列安全忽略
-    }
-}
-
-void ZzTerminal::Impl::dispatchOsc(std::string_view payload)
-{
-    const std::size_t sep = payload.find(';');
-    if (sep == std::string_view::npos)
-        return;
-    const std::string_view code = payload.substr(0, sep);
-    if (code != "0" && code != "1" && code != "2")
-        return; // 仅窗口/图标标题（OSC 0/1/2），其余安全忽略
-    title_ = std::string(payload.substr(sep + 1));
-    if (activeChanges_)
-        activeChanges_->titleChanged = true;
-}
-
-// ---- 公开 API：全部转发到 Impl（PImpl） ----
-
-ZzTerminal::ZzTerminal(int cols, int rows, std::size_t scrollbackMaxLines)
-    : impl_(std::make_unique<Impl>(cols, rows, scrollbackMaxLines))
-{
-}
-
+ZzTerminal::ZzTerminal(int cols, int rows, ZzBackendKind backend, std::size_t scrollbackMaxLines)
+    : impl_(std::make_unique<Impl>(cols, rows, backend, scrollbackMaxLines)) {}
 ZzTerminal::~ZzTerminal() = default;
 
-ZzTermChanges ZzTerminal::feed(std::span<const std::byte> data) { return impl_->feed(data); }
-
-bool ZzTerminal::resize(int cols, int rows)
+ZzTermChanges ZzTerminal::feed(std::span<const std::byte> data) { return impl_->backend->feed(data); }
+bool ZzTerminal::resize(int cols, int rows) { return impl_->backend->resize(cols, rows); }
+const ZzRenderView& ZzTerminal::renderView() const noexcept { return impl_->backend->renderView(); }
+ZzSize ZzTerminal::size() const noexcept { return impl_->backend->size(); }
+ZzCursorState ZzTerminal::cursor() const noexcept { return impl_->backend->cursor(); }
+bool ZzTerminal::isAlternateScreen() const noexcept { return impl_->backend->isAlternateScreen(); }
+const std::string& ZzTerminal::title() const noexcept { return impl_->backend->title(); }
+void ZzTerminal::clearDirty() noexcept { impl_->backend->clearDirty(); }
+void ZzTerminal::setOutputHandler(std::function<void(std::string_view)> handler)
 {
-    if (cols <= 0 || rows <= 0)
-        return false;
-    if (impl_->screen_.size() == ZzSize{cols, rows})
-        return false;
-    // M0：网格级 resize，不做 reflow（见 Terminal.h 注释）。
-    impl_->screen_.resize(cols, rows);
-    return true;
+    impl_->backend->setOutputHandler(std::move(handler));
 }
 
-const ZzRenderView& ZzTerminal::renderView() const noexcept { return impl_->renderView_; }
-ZzSize ZzTerminal::size() const noexcept { return impl_->screen_.size(); }
-ZzCursorState ZzTerminal::cursor() const noexcept { return impl_->screen_.cursor(); }
-bool ZzTerminal::isAlternateScreen() const noexcept
+ZzScreen& ZzTerminal::screen()
 {
-    return impl_->screen_.activeBuffer() == ZzScreenBuffer::Alternate;
+    auto* native = dynamic_cast<ZzNativeBackend*>(impl_->backend.get());
+    if (!native)
+        throw std::logic_error("ZzTerminal::screen() 仅 Native 后端可用");
+    return native->screen();
 }
-const std::string& ZzTerminal::title() const noexcept { return impl_->title_; }
-void ZzTerminal::clearDirty() noexcept { impl_->screen_.clearDirty(); }
-ZzScreen& ZzTerminal::screen() noexcept { return impl_->screen_; }
-ZzScrollback& ZzTerminal::scrollback() noexcept { return *impl_->scrollback_; }
+
+ZzScrollback& ZzTerminal::scrollback()
+{
+    auto* native = dynamic_cast<ZzNativeBackend*>(impl_->backend.get());
+    if (!native)
+        throw std::logic_error("ZzTerminal::scrollback() 仅 Native 后端可用");
+    return native->scrollback();
+}

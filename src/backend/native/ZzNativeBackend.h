@@ -1,23 +1,38 @@
 #pragma once
 
-// 内部头（不安装）：ZzTerminal 的 PImpl 实现细节。
-// 重构规则：本头内容机械搬运自原 include/ZzTerm/Terminal.h 私有区，
-// 成员语义与注释保持逐字一致。
+// 内部头（不安装）：native 终端引擎后端（自研引擎，一等后端）。
+// M1b 自原 src/terminal/TerminalImpl.h（ZzTerminal::Impl）整体迁入，
+// 成员语义与注释逐字保留；类改为实现 ZzTerminalBackend 接口。
 
-#include "ZzTerm/Terminal.h"
+#include "../ZzTerminalBackend.h"
 
 #include "ZzTerm/Parser.h"
 #include "ZzTerm/Utf8.h"
 
-#include "backend/native/ZzNativeRenderView.h"
+#include "ZzNativeRenderView.h"
 
-class ZzTerminal::Impl {
+class ZzNativeBackend final : public ZzTerminalBackend {
 public:
-    Impl(int cols, int rows, std::size_t scrollbackMaxLines);
+    ZzNativeBackend(int cols, int rows, std::size_t scrollbackMaxLines);
+    ~ZzNativeBackend() override;
+
+    // ---- ZzTerminalBackend 接口 ----
+    ZzTermChanges feed(std::span<const std::byte> data) override;
+    bool resize(int cols, int rows) override;
+    [[nodiscard]] const ZzRenderView& renderView() const noexcept override;
+    [[nodiscard]] ZzSize size() const noexcept override;
+    [[nodiscard]] ZzCursorState cursor() const noexcept override;
+    [[nodiscard]] bool isAlternateScreen() const noexcept override;
+    [[nodiscard]] const std::string& title() const noexcept override;
+    void clearDirty() noexcept override;
+    void setOutputHandler(std::function<void(std::string_view)> handler) override;
+
+    // ---- facade 的 screen()/scrollback() 委托用（Native 限定访问） ----
+    [[nodiscard]] ZzScreen& screen() noexcept { return screen_; }
+    [[nodiscard]] ZzScrollback& scrollback() noexcept { return *scrollback_; }
 
     // ---- 语义方法（原 ZzTerminal 私有方法；实现分布在
-    //      Terminal.cpp / CsiDispatch.cpp / Sgr.cpp） ----
-    ZzTermChanges feed(std::span<const std::byte> data);
+    //      ZzNativeBackend.cpp / NativeCsiDispatch.cpp / NativeSgr.cpp） ----
     void putChar(char32_t cp);
     void executeControl(std::uint8_t control);
     void dispatchCsi(const ZzParamSequence& seq);
@@ -27,7 +42,7 @@ public:
     [[nodiscard]] ZzCell eraseFill() const noexcept;
     void noteScreenDirty() noexcept;
 
-    struct Sink; // 嵌套类：ZzParserSink 实现，定义在 Terminal.cpp。
+    struct Sink; // 嵌套类：ZzParserSink 实现，定义在 ZzNativeBackend.cpp。
 
     ZzScreen                     screen_;     ///< 工作区（内含 Primary/Alternate）。
     std::unique_ptr<ZzScrollback> scrollback_; ///< 历史后端（接口指针，实现可替换）。
