@@ -119,7 +119,6 @@ struct ZzContourBackend::Impl
     std::string title;
     EventsImpl eventsImpl;
     vtbackend::PageSize pageSize;
-    ZzContourPtyBridge* bridge = nullptr; // 所有权在 terminal
     std::unique_ptr<vtbackend::Terminal> terminal;
     std::string pendingUtf8; // 跨 feed 的残缺 UTF-8 尾部，下次 feed 前拼回
 
@@ -136,8 +135,6 @@ struct ZzContourBackend::Impl
 
         auto bridgePtr = std::make_unique<ZzContourPtyBridge>(
             pageSize, [this](std::string_view data) { listener.onWriteToTransport(std::string(data)); });
-        bridge = bridgePtr.get();
-
         terminal = std::make_unique<vtbackend::Terminal>(eventsImpl,
                                                          crispy::defaultEnvironment(),
                                                          std::move(bridgePtr),

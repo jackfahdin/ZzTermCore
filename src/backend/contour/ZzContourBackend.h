@@ -2,6 +2,7 @@
 
 #include "ZzContourEvents.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -96,6 +97,7 @@ public:
     ZzContourBackend& operator=(ZzContourBackend const&) = delete;
 
     /// \brief 同步喂入终端字节流（可多次、可跨任意边界拆分）。
+    /// 流以残缺 UTF-8 结束时尾部字节暂不下发，待后续 feed 拼回（内部 pendingUtf8 跨 chunk 缓冲）。
     void feed(std::string_view data);
     /// \brief 调整屏幕行列；cell 像素按固定 8x17 同步。
     void resize(int columns, int rows);

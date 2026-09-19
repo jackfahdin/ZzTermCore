@@ -85,8 +85,8 @@ function(zzterm_add_contour_backend)
 endfunction()
 zzterm_add_contour_backend()
 
-# Contour targets 只允许被 PRIVATE 链接（Architecture-v2.md §7）；本里程碑的
-# 唯一消费方是 test_contour_smoke（任务 4），M1 的 ZzContourBackend 同样 PRIVATE。
+# Contour targets 只允许被 PRIVATE 链接（Architecture-v2.md §7）；消费方为
+# 下方的 ZzTermContourBackend（链接 vtbackend）与测试 test_contour_smoke（链接 vtpty）。
 
 # M1a：ZzContourBackend 核心封装 target（依赖上面聚合好的 vtbackend）。
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/backend/contour" "${CMAKE_BINARY_DIR}/src/backend/contour")
