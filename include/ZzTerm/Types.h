@@ -75,9 +75,10 @@ enum class ZzCursorShape : std::uint8_t {
 
 /// \brief 光标状态（位置 + 形状 + 可见性）。
 struct ZzCursorState {
-    ZzPosition    position;
-    ZzCursorShape shape    = ZzCursorShape::Block;
-    bool          visible  = true;
-    bool          blinking = true;
+    ZzPosition    position;                          ///< 光标位置（行/列）。
+    ZzCursorShape shape    = ZzCursorShape::Block;   ///< 光标形状（默认方块）。
+    bool          visible  = true;                   ///< 光标是否可见。
+    bool          blinking = true;                   ///< 光标是否闪烁。
+    /// \brief 相等比较（逐成员）。
     friend constexpr bool operator==(const ZzCursorState&, const ZzCursorState&) noexcept = default;
 };
