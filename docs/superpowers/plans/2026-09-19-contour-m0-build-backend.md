@@ -201,6 +201,9 @@ function(zzterm_add_contour_backend)
     set(CONTOUR_VERSION_STRING "${ZZTERM_CONTOUR_VERSION}")
     # C++23 仅限 Contour 四个子目录的 target；ZzTermCore 自身保持 C++20。
     set(CMAKE_CXX_STANDARD 23)
+    # 复刻 Contour 顶层 CMakeLists.txt:82：crispy-core PUBLIC 链接 Threads::Threads，
+    # 而 vtbackend 自带的 find_package(Threads) 是目录作用域，对兄弟目录 crispy 不可见。
+    find_package(Threads)
     add_subdirectory("${ZZTERM_CONTOUR_ROOT}/src/crispy"   "${CMAKE_BINARY_DIR}/contour/crispy")
     add_subdirectory("${ZZTERM_CONTOUR_ROOT}/src/vtpty"    "${CMAKE_BINARY_DIR}/contour/vtpty")
     add_subdirectory("${ZZTERM_CONTOUR_ROOT}/src/vtparser" "${CMAKE_BINARY_DIR}/contour/vtparser")
