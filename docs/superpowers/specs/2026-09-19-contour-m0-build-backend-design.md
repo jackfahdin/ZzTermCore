@@ -40,10 +40,10 @@ ZzTermCore 已确认双后端路线（v2.1）：Contour `vtbackend`/`vtparser` �
 -   顶层 `cmake/Version.cmake` 用 `CMAKE_SOURCE_DIR` 找版本文件，嵌入构建必炸——
     方案一绕开顶层 CMake，不涉及该文件。
 -   四个子目录 CMakeLists 均无自己的 `project()`，对顶层的耦合共约 8 行：
-    各 1 处 `$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>` include 根（4 处），
+    各 1 处 `BUILD_INTERFACE` 形式的 include 根 `${PROJECT_SOURCE_DIR}/src`（4 处），
     vtbackend 另 4 行 `LIBTERMINAL_VERSION_*=${PROJECT_VERSION_*}` 与
     `CONTOUR_VERSION_STRING` 编译宏。
--   头文件形式：`#include <vtparser/Parser.hpp>`、`<vtbackend/screen/Terminal.hpp>`，
+-   头文件形式为尖括号 include：`vtparser/Parser.hpp`、`vtbackend/screen/Terminal.hpp`，
     include 根为 Contour 的 `src/`。
 -   headless 驱动范例：`src/vtbackend/bench-headless.cpp`；集成测试参考：
     `src/vtbackend/` 的 `vtbackend_test`（60+ 测试文件，Catch2）。
@@ -102,8 +102,8 @@ patch 文件方案（`cmake/patches/`）。
     定义 `ZzTerminalBackend` 抽象接口，覆盖 feed、resize、screen/render 访问、
     terminal modes、cursor/state、input/output、events、dirty/update 通知的
     最小虚函数集。M0 只定义接口，不要求完整实现。
--   `ZzTerminal` 增加 PImpl：公开头仅新增 `class Impl;` 前向声明与
-    `std::unique_ptr<Impl> impl_;` 成员（及必要的析构/移动声明）；现有
+-   `ZzTerminal` 增加 PImpl：公开头仅新增 `class Impl;` 前向声明与对应的
+    `std::unique_ptr` 成员（及必要的析构/移动声明）；现有
     Screen/Parser/dispatch 成员机械搬入 `Impl`。
 -   公开 API 签名不变；不暴露任何后端类型（Contour 或 native）。
 -   native 实现此里程碑不接 `ZzTerminalBackend` 接口（避免无需求的抽象扭转）；
@@ -113,7 +113,7 @@ patch 文件方案（`cmake/patches/`）。
 
 新增 `tests/unit/test_contour_smoke.cpp`，仅在 `ZZTERM_WITH_CONTOUR=ON` 时编译：
 
--   `#include <vtparser/Parser.hpp>`，实例化 `vtparser::Parser` 并喂入
+-   以尖括号 include `vtparser/Parser.hpp`，实例化 `vtparser::Parser` 并喂入
     一段最小字节流（如 `"$ echo hi\r\n"`），验证事件回调触发；
 -   链接 `vtparser` 静态库（其 PUBLIC 传递依赖随之带入），证明 include 路径、
     C++23、链接三件套打通；
