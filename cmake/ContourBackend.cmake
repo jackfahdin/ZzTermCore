@@ -26,6 +26,9 @@ CPMAddPackage(NAME libunicode GITHUB_REPOSITORY contour-terminal/libunicode GIT_
     OPTIONS "LIBUNICODE_TESTING OFF" "LIBUNICODE_BENCHMARK OFF" "LIBUNICODE_TOOLS OFF"
             "LIBUNICODE_EXAMPLES OFF" "BUILD_SHARED_LIBS OFF"
     EXCLUDE_FROM_ALL YES)
+# libunicode 有编译产物（unicode/unicode_ucd 静态库）且在下方 PIC set 之前创建，
+# 需显式补 PIC，否则 BUILD_SHARED_LIBS=ON 时链接 libZzTermCore.so 报 R_X86_64_PC32。
+set_target_properties(unicode unicode_ucd PROPERTIES POSITION_INDEPENDENT_CODE ON)
 CPMAddPackage("gh:contour-terminal/boxed-cpp#v1.4.3")
 CPMAddPackage("gh:contour-terminal/reflection-cpp#v0.4.0")
 
@@ -44,6 +47,10 @@ target_include_directories(contour_tracy SYSTEM INTERFACE
 # --- 裁剪选项（作用于后续 add_subdirectory 的 Contour 子目录） ---
 set(CONTOUR_TESTING OFF)          # 级联关闭 CRISPY_/VTPTY_/VTPARSER_/LIBTERMINAL_TESTING
 set(CONTOUR_WITH_UTEMPTER OFF)    # 避免 Linux 下链接系统 utempter
+
+# M1b：ZzTermContourBackend 将 PRIVATE 链入 ZzTermCore；
+# BUILD_SHARED_LIBS=ON 时静态库进动态库必须全员 PIC。
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # --- Contour 版本（供 vtbackend 的 LIBTERMINAL_VERSION_* 编译宏） ---
 # 从 submodule 的 metainfo.xml 解析最新 release 版本；失败回退 0.0.0。
