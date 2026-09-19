@@ -12,10 +12,6 @@
 #include "ZzTerm/Screen.h"
 #include "ZzTerm/Scrollback.h"
 #include "ZzTerm/Types.h"
-#include "ZzTerm/Utf8.h"
-
-class ZzVtParser; // 前置声明：解析器由 parser 模块实现，unique_ptr 成员的构造/析构定义在 .cpp。
-struct ZzParamSequence; // 前置声明：CSI/DCS 参数序列，完整定义在 Parser.h。
 
 /**
  * @file Terminal.h
@@ -24,6 +20,7 @@ struct ZzParamSequence; // 前置声明：CSI/DCS 参数序列，完整定义在
  * 职责（Architecture.md 第 2/7 节）：
  * - 持有并协调 ZzVtParser（语法 dispatch）、ZzScreen（工作区）、
  *   ZzScrollback（历史）、ZzRenderView（渲染边界）；
+ *   实现经 PImpl 隔离（M0 起），后端抽象边界见 docs/Architecture-v2.md §7。
  * - Parser 只负责语法，语义（模式解释、画笔状态、历史入栈、
  *   Alternate Screen 切换语义等）集中在 Terminal；
  * - 远端输入一律视为不可信（Architecture.md 第 15 节），feed 不抛异常、
@@ -159,27 +156,9 @@ public:
     [[nodiscard]] ZzScrollback& scrollback() noexcept;
 
 private:
-    struct Sink; // 嵌套私有类：ZzParserSink 实现，定义在 Terminal.cpp。
-
-    void putChar(char32_t cp);
-    void executeControl(std::uint8_t control);
-    void dispatchCsi(const ZzParamSequence& seq);
-    void dispatchEsc(std::string_view intermediates, char final);
-    void dispatchOsc(std::string_view payload);
-    void sgr(const ZzParamSequence& seq);
-    [[nodiscard]] ZzCell eraseFill() const noexcept;
-    void noteScreenDirty() noexcept;
-
-    ZzScreen                     screen_;     ///< 工作区（内含 Primary/Alternate）。
-    std::unique_ptr<ZzScrollback> scrollback_; ///< 历史后端（接口指针，实现可替换）。
-    ZzRenderView                 renderView_; ///< 渲染边界（借用上两者）。
-    std::string                  title_;      ///< OSC 标题（UTF-8）。
-    std::size_t                  scrolledOutPending_ = 0; ///< feed 内滚出行计数（回调聚合用）。
-    std::unique_ptr<Sink>       sink_;    ///< 先于 parser_ 声明：析构逆序保证 parser 先销毁。
-    std::unique_ptr<ZzVtParser> parser_;  ///< VT 解析器（语法 dispatch）。
-    ZzUtf8Decoder               utf8_;    ///< print 通道 UTF-8 增量解码。
-    ZzCellAttributes            penAttrs_; ///< 当前画笔属性（SGR）。
-    ZzColor penFg_ = ZzColor::Default();  ///< 当前画笔前景色。
-    ZzColor penBg_ = ZzColor::Default();  ///< 当前画笔背景色。
-    ZzTermChanges* activeChanges_ = nullptr; ///< feed 期间的变化聚合目标。
+    // PImpl：实现细节（含 native 引擎全部状态）定义在内部头
+    // src/terminal/TerminalImpl.h；公开 API 不暴露任何后端类型
+    //（docs/Architecture-v2.md §7）。Backend 抽象见 src/backend/ZzTerminalBackend.h。
+    class Impl;
+    std::unique_ptr<Impl> impl_;
 };
