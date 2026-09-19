@@ -216,6 +216,56 @@ void testTitleBellDirty()
     ZZ_CHECK(events.dirtyCount > 0);
 }
 
+// alt screen：进入/退出/主屏内容恢复，事件按序上报。
+void testAltScreen()
+{
+    RecordingEvents events;
+    ZzContourBackend backend(80, 24, events);
+    backend.feed("MAIN");
+    backend.feed("\x1b[?1049h"); // 进备用屏
+    ZZ_CHECK(backend.isAlternateScreen());
+    ZZ_CHECK(events.altChanges.size() == 1 && events.altChanges[0]);
+    {
+        auto snap = backend.snapshot();
+        ZZ_CHECK(snap.alternateScreen);
+    }
+    backend.feed("ALT");
+    {
+        auto snap = backend.snapshot();
+        ZZ_CHECK(rowText(snap, 0, 3) == U"ALT");
+    }
+    backend.feed("\x1b[?1049l"); // 回主屏
+    ZZ_CHECK(!backend.isAlternateScreen());
+    ZZ_CHECK(events.altChanges.size() == 2 && !events.altChanges[1]);
+    {
+        auto snap = backend.snapshot();
+        ZZ_CHECK(!snap.alternateScreen);
+        ZZ_CHECK(rowText(snap, 0, 4) == U"MAIN"); // 主屏内容恢复
+    }
+}
+
+// scrollback 随滚屏增长；自动换行行带 Wrapped 标记。
+void testScrollback()
+{
+    RecordingEvents events;
+    ZzContourBackend backend(80, 24, events, 1000);
+    for (int i = 0; i < 30; ++i)
+        backend.feed("L" + std::to_string(i) + "\r\n");
+    ZZ_CHECK(backend.historyLineCount() >= 6); // 30 行内容至少滚出 6 行进 scrollback
+}
+
+void testLineWrapped()
+{
+    RecordingEvents events;
+    ZzContourBackend backend(80, 24, events);
+    backend.feed(std::string(100, 'a')); // 超过 80 列自动换行
+    ZZ_CHECK(backend.lineWrapped(0));
+    ZZ_CHECK(!backend.lineWrapped(1));
+    auto snap = backend.snapshot();
+    ZZ_CHECK(snap.at(0, 0).codepoints == U"a");
+    ZZ_CHECK(snap.at(1, 0).codepoints == U"a"); // 第 81 个字符绕到第 1 行
+}
+
 } // namespace
 
 int main()
@@ -230,6 +280,9 @@ int main()
     testBlankLineFillAttrs();
     testCursor();
     testTitleBellDirty();
+    testAltScreen();
+    testScrollback();
+    testLineWrapped();
     if (g_failures != 0)
         std::fprintf(stderr, "test_contour_backend: %d failure(s)\n", g_failures);
     return g_failures == 0 ? 0 : 1;

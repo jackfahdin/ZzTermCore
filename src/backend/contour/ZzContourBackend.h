@@ -104,7 +104,7 @@ public:
     [[nodiscard]] bool isAlternateScreen() const;
     [[nodiscard]] std::string title() const;
     [[nodiscard]] int historyLineCount() const;
-    /// \brief 第 row 行（主屏 0 起）是否为自动换行的续行起点。
+    /// \brief 第 row 行（主屏 0 起）的内容是否自动续到下一行（即该行是自动换行逻辑行的首行）。
     [[nodiscard]] bool lineWrapped(int row) const;
     /// \brief 把缓冲中的终端回传字节（DA 响应等）经 onWriteToTransport 发出。
     void flushReplies();

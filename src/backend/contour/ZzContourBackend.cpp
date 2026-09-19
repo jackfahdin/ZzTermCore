@@ -74,9 +74,12 @@ struct ZzContourBackend::Impl
         }
         void bell() override { owner_.listener.onBell(); }
         void screenUpdated() override { owner_.listener.onScreenDirty(); }
+        void bufferChanged(vtbackend::ScreenType type) override
+        {
+            owner_.listener.onActiveBufferChanged(type == vtbackend::ScreenType::Alternate);
+        }
         // 锁内回调（cursorPositionChanged 等）不接线：M1a 无实时渲染方，
         // 且锁内禁止回读 Terminal；需要时只置标志 defer。
-        // bufferChanged 在任务 5 接线。
     private:
         Impl& owner_;
     };
@@ -154,8 +157,12 @@ int ZzContourBackend::historyLineCount() const
 
 bool ZzContourBackend::lineWrapped(int row) const
 {
+    // Contour 的 LineFlag::Wrapped 标在续行（被绕到的下一行）上；对外语义为
+    // 「第 row 行内容自动续到下一行」，即看下一行是否带 Wrapped。末行无下一行，恒 false。
+    if (row + 1 >= impl_->pageSize.lines.value)
+        return false;
     return impl_->terminal->currentScreen()
-        .lineFlags(vtbackend::LineOffset(row))
+        .lineFlags(vtbackend::LineOffset(row + 1))
         .contains(vtbackend::LineFlag::Wrapped);
 }
 
