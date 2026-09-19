@@ -95,6 +95,27 @@ void testResizeAndCursor()
     ZZ_CHECK(!term.cursor().visible);
 }
 
+// scrollback 饱和语义钉住（M1b 现状，契约见 ZzTermChanges::scrolledOutLines 注释）：
+// 5 行屏 + scrollback 容量 5，喂 10 行实际滚出 6 行；Contour 以历史行数差值计数，
+// 饱和后差值恒 0——累计停在 5、末次 feed 的 scrollbackChanged 不再置位。
+//（native 同场景累计为 6，语义差已知悉，待后续统一。）
+void testScrollbackSaturation()
+{
+    ZzTerminal term(80, 5, ZzBackendKind::Contour, 5);
+    std::size_t totalScrolled = 0;
+    bool lastScrollbackChanged = true;
+    for (int i = 0; i < 10; ++i) {
+        const std::string line = "L" + std::to_string(i) + "\r\n";
+        auto c = term.feed(
+            std::span<const std::byte>(reinterpret_cast<const std::byte*>(line.data()), line.size()));
+        if (c.scrollbackChanged)
+            totalScrolled += c.scrolledOutLines;
+        lastScrollbackChanged = c.scrollbackChanged;
+    }
+    ZZ_CHECK(totalScrolled == 5);      // 饱和前的 5 行差值；第 6 行滚出不再计入
+    ZZ_CHECK(!lastScrollbackChanged);  // 饱和后 scrollbackChanged 停报
+}
+
 } // namespace
 
 int main()
@@ -102,6 +123,7 @@ int main()
     testFeedAndView();
     testChangesAndDirty();
     testResizeAndCursor();
+    testScrollbackSaturation();
     if (g_failures != 0)
         std::fprintf(stderr, "test_contour_adapter: %d failure(s)\n", g_failures);
     return g_failures == 0 ? 0 : 1;

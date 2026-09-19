@@ -48,10 +48,11 @@ if(TARGET ZzTermContourBackend)
 endif()
 
 # M1b：ZzContourBackendAdapter 经 ZzTerminal facade 的端到端测试，仅 Contour 后端启用时构建。
-# 只碰公开头（C++20 即可）；链接 ZzTermContourBackend 仅为保障 target 依赖关系。
+# 只碰公开头（C++20 即可），仅链接 ZzTermCore（多链 ZzTermContourBackend 会在
+# shared 构建下把静态 contour 库的第二份副本链进测试可执行文件）。
 if(TARGET ZzTermContourBackend)
     add_executable(test_contour_adapter unit/test_contour_adapter.cpp)
-    target_link_libraries(test_contour_adapter PRIVATE ZzTermContourBackend ZzTermCore) # Contour target 一律 PRIVATE
+    target_link_libraries(test_contour_adapter PRIVATE ZzTermCore) # Contour target 一律 PRIVATE
     add_test(NAME test_contour_adapter COMMAND test_contour_adapter)
 endif()
 
@@ -77,6 +78,9 @@ if(TARGET ZzTermSmoke)
             TIMEOUT 30)
     endforeach()
 
+    # 交互式冒烟：pexpect 驱动真实 PTY + pyte 独立终端模拟器交叉验证渲染
+    #（bash 提示符/echo/ls 着色/SIGWINCH/less/vim/Ctrl+C/退出码）。
+    # 依赖 python3 + pexpect + pyte，缺失时静默跳过（不影响基础套件）。
     find_program(ZZTERM_PYTHON3 NAMES python3)
     if(ZZTERM_PYTHON3)
         execute_process(

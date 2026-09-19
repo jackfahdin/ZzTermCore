@@ -96,6 +96,8 @@ public:
     /**
      * @brief 当前光标状态。
      * @return 光标完整状态（位置/形状/可见性/闪烁）。
+     * @note 形状/闪烁后端可暂以默认值上报（Contour 当前 shape 恒 Block、
+     *       blinking 恒 true）；位置/可见性为完整状态。
      */
     [[nodiscard]] virtual ZzCursorState cursor() const = 0;
     /**

@@ -60,6 +60,8 @@ ZzCursorState ZzContourRenderView::cursor() const
 {
     // cursorPosition 内部 refreshRenderBuffer（非 const 路径），此处 const_cast 收口：
     // 视图为借用式、与 feed 同线程使用，刷新只读渲染缓冲不改变终端语义状态。
+    // 理论风险记录：接口为 noexcept（经 adapter 的 ZzTerminalBackend::cursor），
+    // 而 refreshRenderBuffer 可能分配内存，若抛异常将直接 terminate。
     ZzCursorState state;
     if (auto const pos = const_cast<ZzContourBackend*>(backend_)->cursorPosition()) {
         state.position = ZzPosition { pos->first, pos->second };

@@ -3,7 +3,7 @@
 #   - include/ZzTerm/*.h   公开头文件
 #   - src/*/*.cpp          Core 实现（parser/unicode/screen/history/input/terminal）
 #   - tests/unit/*.cpp     单元测试（见 tests/CMakeLists.txt）
-cmake_minimum_required(VERSION 3.19)
+cmake_minimum_required(VERSION 3.26)
 
 project(ZzTermCore
     VERSION 0.1.0

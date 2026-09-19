@@ -18,16 +18,17 @@
  * @file Terminal.h
  * @brief ZzTerminal：终端模拟器顶层外观（Facade）。
  *
- * 职责（Architecture.md 第 2/7 节）：
- * - 持有并协调 ZzVtParser（语法 dispatch）、ZzScreen（工作区）、
- *   ZzScrollback（历史）、ZzRenderView（渲染边界）；
- *   实现经 PImpl 隔离（M0 起），后端抽象边界见 docs/Architecture-v2.md §7。
- * - Parser 只负责语法，语义（模式解释、画笔状态、历史入栈、
- *   Alternate Screen 切换语义等）集中在 Terminal；
+ * 职责（docs/Architecture-v2.md §7）：
+ * - 对前端暴露唯一的后端无关入口；具体终端引擎经 ZzBackendKind
+ *   在构造时显式选择（Native 自研引擎 / Contour vtbackend），
+ *   运行期由 PImpl 持有的后端接口分派，公开 API 不暴露任何后端类型。
+ * - ZzTerminal 只做委托：parser/screen/scrollback 等引擎组件归各后端
+ *   实现持有（native 在 src/backend/native，contour 经 vtbackend），
+ *   feed/resize/renderView 等调用转发给所选后端并聚合 ZzTermChanges。
  * - 远端输入一律视为不可信（Architecture.md 第 15 节），feed 不抛异常、
  *   不因畸形输入产生未定义行为。
  *
- * ownership：ZzTerminal 独占拥有 parser/screen/scrollback；
+ * ownership：ZzTerminal 独占拥有所选后端实例；
  * renderView() 返回的视图借用 Terminal，不得比 Terminal 长寿。
  *
  * 线程安全：非线程安全。feed/resize/renderView 必须在同一线程调用
@@ -45,7 +46,16 @@ struct ZzTermChanges {
     bool        activeBufferChanged = false; ///< Primary/Alternate 发生切换。
     bool        titleChanged       = false; ///< 窗口/图标标题变化（OSC 0/1/2）。
     bool        bell               = false; ///< BEL 触发（前端决定响铃/闪烁）。
-    std::size_t scrolledOutLines   = 0;     ///< 本次滚入历史的行数。
+
+    /**
+     * @brief 本次滚入历史的行数。
+     * @note 后端语义差（M1b 现状，钉住待后续统一）：native 统计实际滚出行数，
+     *       与 scrollback 容量无关，饱和后仍如实上报；Contour 以历史行数差值
+     *       近似，scrollback 达容量上限后差值恒 0，scrollbackChanged 与本字段
+     *       停止上报（历史内容仍在滚动，只是不再计数）。前端不得依赖本字段
+     *       推断「不再有新行滚出」。
+     */
+    std::size_t scrolledOutLines   = 0;
 
     /**
      * @brief 合并另一份变化（连续多次 feed 聚合用）。

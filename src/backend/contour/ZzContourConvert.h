@@ -46,6 +46,7 @@ inline ZzCellAttributes zzAttributes(vtbackend::CellFlags flags)
     if (flags.contains(vtbackend::CellFlag::DottedUnderline)) out.setUnderline(ZzUnderlineStyle::Dotted);
     if (flags.contains(vtbackend::CellFlag::DashedUnderline)) out.setUnderline(ZzUnderlineStyle::Dashed);
     if (flags.contains(vtbackend::CellFlag::Blinking)) out.setBlink(ZzBlinkStyle::Slow);
+    if (flags.contains(vtbackend::CellFlag::RapidBlinking)) out.setBlink(ZzBlinkStyle::Rapid);
     if (flags.contains(vtbackend::CellFlag::Inverse)) out.setInverse(true);
     if (flags.contains(vtbackend::CellFlag::Hidden)) out.setInvisible(true);
     if (flags.contains(vtbackend::CellFlag::CrossedOut)) out.setStrikethrough(true);

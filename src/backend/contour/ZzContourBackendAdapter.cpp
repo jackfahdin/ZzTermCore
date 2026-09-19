@@ -32,6 +32,10 @@ public:
         changes.activeBufferChanged = activeBufferChanged_;
         changes.titleChanged = titleChanged_;
         changes.bell = bell_;
+        // scrolledOutLines 以 historyLineCount() 差值近似：scrollback 达容量上限后
+        // 差值恒 0，饱和期间滚出的行不再计入（与 native 按实际滚出行计数、饱和后
+        // 仍上报的语义差见 ZzTermChanges::scrolledOutLines 注释；contour Grid 无
+        // 公开的单调滚出计数可取，stableBase 私有且 SD/unscroll 会回退，故钉住现状）。
         if (historyAfter > historyBefore) {
             changes.scrollbackChanged = true;
             changes.scrolledOutLines = static_cast<std::size_t>(historyAfter - historyBefore);

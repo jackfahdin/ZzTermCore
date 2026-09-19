@@ -172,6 +172,17 @@ void testDottedDashedUnderline()
     ZZ_CHECK(snap.at(0, 1).attributes.underline() == ZzUnderlineStyle::Dashed);
 }
 
+// SGR 5/6 闪烁：Slow/Rapid 均不降级（RapidBlinking 映射 ZzBlinkStyle::Rapid）。
+void testBlinkStyles()
+{
+    RecordingEvents events;
+    ZzContourBackend backend(80, 24, events);
+    backend.feed("\x1b[5mS\x1b[0m\x1b[6mR");
+    auto snap = backend.snapshot();
+    ZZ_CHECK(snap.at(0, 0).attributes.blink() == ZzBlinkStyle::Slow);
+    ZZ_CHECK(snap.at(0, 1).attributes.blink() == ZzBlinkStyle::Rapid);
+}
+
 // BCE 擦除场景：空行（isBlank 分支）须从 fillAttrs 还原背景色，前景保持默认。
 void testBlankLineFillAttrs()
 {
@@ -332,6 +343,7 @@ int main()
     testRgbColor();
     testStyleFlags();
     testDottedDashedUnderline();
+    testBlinkStyles();
     testBlankLineFillAttrs();
     testCursor();
     testTitleBellDirty();
