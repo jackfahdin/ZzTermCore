@@ -66,15 +66,17 @@ endif()
 # 脚本化冒烟：PTY 驱动 Core 全链路——真实 bash 输出经 ZzTerminal 渲染回 stdout，
 # 断言标记串出现且以子进程退出码 0 退出（仅 Unix 构建存在 demo 目标时）。
 if(TARGET ZzTermSmoke)
-    add_test(NAME ZzTermSmokeEcho
-        COMMAND ZzTermSmoke -- bash -c "echo zz-smoke-ok")
-    set_tests_properties(ZzTermSmokeEcho PROPERTIES
-        PASS_REGULAR_EXPRESSION "zz-smoke-ok"
-        TIMEOUT 30)
+    foreach(ZZTERM_SMOKE_BACKEND IN ITEMS native contour)
+        if(ZZTERM_SMOKE_BACKEND STREQUAL "contour" AND NOT TARGET ZzTermContourBackend)
+            continue() # OFF 构建无 Contour 后端
+        endif()
+        add_test(NAME ZzTermSmokeEcho_${ZZTERM_SMOKE_BACKEND}
+            COMMAND ZzTermSmoke --backend=${ZZTERM_SMOKE_BACKEND} -- bash -c "echo zz-smoke-ok")
+        set_tests_properties(ZzTermSmokeEcho_${ZZTERM_SMOKE_BACKEND} PROPERTIES
+            PASS_REGULAR_EXPRESSION "zz-smoke-ok"
+            TIMEOUT 30)
+    endforeach()
 
-    # 交互式冒烟：pexpect 驱动真实 PTY + pyte 独立终端模拟器交叉验证渲染
-    #（bash 提示符/echo/ls 着色/SIGWINCH/less/vim/Ctrl+C/退出码）。
-    # 依赖 python3 + pexpect + pyte，缺失时静默跳过（不影响基础套件）。
     find_program(ZZTERM_PYTHON3 NAMES python3)
     if(ZZTERM_PYTHON3)
         execute_process(
@@ -82,12 +84,18 @@ if(TARGET ZzTermSmoke)
             RESULT_VARIABLE ZZTERM_PY_DEPS
             OUTPUT_QUIET ERROR_QUIET)
         if(ZZTERM_PY_DEPS EQUAL 0)
-            add_test(NAME ZzTermSmokeInteractive
-                COMMAND ${ZZTERM_PYTHON3}
-                    ${CMAKE_CURRENT_SOURCE_DIR}/interactive/verify_smoke.py
-                    $<TARGET_FILE:ZzTermSmoke>
-                    ${CMAKE_CURRENT_BINARY_DIR}/interactive-scratch)
-            set_tests_properties(ZzTermSmokeInteractive PROPERTIES TIMEOUT 180)
+            foreach(ZZTERM_SMOKE_BACKEND IN ITEMS native contour)
+                if(ZZTERM_SMOKE_BACKEND STREQUAL "contour" AND NOT TARGET ZzTermContourBackend)
+                    continue()
+                endif()
+                add_test(NAME ZzTermSmokeInteractive_${ZZTERM_SMOKE_BACKEND}
+                    COMMAND ${ZZTERM_PYTHON3}
+                        ${CMAKE_CURRENT_SOURCE_DIR}/interactive/verify_smoke.py
+                        $<TARGET_FILE:ZzTermSmoke>
+                        ${CMAKE_CURRENT_BINARY_DIR}/interactive-scratch-${ZZTERM_SMOKE_BACKEND}
+                        ${ZZTERM_SMOKE_BACKEND})
+                set_tests_properties(ZzTermSmokeInteractive_${ZZTERM_SMOKE_BACKEND} PROPERTIES TIMEOUT 180)
+            endforeach()
         else()
             message(STATUS "python3 pexpect/pyte 不可用，跳过 ZzTermSmokeInteractive")
         endif()

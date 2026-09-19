@@ -1,5 +1,6 @@
 // ZzTermSmoke：控制台冒烟 Demo（调试工具，正式 GUI Demo 为未来的 ZzTermDemo）。
-// 用法：ZzTermSmoke [-- 命令...]，默认 bash。子进程退出后以子进程退出码退出。
+// 用法：ZzTermSmoke [--backend=native|contour] [-- 命令...]，默认 contour + bash。
+// 子进程退出后以子进程退出码退出。
 //
 // 结构：PTY 输出 -> ZzTerminal -> RenderView 全屏重绘到 stdout（ANSI SGR）；
 //       stdin 字节透传 -> PTY；SIGWINCH 自管道同步 PTY 与 Terminal 尺寸。
@@ -183,7 +184,7 @@ void renderScreen(const ZzTerminal& term, std::string& out)
     }
 }
 
-int run(const std::vector<std::string>& command)
+int run(ZzBackendKind backend, const std::vector<std::string>& command)
 {
     const ZzSize termSize = queryTerminalSize();
 
@@ -209,7 +210,12 @@ int run(const std::vector<std::string>& command)
         (void)::fcntl(pty->masterFd(), F_SETFL, flags | O_NONBLOCK);
     }
 
-    ZzTerminal term(termSize.cols, termSize.rows, ZzBackendKind::Native, 1000);
+    ZzTerminal term(termSize.cols, termSize.rows, backend, 1000);
+    // output 通道回传字节（DA 响应等）写回 PTY，供子进程读取应答。
+    term.setOutputHandler([&pty](std::string_view bytes) {
+        pty->writeAll(std::span<const std::byte>(
+            reinterpret_cast<const std::byte*>(bytes.data()), bytes.size()));
+    });
 
     // O_NONBLOCK 两端都要：读端供主循环排空（否则排空循环在管道读空后阻塞，
     // demo 在首个 SIGWINCH 后永久挂起）；写端防止信号处理器在管道写满时阻塞。
@@ -311,25 +317,30 @@ int run(const std::vector<std::string>& command)
 
 } // namespace
 
-int main(int argc, char* argv[])
+int main(int argc, char** argv)
 {
+    ZzBackendKind backend = ZzBackendKind::Contour; // v2.1 默认后端方向
     std::vector<std::string> command;
-    if (argc > 1) {
-        if (std::string_view(argv[1]) == "--help" || std::string_view(argv[1]) == "-h") {
-            std::fprintf(stderr, "用法：ZzTermSmoke [-- 命令...]（默认 bash）\n");
+    for (int i = 1; i < argc; ++i) {
+        const std::string_view arg = argv[i];
+        if (arg == "--help" || arg == "-h") {
+            std::printf("usage: ZzTermSmoke [--backend=native|contour] [-- command...]\n");
             return 0;
         }
-        if (std::string_view(argv[1]) != "--") {
-            std::fprintf(stderr, "ZzTermSmoke: 未知参数 '%s'（用法：ZzTermSmoke [-- 命令...]）\n",
-                         argv[1]);
-            return 2;
+        if (arg.rfind("--backend=", 0) == 0) {
+            const std::string_view value = arg.substr(10);
+            if (value == "native") backend = ZzBackendKind::Native;
+            else if (value == "contour") backend = ZzBackendKind::Contour;
+            else { std::fprintf(stderr, "unknown backend: %.*s\n", (int)value.size(), value.data()); return 2; }
+            continue;
         }
-        for (int i = 2; i < argc; ++i) {
-            command.emplace_back(argv[i]);
+        if (arg == "--") {
+            for (++i; i < argc; ++i) command.emplace_back(argv[i]);
+            break;
         }
+        std::fprintf(stderr, "unknown argument: %.*s\n", (int)arg.size(), arg.data());
+        return 2;
     }
-    if (command.empty()) {
-        command.emplace_back("bash");
-    }
-    return run(command);
+    if (command.empty()) command.emplace_back("bash");
+    return run(backend, command);
 }
