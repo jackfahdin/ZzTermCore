@@ -21,6 +21,11 @@ foreach(test_source IN LISTS ZZTERM_UNIT_TEST_SOURCES)
     add_test(NAME ${test_name} COMMAND ${test_name})
 endforeach()
 
+# 内部头（src/）的编译契约测试需要 src/ 在 include 路径上。
+if(TARGET test_backend_interface)
+    target_include_directories(test_backend_interface PRIVATE "${CMAKE_SOURCE_DIR}/src")
+endif()
+
 if(TARGET vtparser)
     add_executable(test_contour_smoke unit/test_contour_smoke.cpp)
     target_link_libraries(test_contour_smoke PRIVATE vtparser) # Contour target 一律 PRIVATE
