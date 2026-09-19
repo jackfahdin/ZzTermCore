@@ -6,6 +6,11 @@
 file(GLOB ZZTERM_UNIT_TEST_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/unit/*.cpp")
 
+# Contour smoke 仅在 Contour 后端启用时构建（vtparser target 存在才有意义），
+# 从通用 GLOB 中剔除后单独注册。
+list(REMOVE_ITEM ZZTERM_UNIT_TEST_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_contour_smoke.cpp")
+
 foreach(test_source IN LISTS ZZTERM_UNIT_TEST_SOURCES)
     get_filename_component(test_name "${test_source}" NAME_WE)
     add_executable(${test_name} "${test_source}")
@@ -15,6 +20,13 @@ foreach(test_source IN LISTS ZZTERM_UNIT_TEST_SOURCES)
     endif()
     add_test(NAME ${test_name} COMMAND ${test_name})
 endforeach()
+
+if(TARGET vtparser)
+    add_executable(test_contour_smoke unit/test_contour_smoke.cpp)
+    target_link_libraries(test_contour_smoke PRIVATE vtparser) # Contour target 一律 PRIVATE
+    target_compile_features(test_contour_smoke PRIVATE cxx_std_23)
+    add_test(NAME test_contour_smoke COMMAND test_contour_smoke)
+endif()
 
 # 脚本化冒烟：PTY 驱动 Core 全链路——真实 bash 输出经 ZzTerminal 渲染回 stdout，
 # 断言标记串出现且以子进程退出码 0 退出（仅 Unix 构建存在 demo 目标时）。
