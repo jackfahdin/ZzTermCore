@@ -75,6 +75,14 @@ public:
     /// \brief 取当前屏拷贝式快照（非 const：内部需刷新 RenderBuffer 取光标）。
     ZzContourSnapshot snapshot();
 
+    /// \brief 光标位置与可见性（经 RenderBuffer 路径；不可见时返回 nullopt）。
+    /// 内部会 refreshRenderBuffer，非 const。
+    std::optional<std::pair<int, int>> cursorPosition();
+
+    /// \brief 内部：仅供 ZzContourRenderView——当前屏指针（void* 保持公开头无 Contour 类型）。
+    /// 返回指针随 feed/resize 失效；消费方（thunk 内）static_cast 回 const vtbackend::Screen*。
+    [[nodiscard]] const void* screenForView() const;
+
 private:
     struct Impl;
     std::unique_ptr<Impl> impl_;

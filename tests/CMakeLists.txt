@@ -10,7 +10,8 @@ file(GLOB ZZTERM_UNIT_TEST_SOURCES CONFIGURE_DEPENDS
 # 从通用 GLOB 中剔除后单独注册。
 list(REMOVE_ITEM ZZTERM_UNIT_TEST_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_contour_smoke.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_contour_backend.cpp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_contour_backend.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_contour_adapter.cpp")
 
 foreach(test_source IN LISTS ZZTERM_UNIT_TEST_SOURCES)
     get_filename_component(test_name "${test_source}" NAME_WE)
@@ -25,6 +26,9 @@ endforeach()
 # 内部头（src/）的编译契约测试需要 src/ 在 include 路径上。
 if(TARGET test_backend_interface)
     target_include_directories(test_backend_interface PRIVATE "${CMAKE_SOURCE_DIR}/src")
+    # OFF 路径断言（Contour kind 抛 logic_error）依赖该宏透传。
+    target_compile_definitions(test_backend_interface
+        PRIVATE $<$<BOOL:${ZZTERM_WITH_CONTOUR}>:ZZTERM_WITH_CONTOUR=1>)
 endif()
 
 if(TARGET vtparser)
@@ -40,6 +44,14 @@ if(TARGET ZzTermContourBackend)
     target_link_libraries(test_contour_backend PRIVATE ZzTermContourBackend vtpty) # Contour target 一律 PRIVATE
     target_compile_features(test_contour_backend PRIVATE cxx_std_23)
     add_test(NAME test_contour_backend COMMAND test_contour_backend)
+endif()
+
+# M1b：ZzContourBackendAdapter 经 ZzTerminal facade 的端到端测试，仅 Contour 后端启用时构建。
+# 只碰公开头（C++20 即可）；链接 ZzTermContourBackend 仅为保障 target 依赖关系。
+if(TARGET ZzTermContourBackend)
+    add_executable(test_contour_adapter unit/test_contour_adapter.cpp)
+    target_link_libraries(test_contour_adapter PRIVATE ZzTermContourBackend ZzTermCore) # Contour target 一律 PRIVATE
+    add_test(NAME test_contour_adapter COMMAND test_contour_adapter)
 endif()
 
 # 脚本化冒烟：PTY 驱动 Core 全链路——真实 bash 输出经 ZzTerminal 渲染回 stdout，

@@ -76,6 +76,15 @@ target_include_directories(ZzTermCore
 # 内部头（如 backend/native/ZzNativeRenderView.h）供 src/ 内部跨目录引用。
 target_include_directories(ZzTermCore PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
+# M1b：ZzTermCore 双后端接入——PRIVATE 链接 Contour 后端库并开通编译宏。
+# （简报要求在 include(cmake/ContourBackend.cmake) 之后生效；因 ZzTermCore target
+#  在上方才创建，实际落点在其后。ContourBackend.cmake 内部的降级 OFF 在此可见。）
+if(ZZTERM_WITH_CONTOUR)
+    # BUILD_LOCAL_INTERFACE（CMake 3.26+）：Contour 后端为纯内部实现细节，不进 install(EXPORT)。
+    target_link_libraries(ZzTermCore PRIVATE $<BUILD_LOCAL_INTERFACE:ZzTermContourBackend>)
+    target_compile_definitions(ZzTermCore PRIVATE ZZTERM_WITH_CONTOUR=1)
+endif()
+
 # native 后端适配层（src/backend/native/ 为三级深度，src/*/*.cpp GLOB 不覆盖）。
 add_subdirectory(src/backend/native)
 

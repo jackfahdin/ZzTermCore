@@ -6,6 +6,8 @@
 add_library(ZzTermContourBackend STATIC
     ZzContourPtyBridge.cpp
     ZzContourBackend.cpp
+    ZzContourRenderView.cpp
+    ZzContourBackendAdapter.cpp
 )
 target_include_directories(ZzTermContourBackend PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 # ZzContourBackend.h 引用 ZzTermCore 公开头（<ZzTerm/Cell.h>，header-only），只引 include 路径、不链接 ZzTermCore。

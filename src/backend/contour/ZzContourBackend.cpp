@@ -1,10 +1,8 @@
 #include "ZzContourBackend.h"
 
+#include "ZzContourConvert.h"
 #include "ZzContourPtyBridge.h"
 
-#include <vtbackend/core/CellFlags.hpp>
-#include <vtbackend/core/Color.hpp>
-#include <vtbackend/grid/CellProxy.hpp>
 #include <vtbackend/render/RenderBuffer.hpp>
 #include <vtbackend/screen/Terminal.hpp>
 
@@ -18,49 +16,6 @@ namespace {
 vtbackend::PageSize makePageSize(int columns, int rows)
 {
     return vtbackend::PageSize { vtbackend::LineCount(rows), vtbackend::ColumnCount(columns) };
-}
-
-ZzColor zzColor(vtbackend::Color color)
-{
-    switch (color.type())
-    {
-        case vtbackend::ColorType::RGB: {
-            auto const rgb = color.rgb();
-            return ZzColor::Rgb(rgb.red, rgb.green, rgb.blue);
-        }
-        case vtbackend::ColorType::Indexed:
-            return ZzColor::Indexed(color.index());
-        case vtbackend::ColorType::Bright:
-            // 亮 n 号色统一映射为索引 8+n，保留颜色身份。
-            return ZzColor::Indexed(static_cast<std::uint8_t>(8 + color.index()));
-        case vtbackend::ColorType::Default:
-        case vtbackend::ColorType::Undefined: // 无实际消费，统一按默认色
-        default:
-            return ZzColor::Default();
-    }
-}
-
-ZzCellAttributes zzAttributes(vtbackend::CellFlags flags)
-{
-    ZzCellAttributes out;
-    if (flags.contains(vtbackend::CellFlag::Bold)) out.setBold(true);
-    if (flags.contains(vtbackend::CellFlag::Faint)) out.setFaint(true);
-    if (flags.contains(vtbackend::CellFlag::Italic)) out.setItalic(true);
-    if (flags.contains(vtbackend::CellFlag::Underline)) out.setUnderline(ZzUnderlineStyle::Single);
-    if (flags.contains(vtbackend::CellFlag::DoublyUnderlined)) out.setUnderline(ZzUnderlineStyle::Double);
-    if (flags.contains(vtbackend::CellFlag::CurlyUnderlined)) out.setUnderline(ZzUnderlineStyle::Curly);
-    if (flags.contains(vtbackend::CellFlag::Blinking)) out.setBlink(ZzBlinkStyle::Slow);
-    if (flags.contains(vtbackend::CellFlag::Inverse)) out.setInverse(true);
-    if (flags.contains(vtbackend::CellFlag::Hidden)) out.setInvisible(true);
-    if (flags.contains(vtbackend::CellFlag::CrossedOut)) out.setStrikethrough(true);
-    return out;
-}
-
-ZzCellWidth zzWidth(const vtbackend::BasicCellProxy<true>& cell) // const 版 CellProxy
-{
-    if (cell.flags().contains(vtbackend::CellFlag::WideCharContinuation))
-        return ZzCellWidth::WideContinuation;
-    return cell.width() == 2 ? ZzCellWidth::WideLead : ZzCellWidth::Narrow;
 }
 
 // 末尾不构成完整 UTF-8 序列的字节数（0 表示尾部完整或非法）。
@@ -219,6 +174,22 @@ void ZzContourBackend::flushReplies()
     impl_->terminal->flushInput();
 }
 
+std::optional<std::pair<int, int>> ZzContourBackend::cursorPosition()
+{
+    impl_->terminal->refreshRenderBuffer();
+    auto ref = impl_->terminal->renderBuffer(); // RAII 读锁句柄
+    auto const& renderBuffer = ref.get();
+    if (!renderBuffer.cursor)
+        return std::nullopt;
+    return std::make_pair(renderBuffer.cursor->position.line.value,
+                          renderBuffer.cursor->position.column.value);
+}
+
+const void* ZzContourBackend::screenForView() const
+{
+    return &impl_->terminal->currentScreen();
+}
+
 ZzContourSnapshot ZzContourBackend::snapshot()
 {
     auto const& screen = impl_->terminal->currentScreen();
@@ -261,15 +232,7 @@ ZzContourSnapshot ZzContourBackend::snapshot()
             snap.cells.push_back(std::move(out));
         }
     }
-    impl_->terminal->refreshRenderBuffer();
-    {
-        auto ref = impl_->terminal->renderBuffer(); // RAII 读锁句柄
-        auto const& renderBuffer = ref.get();
-        if (renderBuffer.cursor)
-        {
-            snap.cursor = ZzContourCursor { renderBuffer.cursor->position.line.value,
-                                            renderBuffer.cursor->position.column.value };
-        }
-    }
+    if (auto const cursor = cursorPosition())
+        snap.cursor = ZzContourCursor { cursor->first, cursor->second };
     return snap;
 }

@@ -161,6 +161,17 @@ void testStyleFlags()
     ZZ_CHECK(!snap.at(0, 1).attributes.bold());
 }
 
+// 点线/虚线下划线（SGR 4:4 / 4:5）不降级——vtbackend DottedUnderline/DashedUnderline 映射。
+void testDottedDashedUnderline()
+{
+    RecordingEvents events;
+    ZzContourBackend backend(80, 24, events);
+    backend.feed("\x1b[4:4mD\x1b[0m\x1b[4:5mE");
+    auto snap = backend.snapshot();
+    ZZ_CHECK(snap.at(0, 0).attributes.underline() == ZzUnderlineStyle::Dotted);
+    ZZ_CHECK(snap.at(0, 1).attributes.underline() == ZzUnderlineStyle::Dashed);
+}
+
 // BCE 擦除场景：空行（isBlank 分支）须从 fillAttrs 还原背景色，前景保持默认。
 void testBlankLineFillAttrs()
 {
@@ -320,6 +331,7 @@ int main()
     testBrightColor();
     testRgbColor();
     testStyleFlags();
+    testDottedDashedUnderline();
     testBlankLineFillAttrs();
     testCursor();
     testTitleBellDirty();

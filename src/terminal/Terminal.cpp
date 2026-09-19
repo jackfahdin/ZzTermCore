@@ -3,7 +3,7 @@
 #include "../backend/ZzTerminalBackend.h"
 #include "../backend/native/ZzNativeBackend.h"
 #ifdef ZZTERM_WITH_CONTOUR
-#include "../backend/contour/ZzContourBackendAdapter.h" // 任务 4 创建；本任务先 #ifdef 占位
+#include "../backend/contour/ZzContourBackendAdapter.h"
 #endif
 
 #include <stdexcept>
@@ -19,7 +19,7 @@ public:
             break;
         case ZzBackendKind::Contour:
 #ifdef ZZTERM_WITH_CONTOUR
-            throw std::logic_error("Contour 后端接入中（任务 4）");
+            backend = zzCreateContourBackendAdapter(cols, rows, scrollbackMaxLines);
 #else
             throw std::logic_error("ZzBackendKind::Contour 需要 ZZTERM_WITH_CONTOUR=ON 构建");
 #endif
