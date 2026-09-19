@@ -41,12 +41,12 @@ ms；不作为正式性能指标。
 
 ## Build / Backend Boundary
 
--   [ ] \[Zz-Adapter\] Contour 固定 commit 的 Git submodule
--   [ ] \[Zz-Adapter\] 最小 Contour build，不构建顶层完整工程
--   [ ] \[Zz-Adapter\] vtbackend / vtparser / crispy / libunicode
+-   [x] \[Zz-Adapter\] Contour 固定 commit 的 Git submodule（third_party/contour @ 6777ff05）
+-   [x] \[Zz-Adapter\] 最小 Contour build，不构建顶层完整工程（cmake/ContourBackend.cmake：仅 crispy/vtpty/vtparser/vtbackend）
+-   [x] \[Zz-Adapter\] vtbackend / vtparser / crispy / libunicode
 -   [ ] \[Zz-Adapter\] Windows `/utf-8`
 -   [ ] \[Zz-Adapter\] Zz Public API 不暴露 Contour 类型
--   [ ] \[Zz-Adapter\] Contour targets 全部 PRIVATE
+-   [ ] \[Zz-Adapter\] Contour targets 全部 PRIVATE（当前唯一消费方 test_contour_smoke 为 PRIVATE 链接；接入 Core 在 M1）
 -   [ ] \[Zz-Adapter\] ZzExternalTransportAdapter
 -   [ ] \[Zz-Adapter\] ZzContourEvents
 -   [ ] \[Zz-Adapter\] ZzRenderView / ZzCellView
