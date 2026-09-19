@@ -1,9 +1,8 @@
 #include <algorithm>
 
-#include "ZzTerm/Terminal.h"
-#include "ZzTerm/Parser.h"
+#include "TerminalImpl.h"
 
-// CSI 语义（ZzTerminal 成员函数，分文件实现以控制单文件规模）。
+// CSI 语义（ZzTerminal::Impl 方法，分文件实现以控制单文件规模）。
 // 约定：参数省略（kOmitted）或 <= 0 一律回退默认值；数值钳到网格范围；
 // DEC 私有序列（privateMarker != 0）与带 intermediate 的序列本文件安全忽略：
 // 备用屏幕（1049/1047/1048）、DECAWM（?7）、DECTCEM（?25）属 M2，
@@ -23,7 +22,7 @@ int paramOr(const ZzParamSequence& seq, std::size_t i, int fallback)
 
 } // namespace
 
-void ZzTerminal::dispatchCsi(const ZzParamSequence& seq)
+void ZzTerminal::Impl::dispatchCsi(const ZzParamSequence& seq)
 {
     if (seq.privateMarker != 0 || !seq.intermediates.empty())
         return; // DEC 私有 / intermediate 序列：安全忽略（M2/M3 处理，见文件头注释）

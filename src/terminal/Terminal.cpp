@@ -1,6 +1,5 @@
-#include "ZzTerm/Terminal.h"
+#include "TerminalImpl.h"
 
-#include "ZzTerm/Parser.h"
 #include "ZzTerm/UnicodeWidth.h"
 
 // ZzTerminal 实现：Parser 已接入，feed 的真实链路为
@@ -9,26 +8,26 @@
 
 /// 嵌套私有类：把解析事件转发为 Terminal 的语义方法调用。
 /// DCS 不覆盖（基类默认空实现 = 安全忽略）。
-struct ZzTerminal::Sink : ZzParserSink {
-    explicit Sink(ZzTerminal& term) : term_(term) {}
+struct ZzTerminal::Impl::Sink : ZzParserSink {
+    explicit Sink(Impl& impl) : impl_(impl) {}
 
     void onPrint(char byte) override
     {
-        term_.utf8_.feed(std::string_view(&byte, 1),
-                         [this](char32_t cp) { term_.putChar(cp); });
+        impl_.utf8_.feed(std::string_view(&byte, 1),
+                         [this](char32_t cp) { impl_.putChar(cp); });
     }
-    void onExecute(std::uint8_t control) override { term_.executeControl(control); }
-    void onCsiDispatch(const ZzParamSequence& seq) override { term_.dispatchCsi(seq); }
+    void onExecute(std::uint8_t control) override { impl_.executeControl(control); }
+    void onCsiDispatch(const ZzParamSequence& seq) override { impl_.dispatchCsi(seq); }
     void onEscDispatch(std::string_view intermediates, char final) override
     {
-        term_.dispatchEsc(intermediates, final);
+        impl_.dispatchEsc(intermediates, final);
     }
-    void onOscDispatch(std::string_view payload) override { term_.dispatchOsc(payload); }
+    void onOscDispatch(std::string_view payload) override { impl_.dispatchOsc(payload); }
 
-    ZzTerminal& term_;
+    Impl& impl_;
 };
 
-ZzTerminal::ZzTerminal(int cols, int rows, std::size_t scrollbackMaxLines)
+ZzTerminal::Impl::Impl(int cols, int rows, std::size_t scrollbackMaxLines)
     : screen_(cols, rows)
     , scrollback_(zzCreateChunkedScrollback(scrollbackMaxLines))
     , renderView_(&screen_, scrollback_.get())
@@ -42,9 +41,7 @@ ZzTerminal::ZzTerminal(int cols, int rows, std::size_t scrollbackMaxLines)
     });
 }
 
-ZzTerminal::~ZzTerminal() = default;
-
-ZzTermChanges ZzTerminal::feed(std::span<const std::byte> data)
+ZzTermChanges ZzTerminal::Impl::feed(std::span<const std::byte> data)
 {
     ZzTermChanges changes;
     scrolledOutPending_ = 0;
@@ -61,13 +58,13 @@ ZzTermChanges ZzTerminal::feed(std::span<const std::byte> data)
     return changes;
 }
 
-void ZzTerminal::noteScreenDirty() noexcept
+void ZzTerminal::Impl::noteScreenDirty() noexcept
 {
     if (activeChanges_)
         activeChanges_->screenDirty = true;
 }
 
-ZzCell ZzTerminal::eraseFill() const noexcept
+ZzCell ZzTerminal::Impl::eraseFill() const noexcept
 {
     // 擦除/滚动填充：携带当前画笔背景（bce 语义），无文本无属性。
     ZzCell fill;
@@ -75,7 +72,7 @@ ZzCell ZzTerminal::eraseFill() const noexcept
     return fill;
 }
 
-void ZzTerminal::putChar(char32_t cp)
+void ZzTerminal::Impl::putChar(char32_t cp)
 {
     const ZzSize sz = screen_.size();
     const ZzCellRange region = screen_.scrollRegionRows(); // [top, bottom+1)
@@ -114,7 +111,7 @@ void ZzTerminal::putChar(char32_t cp)
     // DECAWM 关闭时在最后一列：光标不动、不置标志，后续字符覆盖该格。
 }
 
-void ZzTerminal::executeControl(std::uint8_t control)
+void ZzTerminal::Impl::executeControl(std::uint8_t control)
 {
     const ZzCellRange region = screen_.scrollRegionRows(); // [top, bottom+1)
     const ZzPosition cur = screen_.cursor().position;
@@ -150,7 +147,7 @@ void ZzTerminal::executeControl(std::uint8_t control)
     }
 }
 
-void ZzTerminal::dispatchEsc(std::string_view intermediates, char final)
+void ZzTerminal::Impl::dispatchEsc(std::string_view intermediates, char final)
 {
     if (!intermediates.empty())
         return; // charset 选择（ESC ( X 等）随 M2 字符集设计实现
@@ -197,7 +194,7 @@ void ZzTerminal::dispatchEsc(std::string_view intermediates, char final)
     }
 }
 
-void ZzTerminal::dispatchOsc(std::string_view payload)
+void ZzTerminal::Impl::dispatchOsc(std::string_view payload)
 {
     const std::size_t sep = payload.find(';');
     if (sep == std::string_view::npos)
@@ -210,53 +207,36 @@ void ZzTerminal::dispatchOsc(std::string_view payload)
         activeChanges_->titleChanged = true;
 }
 
+// ---- 公开 API：全部转发到 Impl（PImpl） ----
+
+ZzTerminal::ZzTerminal(int cols, int rows, std::size_t scrollbackMaxLines)
+    : impl_(std::make_unique<Impl>(cols, rows, scrollbackMaxLines))
+{
+}
+
+ZzTerminal::~ZzTerminal() = default;
+
+ZzTermChanges ZzTerminal::feed(std::span<const std::byte> data) { return impl_->feed(data); }
+
 bool ZzTerminal::resize(int cols, int rows)
 {
     if (cols <= 0 || rows <= 0)
         return false;
-    if (screen_.size() == ZzSize{cols, rows})
+    if (impl_->screen_.size() == ZzSize{cols, rows})
         return false;
     // M0：网格级 resize，不做 reflow（见 Terminal.h 注释）。
-    screen_.resize(cols, rows);
+    impl_->screen_.resize(cols, rows);
     return true;
 }
 
-const ZzRenderView& ZzTerminal::renderView() const noexcept
-{
-    return renderView_;
-}
-
-ZzSize ZzTerminal::size() const noexcept
-{
-    return screen_.size();
-}
-
-ZzCursorState ZzTerminal::cursor() const noexcept
-{
-    return screen_.cursor();
-}
-
+const ZzRenderView& ZzTerminal::renderView() const noexcept { return impl_->renderView_; }
+ZzSize ZzTerminal::size() const noexcept { return impl_->screen_.size(); }
+ZzCursorState ZzTerminal::cursor() const noexcept { return impl_->screen_.cursor(); }
 bool ZzTerminal::isAlternateScreen() const noexcept
 {
-    return screen_.activeBuffer() == ZzScreenBuffer::Alternate;
+    return impl_->screen_.activeBuffer() == ZzScreenBuffer::Alternate;
 }
-
-const std::string& ZzTerminal::title() const noexcept
-{
-    return title_;
-}
-
-void ZzTerminal::clearDirty() noexcept
-{
-    screen_.clearDirty();
-}
-
-ZzScreen& ZzTerminal::screen() noexcept
-{
-    return screen_;
-}
-
-ZzScrollback& ZzTerminal::scrollback() noexcept
-{
-    return *scrollback_;
-}
+const std::string& ZzTerminal::title() const noexcept { return impl_->title_; }
+void ZzTerminal::clearDirty() noexcept { impl_->screen_.clearDirty(); }
+ZzScreen& ZzTerminal::screen() noexcept { return impl_->screen_; }
+ZzScrollback& ZzTerminal::scrollback() noexcept { return *impl_->scrollback_; }

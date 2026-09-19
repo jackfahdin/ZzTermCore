@@ -1,5 +1,7 @@
 # ZzTermCore VT/xterm 功能实现 Checklist
 
+> 本文档为 v1.0 checklist。现行 checklist 为 docs/VT-Xterm-Checklist-v2.md（v2.1）；本文档已勾选条目在 v2.1 中以 [PASS-Native] 标签迁移，保留作历史参考。
+
 > 本文档同时承担规格追踪、开发进度与测试追踪。复杂项完成时应补充
 > Spec、Unit Test、Integration Test、Notes。
 

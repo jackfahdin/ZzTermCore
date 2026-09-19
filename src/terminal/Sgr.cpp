@@ -1,7 +1,6 @@
 #include <cstdint>
 
-#include "ZzTerm/Terminal.h"
-#include "ZzTerm/Parser.h"
+#include "TerminalImpl.h"
 
 // SGR（CSI m）到画笔状态的映射（ECMA-48 §8.3.117 + xterm 扩展）。
 // 只改画笔，不修改已有 Cell；print 落格时套用当前画笔。
@@ -18,7 +17,7 @@ std::uint8_t clampByte(std::int32_t v)
 
 } // namespace
 
-void ZzTerminal::sgr(const ZzParamSequence& seq)
+void ZzTerminal::Impl::sgr(const ZzParamSequence& seq)
 {
     if (seq.params.empty()) { // CSI m 无参数 = reset
         penAttrs_.reset();

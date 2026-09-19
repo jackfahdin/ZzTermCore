@@ -1,5 +1,5 @@
 # ZzTermCore 根构建脚本
-# 布局约定见 docs/Architecture.md 第 3、4 节：
+# 布局约定见 docs/Architecture.md 第 3、4 节（v1 文档；现行设计见 docs/Architecture-v2.md）：
 #   - include/ZzTerm/*.h   公开头文件
 #   - src/*/*.cpp          Core 实现（parser/unicode/screen/history/input/terminal）
 #   - tests/unit/*.cpp     单元测试（见 tests/CMakeLists.txt）
@@ -17,6 +17,18 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 include(GNUInstallDirs)
 
 option(ZZTERM_BUILD_TESTS "构建 ZzTermCore 单元测试" ON)
+
+# Contour 后端集成（v2.1 双后端路线；设计见 docs/Architecture-v2.md）。
+# submodule 未初始化时自动降级为 OFF，保证 native-only 路径始终可构建。
+option(ZZTERM_WITH_CONTOUR "集成 Contour vtbackend/vtparser 作为终端后端（需要 C++23 编译器，configure 时需网络拉取第三方依赖）" ON)
+if(ZZTERM_WITH_CONTOUR)
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/contour/src/vtparser/CMakeLists.txt")
+        include(cmake/ContourBackend.cmake)
+    else()
+        message(STATUS "third_party/contour 未初始化（git submodule update --init），ZZTERM_WITH_CONTOUR 降级为 OFF")
+        set(ZZTERM_WITH_CONTOUR OFF)
+    endif()
+endif()
 
 # ---------------------------------------------------------------------------
 # ZzTermCore 库目标

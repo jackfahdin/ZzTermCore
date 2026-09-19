@@ -1,5 +1,7 @@
 # ZzTermCore 技术设计与开发规范
 
+> 本文档为 v1.0（自研 VT 引擎路线）原始设计。现行主设计文档为 docs/Architecture-v2.md（v2.1，Contour 后端整合版）；本文档保留作历史参考与 ZzNativeBackend 语义契约来源，其中的 M0–M6 里程碑编号已废止，仅按 v1 语义解读。
+
 > v1.0 · C++20 · CMakeLists.txt + CMakePresets.json · 2026-09-17
 
 ## 1. 项目定位
