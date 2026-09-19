@@ -110,6 +110,72 @@ void testResizeBasic()
     ZZ_CHECK(rowText(snap, 0, 4) == U"Keep");
 }
 
+// SGR 索引色前景在快照中保留颜色身份（不预转 RGB）。
+void testSgrColors()
+{
+    RecordingEvents events;
+    ZzContourBackend backend(80, 24, events);
+    backend.feed("\x1b[31mR\x1b[0m");
+    auto snap = backend.snapshot();
+    auto const& cell = snap.at(0, 0);
+    ZZ_CHECK(cell.codepoints == U"R");
+    ZZ_CHECK(cell.foreground == (ZzColor { ZzColor::Tag::Indexed, 1 }));
+    // 复位后写入的格子回到默认色。
+    ZZ_CHECK(snap.at(0, 1).foreground == (ZzColor { ZzColor::Tag::Default, 0 }));
+}
+
+// SGR 亮红色映射为索引 8+1。
+void testBrightColor()
+{
+    RecordingEvents events;
+    ZzContourBackend backend(80, 24, events);
+    backend.feed("\x1b[91mB");
+    auto snap = backend.snapshot();
+    ZZ_CHECK(snap.at(0, 0).foreground == (ZzColor { ZzColor::Tag::Indexed, 9 }));
+}
+
+// RGB 真彩色前景与背景。
+void testRgbColor()
+{
+    RecordingEvents events;
+    ZzContourBackend backend(80, 24, events);
+    backend.feed("\x1b[38;2;10;20;30m\x1b[48;2;200;100;50mX");
+    auto snap = backend.snapshot();
+    auto const& cell = snap.at(0, 0);
+    ZZ_CHECK(cell.foreground
+             == (ZzColor { ZzColor::Tag::RGB, (10u << 16) | (20u << 8) | 30u }));
+    ZZ_CHECK(cell.background
+             == (ZzColor { ZzColor::Tag::RGB, (200u << 16) | (100u << 8) | 50u }));
+}
+
+// 粗体/斜体/下划线 flags。
+void testStyleFlags()
+{
+    RecordingEvents events;
+    ZzContourBackend backend(80, 24, events);
+    // 各 SGR 样式间显式复位：SGR 属性是累加的（ECMA-48），不复位则粗体会带进斜体格。
+    backend.feed("\x1b[1mB\x1b[0m\x1b[3mI\x1b[0m\x1b[4mU");
+    auto snap = backend.snapshot();
+    ZZ_CHECK(snap.at(0, 0).flags & ZzCellFlag::Bold);
+    ZZ_CHECK(snap.at(0, 1).flags & ZzCellFlag::Italic);
+    ZZ_CHECK(snap.at(0, 2).flags & ZzCellFlag::Underline);
+    // 斜体格不带粗体位。
+    ZZ_CHECK(!(snap.at(0, 1).flags & ZzCellFlag::Bold));
+}
+
+// BCE 擦除场景：空行（isBlank 分支）须从 fillAttrs 还原背景色，前景保持默认。
+void testBlankLineFillAttrs()
+{
+    RecordingEvents events;
+    ZzContourBackend backend(80, 24, events);
+    backend.feed("\x1b[41m\x1b[2J");
+    auto snap = backend.snapshot();
+    auto const& cell = snap.at(1, 0);
+    ZZ_CHECK(cell.codepoints.empty());
+    ZZ_CHECK(cell.background == (ZzColor { ZzColor::Tag::Indexed, 1 }));
+    ZZ_CHECK(cell.foreground == (ZzColor { ZzColor::Tag::Default, 0 }));
+}
+
 } // namespace
 
 int main()
@@ -117,6 +183,11 @@ int main()
     testBridge();
     testAsciiSnapshot();
     testResizeBasic();
+    testSgrColors();
+    testBrightColor();
+    testRgbColor();
+    testStyleFlags();
+    testBlankLineFillAttrs();
     if (g_failures != 0)
         std::fprintf(stderr, "test_contour_backend: %d failure(s)\n", g_failures);
     return g_failures == 0 ? 0 : 1;

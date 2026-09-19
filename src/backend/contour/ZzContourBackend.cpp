@@ -2,6 +2,8 @@
 
 #include "ZzContourPtyBridge.h"
 
+#include <vtbackend/core/CellFlags.hpp>
+#include <vtbackend/core/Color.hpp>
 #include <vtbackend/screen/Terminal.hpp>
 
 #include <crispy/Environment.hpp>
@@ -14,6 +16,45 @@ namespace {
 vtbackend::PageSize makePageSize(int columns, int rows)
 {
     return vtbackend::PageSize { vtbackend::LineCount(rows), vtbackend::ColumnCount(columns) };
+}
+
+ZzColor zzColor(vtbackend::Color color)
+{
+    switch (color.type())
+    {
+        case vtbackend::ColorType::RGB: {
+            auto const rgb = color.rgb();
+            return { ZzColor::Tag::RGB,
+                     (static_cast<std::uint32_t>(rgb.red) << 16)
+                         | (static_cast<std::uint32_t>(rgb.green) << 8)
+                         | static_cast<std::uint32_t>(rgb.blue) };
+        }
+        case vtbackend::ColorType::Indexed:
+            return { ZzColor::Tag::Indexed, color.index() };
+        case vtbackend::ColorType::Bright:
+            // 亮 n 号色统一映射为索引 8+n，保留颜色身份。
+            return { ZzColor::Tag::Indexed, static_cast<std::uint32_t>(8 + color.index()) };
+        case vtbackend::ColorType::Default:
+            return { ZzColor::Tag::Default, 0 };
+        case vtbackend::ColorType::Undefined:
+        default:
+            return { ZzColor::Tag::Undefined, 0 };
+    }
+}
+
+std::uint32_t zzFlags(vtbackend::CellFlags flags)
+{
+    std::uint32_t out = ZzCellFlag::None;
+    if (flags.contains(vtbackend::CellFlag::Bold)) out |= ZzCellFlag::Bold;
+    if (flags.contains(vtbackend::CellFlag::Faint)) out |= ZzCellFlag::Faint;
+    if (flags.contains(vtbackend::CellFlag::Italic)) out |= ZzCellFlag::Italic;
+    if (flags.contains(vtbackend::CellFlag::Underline)) out |= ZzCellFlag::Underline;
+    if (flags.contains(vtbackend::CellFlag::Blinking)) out |= ZzCellFlag::Blinking;
+    if (flags.contains(vtbackend::CellFlag::Inverse)) out |= ZzCellFlag::Inverse;
+    if (flags.contains(vtbackend::CellFlag::Hidden)) out |= ZzCellFlag::Hidden;
+    if (flags.contains(vtbackend::CellFlag::CrossedOut)) out |= ZzCellFlag::CrossedOut;
+    if (flags.contains(vtbackend::CellFlag::WideCharContinuation)) out |= ZzCellFlag::WideCharContinuation;
+    return out;
 }
 
 } // namespace
@@ -130,8 +171,13 @@ ZzContourSnapshot ZzContourBackend::snapshot()
         // 空行直接产出默认格，不触碰 SoA 数组。
         if (gridLine.isBlank())
         {
+            // 空行可携带非默认 fillAttrs 背景（BCE 擦除场景）；前景保持默认。
+            auto const& fillAttrs = gridLine.storage().fillAttrs;
+            ZzContourCell blank;
+            blank.background = zzColor(fillAttrs.backgroundColor);
+            blank.flags = zzFlags(fillAttrs.flags);
             for (int col = 0; col < snap.columns; ++col)
-                snap.cells.emplace_back();
+                snap.cells.push_back(blank);
             continue;
         }
         auto const lineColumns = gridLine.size().value;
@@ -143,8 +189,11 @@ ZzContourSnapshot ZzContourBackend::snapshot()
                 auto const cell = screen.at(vtbackend::LineOffset(line), vtbackend::ColumnOffset(col));
                 out.codepoints = cell.codepoints();
                 out.width = static_cast<int>(cell.width());
+                out.foreground = zzColor(cell.foregroundColor());
+                out.background = zzColor(cell.backgroundColor());
+                out.flags = zzFlags(cell.flags());
             }
-            // 颜色与 flags 转换在任务 3 接线；光标在任务 4 接线。
+            // 光标在任务 4 接线。
             snap.cells.push_back(std::move(out));
         }
     }
