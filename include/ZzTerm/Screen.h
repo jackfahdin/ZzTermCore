@@ -37,17 +37,6 @@ enum class ZzEraseMode : std::uint8_t {
     All      = 2  ///< 全部擦除。
 };
 
-/// @brief 光标完整状态（位置 + 形状 + 可见性 + 闪烁）。
-struct ZzCursorState {
-    ZzPosition    position;          ///< 光标位置（0 起始）。
-    ZzCursorShape shape    = ZzCursorShape::Block; ///< 光标形状。
-    bool          visible  = true;   ///< 是否可见（DECTCEM）。
-    bool          blinking = true;   ///< 是否闪烁（DECSCUSR 闪烁位）。
-
-    /// @brief 相等比较（位置/形状/可见性/闪烁逐项比较）。
-    friend constexpr bool operator==(const ZzCursorState&, const ZzCursorState&) noexcept = default;
-};
-
 /**
  * @brief 终端工作区。
  *

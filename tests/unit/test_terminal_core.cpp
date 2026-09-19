@@ -23,7 +23,15 @@ static void feedStr(ZzTerminal& term, const std::string& s)
 
 static char32_t cpAt(const ZzTerminal& term, int row, int col)
 {
-    return term.renderView().lineAt(row).cellAt(col).codePoint();
+    const ZzCellView cell = term.renderView().lineAt(row).cellAt(col);
+    if (cell.text.empty()) return 0;
+    // 解码首码位（本文件断言均为单码位文本）。
+    const auto* p = reinterpret_cast<const unsigned char*>(cell.text.data());
+    if (p[0] < 0x80) return p[0];
+    if ((p[0] & 0xE0) == 0xC0) return ((p[0] & 0x1F) << 6) | (p[1] & 0x3F);
+    if ((p[0] & 0xF0) == 0xE0)
+        return ((p[0] & 0x0F) << 12) | ((p[1] & 0x3F) << 6) | (p[2] & 0x3F);
+    return ((p[0] & 0x07) << 18) | ((p[1] & 0x3F) << 12) | ((p[2] & 0x3F) << 6) | (p[3] & 0x3F);
 }
 
 static void testPrintAscii()
@@ -116,7 +124,7 @@ static void testLfScrollsAtRegionBottom()
     ZzTerminal term(5, 2, 100);
     feedStr(term, "one\r\ntwo\r\n"); // 第二行使出滚动区下沿 -> 上滚
     ZZ_TEST_EXPECT(cpAt(term, 0, 0) == U't'); // "two" 顶到第 0 行
-    ZZ_TEST_EXPECT(term.renderView().scrollbackLineCount() == 1); // "one" 入历史
+    ZZ_TEST_EXPECT(term.scrollback().lineCount() == 1); // "one" 入历史
 }
 
 static void testOscTitle()
@@ -173,7 +181,7 @@ static void testNelScrollsAndResetsColAtBottom()
     feedStr(term, "\x1b" "E"); // NEL 在下沿：上滚且 CR 无条件生效（ECMA-48 NEL = CR + IND）
     ZZ_TEST_EXPECT(term.cursor().position.row == 1);
     ZZ_TEST_EXPECT(term.cursor().position.col == 0);
-    ZZ_TEST_EXPECT(term.renderView().scrollbackLineCount() == 1); // 首行入历史
+    ZZ_TEST_EXPECT(term.scrollback().lineCount() == 1); // 首行入历史
 }
 
 static void testRestoreCursorClampedAfterResize()

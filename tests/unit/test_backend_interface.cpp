@@ -6,10 +6,24 @@
 
 namespace {
 
+class FakeRenderView final : public ZzRenderView {
+public:
+    ZzSize size() const noexcept override { return {}; }
+    bool isAlternateScreen() const noexcept override { return false; }
+    ZzLineView lineAt(int) const override
+    {
+        return ZzLineView(0, [](const void*, int) { return ZzCellView {}; },
+                          [](const void*) noexcept { return 0; },
+                          [](const void*) noexcept { return false; });
+    }
+    ZzCursorState cursor() const override { return {}; }
+    std::uint64_t dirtyGeneration() const noexcept override { return 0; }
+    bool rowDirty(int) const noexcept override { return false; }
+    ZzCellRange dirtyRange(int) const noexcept override { return {}; }
+};
+
 class FakeBackend : public ZzTerminalBackend {
 public:
-    FakeBackend() : view_(nullptr, nullptr) {}
-
     ZzTermChanges feed(std::span<const std::byte> data) override
     {
         fedBytes += data.size();
@@ -29,7 +43,7 @@ public:
 
     std::size_t fedBytes = 0;
     ZzSize lastSize{80, 24};
-    ZzRenderView view_;
+    FakeRenderView view_;
     std::string title_;
     int clearCount = 0;
 };

@@ -72,3 +72,12 @@ enum class ZzCursorShape : std::uint8_t {
     Underline, ///< 下划线光标。
     Bar        ///< 竖线（I-Beam）光标。
 };
+
+/// \brief 光标状态（位置 + 形状 + 可见性）。
+struct ZzCursorState {
+    ZzPosition    position;
+    ZzCursorShape shape    = ZzCursorShape::Block;
+    bool          visible  = true;
+    bool          blinking = true;
+    friend constexpr bool operator==(const ZzCursorState&, const ZzCursorState&) noexcept = default;
+};

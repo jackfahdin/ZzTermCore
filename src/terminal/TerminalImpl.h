@@ -9,6 +9,8 @@
 #include "ZzTerm/Parser.h"
 #include "ZzTerm/Utf8.h"
 
+#include "backend/native/ZzNativeRenderView.h"
+
 class ZzTerminal::Impl {
 public:
     Impl(int cols, int rows, std::size_t scrollbackMaxLines);
@@ -29,7 +31,7 @@ public:
 
     ZzScreen                     screen_;     ///< 工作区（内含 Primary/Alternate）。
     std::unique_ptr<ZzScrollback> scrollback_; ///< 历史后端（接口指针，实现可替换）。
-    ZzRenderView                 renderView_; ///< 渲染边界（借用上两者）。
+    ZzNativeRenderView           renderView_; ///< 渲染边界（借用 screen_）。
     std::string                  title_;      ///< OSC 标题（UTF-8）。
     std::size_t                  scrolledOutPending_ = 0; ///< feed 内滚出行计数（回调聚合用）。
     std::unique_ptr<Sink>       sink_;    ///< 先于 parser_ 声明：析构逆序保证 parser 先销毁。

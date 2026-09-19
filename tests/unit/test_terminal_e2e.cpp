@@ -26,13 +26,13 @@ static std::string screenText(const ZzTerminal& term)
 {
     std::string out;
     for (int row = 0; row < term.size().rows; ++row) {
-        const ZzLine& line = term.renderView().lineAt(row);
+        const ZzLineView line = term.renderView().lineAt(row);
         for (int col = 0; col < line.cellCount(); ++col) {
-            const ZzCell& cell = line.cellAt(col);
-            if (cell.isEmpty())
+            const ZzCellView cell = line.cellAt(col);
+            if (cell.text.empty())
                 out.push_back(' ');
-            else if (!cell.isCluster() && cell.codePoint() < 0x80)
-                out.push_back(static_cast<char>(cell.codePoint()));
+            else if (cell.text.size() == 1)
+                out.push_back(cell.text[0]);
             else
                 out.push_back('?');
         }
@@ -47,12 +47,12 @@ static void testColoredLs()
     ZzTerminal term(20, 5, 100);
     feedStr(term, "\x1b[1;34msrc\x1b[0m/  README.md\r\n");
     ZZ_TEST_EXPECT(screenText(term).substr(0, 20) == "src/  README.md     ");
-    const ZzCell dir = term.renderView().lineAt(0).cellAt(0);
-    ZZ_TEST_EXPECT(dir.attributes().bold());
-    ZZ_TEST_EXPECT(dir.foreground() == ZzColor::Indexed(4));
-    const ZzCell file = term.renderView().lineAt(0).cellAt(7);
-    ZZ_TEST_EXPECT(file.attributes() == ZzCellAttributes{});
-    ZZ_TEST_EXPECT(file.foreground().isDefault());
+    const ZzCellView dir = term.renderView().lineAt(0).cellAt(0);
+    ZZ_TEST_EXPECT(dir.attributes.bold());
+    ZZ_TEST_EXPECT(dir.foreground == ZzColor::Indexed(4));
+    const ZzCellView file = term.renderView().lineAt(0).cellAt(7);
+    ZZ_TEST_EXPECT(file.attributes == ZzCellAttributes{});
+    ZZ_TEST_EXPECT(file.foreground.isDefault());
     ZZ_TEST_EXPECT(term.cursor().position.row == 1);
     ZZ_TEST_EXPECT(term.cursor().position.col == 0);
 }

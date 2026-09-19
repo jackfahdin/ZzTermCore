@@ -73,6 +73,12 @@ target_include_directories(ZzTermCore
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 
+# 内部头（如 backend/native/ZzNativeRenderView.h）供 src/ 内部跨目录引用。
+target_include_directories(ZzTermCore PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+
+# native 后端适配层（src/backend/native/ 为三级深度，src/*/*.cpp GLOB 不覆盖）。
+add_subdirectory(src/backend/native)
+
 # 源文件统一 UTF-8（含中文注释），MSVC 需要 /utf-8 才能正确解析；
 # 公开头文件同样是 UTF-8，因此该选项对下游也生效。
 target_compile_options(ZzTermCore

@@ -91,26 +91,6 @@ void writeFd(int fd, std::string_view data) noexcept
     }
 }
 
-/// char32_t -> UTF-8 追加编码（渲染侧最小实现；码位合法性由 Core 保证）。
-void appendUtf8(std::string& out, char32_t cp)
-{
-    if (cp < 0x80) {
-        out.push_back(static_cast<char>(cp));
-    } else if (cp < 0x800) {
-        out.push_back(static_cast<char>(0xC0 | (cp >> 6)));
-        out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
-    } else if (cp < 0x10000) {
-        out.push_back(static_cast<char>(0xE0 | (cp >> 12)));
-        out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
-        out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
-    } else {
-        out.push_back(static_cast<char>(0xF0 | (cp >> 18)));
-        out.push_back(static_cast<char>(0x80 | ((cp >> 12) & 0x3F)));
-        out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
-        out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
-    }
-}
-
 /// ZzColor -> SGR 参数片段（不含前后缀），isFg 区分前景/背景。
 void appendColorSgr(std::string& out, ZzColor color, bool isFg)
 {
@@ -176,24 +156,18 @@ void renderScreen(const ZzTerminal& term, std::string& out)
     out += "\x1b[H";    // CUP 回原点，全屏覆盖
     PenStyle pen;
     for (int row = 0; row < size.rows; ++row) {
-        const ZzLine& line = view.lineAt(row);
+        const ZzLineView line = view.lineAt(row);
         for (int col = 0; col < size.cols; ++col) {
-            const ZzCell& cell = line.cellAt(col);
-            if (cell.width() == ZzCellWidth::WideContinuation) {
+            const ZzCellView cell = line.cellAt(col);
+            if (cell.width == ZzCellWidth::WideContinuation) {
                 continue; // 宽字符续格不输出（首格已占两列）
             }
-            const PenStyle want{cell.foreground(), cell.background(), cell.attributes()};
+            const PenStyle want{cell.foreground, cell.background, cell.attributes};
             if (!(want == pen)) {
                 appendStyleSgr(out, want);
                 pen = want;
             }
-            if (cell.isCluster()) {
-                out += line.clusterText(cell.clusterIndex());
-            } else if (cell.codePoint() != 0) {
-                appendUtf8(out, cell.codePoint());
-            } else {
-                out += ' ';
-            }
+            out += cell.text.empty() ? " " : cell.text;
         }
         if (row + 1 < size.rows) {
             out += "\r\n";

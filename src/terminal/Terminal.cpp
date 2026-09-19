@@ -30,7 +30,7 @@ struct ZzTerminal::Impl::Sink : ZzParserSink {
 ZzTerminal::Impl::Impl(int cols, int rows, std::size_t scrollbackMaxLines)
     : screen_(cols, rows)
     , scrollback_(zzCreateChunkedScrollback(scrollbackMaxLines))
-    , renderView_(&screen_, scrollback_.get())
+    , renderView_(screen_)
     , sink_(std::make_unique<Sink>(*this))
     , parser_(std::make_unique<ZzVtParser>(sink_.get()))
 {

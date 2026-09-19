@@ -33,7 +33,15 @@ static bool posEq(ZzPosition p, int row, int col)
 
 static char32_t cpAt(const ZzTerminal& term, int row, int col)
 {
-    return term.renderView().lineAt(row).cellAt(col).codePoint();
+    const ZzCellView cell = term.renderView().lineAt(row).cellAt(col);
+    if (cell.text.empty()) return 0;
+    // 解码首码位（本文件断言均为单码位文本）。
+    const auto* p = reinterpret_cast<const unsigned char*>(cell.text.data());
+    if (p[0] < 0x80) return p[0];
+    if ((p[0] & 0xE0) == 0xC0) return ((p[0] & 0x1F) << 6) | (p[1] & 0x3F);
+    if ((p[0] & 0xF0) == 0xE0)
+        return ((p[0] & 0x0F) << 12) | ((p[1] & 0x3F) << 6) | (p[2] & 0x3F);
+    return ((p[0] & 0x07) << 18) | ((p[1] & 0x3F) << 12) | ((p[2] & 0x3F) << 6) | (p[3] & 0x3F);
 }
 
 static void testCupAndHvp()
