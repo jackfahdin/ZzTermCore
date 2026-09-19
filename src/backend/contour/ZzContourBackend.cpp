@@ -58,6 +58,37 @@ std::uint32_t zzFlags(vtbackend::CellFlags flags)
     return out;
 }
 
+// 末尾不构成完整 UTF-8 序列的字节数（0 表示尾部完整或非法）。
+// contour 的 parseBulkText 在整段都是未完成 UTF-8 时会回退 FSM 重放前导字节，
+// 多打 U+FFFD（split feed 场景实测复现），因此在进入 Terminal 前先缓冲尾部残缺序列。
+size_t trailingIncompleteUtf8(std::string_view data)
+{
+    size_t continuationCount = 0;
+    size_t i = data.size();
+    while (i > 0 && continuationCount < 3
+           && (static_cast<std::uint8_t>(data[i - 1]) & 0xC0) == 0x80)
+    {
+        --i;
+        ++continuationCount;
+    }
+    if (i == 0)
+        return 0; // 全是续字节而无前导字节：非法输入，不缓冲
+    auto const lead = static_cast<std::uint8_t>(data[i - 1]);
+    size_t expected = 0;
+    if ((lead & 0x80) == 0)
+        return 0; // 尾部是 ASCII，完整
+    else if ((lead & 0xE0) == 0xC0)
+        expected = 2;
+    else if ((lead & 0xF0) == 0xE0)
+        expected = 3;
+    else if ((lead & 0xF8) == 0xF0)
+        expected = 4;
+    else
+        return 0; // 非法前导字节（含孤立续字节），不缓冲
+    size_t const present = continuationCount + 1;
+    return present < expected ? present : 0;
+}
+
 } // namespace
 
 struct ZzContourBackend::Impl
@@ -90,6 +121,7 @@ struct ZzContourBackend::Impl
     vtbackend::PageSize pageSize;
     ZzContourPtyBridge* bridge = nullptr; // 所有权在 terminal
     std::unique_ptr<vtbackend::Terminal> terminal;
+    std::string pendingUtf8; // 跨 feed 的残缺 UTF-8 尾部，下次 feed 前拼回
 
     Impl(int columns, int rows, ZzContourEvents& events, int scrollbackLines)
         : listener(events)
@@ -123,7 +155,21 @@ ZzContourBackend::~ZzContourBackend() = default;
 
 void ZzContourBackend::feed(std::string_view data)
 {
-    impl_->terminal->writeToScreen(data);
+    std::string joined;
+    if (!impl_->pendingUtf8.empty())
+    {
+        joined = impl_->pendingUtf8 + std::string(data);
+        impl_->pendingUtf8.clear();
+        data = joined;
+    }
+    auto const holdback = trailingIncompleteUtf8(data);
+    if (holdback != 0)
+    {
+        impl_->pendingUtf8 = std::string(data.substr(data.size() - holdback));
+        data.remove_suffix(holdback);
+    }
+    if (!data.empty())
+        impl_->terminal->writeToScreen(data);
 }
 
 void ZzContourBackend::resize(int columns, int rows)

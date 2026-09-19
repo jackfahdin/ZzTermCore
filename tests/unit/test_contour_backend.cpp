@@ -266,6 +266,51 @@ void testLineWrapped()
     ZZ_CHECK(snap.at(1, 0).codepoints == U"a"); // 第 81 个字符绕到第 1 行
 }
 
+// DA 请求（CSI c）→ flushReplies 后经桥收到 VT525 风格响应。
+void testDeviceAttributes()
+{
+    RecordingEvents events;
+    ZzContourBackend backend(80, 24, events);
+    backend.feed("\x1b[c");
+    ZZ_CHECK(events.written.empty()); // 响应先入缓冲，未 flush 不发出
+    backend.flushReplies();
+    ZZ_CHECK(events.written.rfind("\x1b[?65;", 0) == 0); // 前缀匹配（attrs 列表随 Settings 变）
+    ZZ_CHECK(!events.written.empty() && events.written.back() == 'c');
+}
+
+// UTF-8 序列与 CSI 序列跨 feed 拆分，结果与不拆分一致。
+void testChunkBoundaries()
+{
+    RecordingEvents events;
+    ZzContourBackend backend(80, 24, events);
+    backend.feed("\xe4\xb8");   // 「中」的前两个字节
+    backend.feed("\xad");       // 第三个字节
+    backend.feed("\x1b[3");     // CSI 拆分
+    backend.feed("1m");
+    backend.feed("R");
+    auto snap = backend.snapshot();
+    ZZ_CHECK(snap.at(0, 0).codepoints == U"中");
+    ZZ_CHECK(snap.at(0, 2).codepoints == U"R");
+    ZZ_CHECK(snap.at(0, 2).foreground == (ZzColor { ZzColor::Tag::Indexed, 1 }));
+}
+
+// CJK 宽字符：首格 width=2，续格带 WideCharContinuation 标志且无内容。
+void testCjkWideCell()
+{
+    RecordingEvents events;
+    ZzContourBackend backend(80, 24, events);
+    backend.feed("\xe4\xb8\xad"); // 「中」
+    auto snap = backend.snapshot();
+    auto const& head = snap.at(0, 0);
+    ZZ_CHECK(head.codepoints == U"中");
+    ZZ_CHECK(head.width == 2);
+    auto const& cont = snap.at(0, 1);
+    ZZ_CHECK(cont.codepoints.empty());
+    ZZ_CHECK(cont.flags & ZzCellFlag::WideCharContinuation);
+    // 光标停在宽字符之后（第 2 列）。
+    ZZ_CHECK(snap.cursor.has_value() && snap.cursor->column == 2);
+}
+
 } // namespace
 
 int main()
@@ -283,6 +328,9 @@ int main()
     testAltScreen();
     testScrollback();
     testLineWrapped();
+    testDeviceAttributes();
+    testChunkBoundaries();
+    testCjkWideCell();
     if (g_failures != 0)
         std::fprintf(stderr, "test_contour_backend: %d failure(s)\n", g_failures);
     return g_failures == 0 ? 0 : 1;
