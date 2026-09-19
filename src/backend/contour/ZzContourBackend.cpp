@@ -4,6 +4,7 @@
 
 #include <vtbackend/core/CellFlags.hpp>
 #include <vtbackend/core/Color.hpp>
+#include <vtbackend/render/RenderBuffer.hpp>
 #include <vtbackend/screen/Terminal.hpp>
 
 #include <crispy/Environment.hpp>
@@ -66,7 +67,16 @@ struct ZzContourBackend::Impl
     {
     public:
         explicit EventsImpl(Impl& owner) : owner_(owner) {}
-        // 事件转发在任务 4/5 逐个接线；本任务先保证构造/feed/resize/快照可用。
+        void setWindowTitle(std::string_view newTitle) override
+        {
+            owner_.title = std::string(newTitle);
+            owner_.listener.onTitleChanged(std::string(newTitle));
+        }
+        void bell() override { owner_.listener.onBell(); }
+        void screenUpdated() override { owner_.listener.onScreenDirty(); }
+        // 锁内回调（cursorPositionChanged 等）不接线：M1a 无实时渲染方，
+        // 且锁内禁止回读 Terminal；需要时只置标志 defer。
+        // bufferChanged 在任务 5 接线。
     private:
         Impl& owner_;
     };
@@ -193,8 +203,17 @@ ZzContourSnapshot ZzContourBackend::snapshot()
                 out.background = zzColor(cell.backgroundColor());
                 out.flags = zzFlags(cell.flags());
             }
-            // 光标在任务 4 接线。
             snap.cells.push_back(std::move(out));
+        }
+    }
+    impl_->terminal->refreshRenderBuffer();
+    {
+        auto ref = impl_->terminal->renderBuffer(); // RAII 读锁句柄
+        auto const& renderBuffer = ref.get();
+        if (renderBuffer.cursor)
+        {
+            snap.cursor = ZzContourCursor { renderBuffer.cursor->position.line.value,
+                                            renderBuffer.cursor->position.column.value };
         }
     }
     return snap;

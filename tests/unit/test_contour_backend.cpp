@@ -176,6 +176,46 @@ void testBlankLineFillAttrs()
     ZZ_CHECK(cell.foreground == (ZzColor { ZzColor::Tag::Default, 0 }));
 }
 
+// 光标随写入推进；DECTCEM（CSI ?25l/h）控制可见性。
+void testCursor()
+{
+    RecordingEvents events;
+    ZzContourBackend backend(80, 24, events);
+    backend.feed("AB");
+    {
+        auto snap = backend.snapshot();
+        ZZ_CHECK(snap.cursor.has_value());
+        ZZ_CHECK(snap.cursor->line == 0);
+        ZZ_CHECK(snap.cursor->column == 2);
+    }
+    backend.feed("\x1b[?25l"); // 隐藏光标
+    {
+        auto snap = backend.snapshot();
+        ZZ_CHECK(!snap.cursor.has_value());
+    }
+    backend.feed("\x1b[?25h"); // 恢复显示
+    {
+        auto snap = backend.snapshot();
+        ZZ_CHECK(snap.cursor.has_value());
+    }
+}
+
+// OSC title 与 BEL 事件；feed 触发 dirty 信号。
+void testTitleBellDirty()
+{
+    RecordingEvents events;
+    ZzContourBackend backend(80, 24, events);
+    backend.feed("\x1b]0;My Title\x07");
+    ZZ_CHECK(events.title == "My Title");
+    ZZ_CHECK(events.titleCount == 1);
+    ZZ_CHECK(backend.title() == "My Title");
+
+    backend.feed("\x07");
+    ZZ_CHECK(events.bellCount == 1);
+
+    ZZ_CHECK(events.dirtyCount > 0);
+}
+
 } // namespace
 
 int main()
@@ -188,6 +228,8 @@ int main()
     testRgbColor();
     testStyleFlags();
     testBlankLineFillAttrs();
+    testCursor();
+    testTitleBellDirty();
     if (g_failures != 0)
         std::fprintf(stderr, "test_contour_backend: %d failure(s)\n", g_failures);
     return g_failures == 0 ? 0 : 1;
