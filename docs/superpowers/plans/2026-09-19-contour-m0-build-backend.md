@@ -18,7 +18,7 @@
 - vtbackend 需要 5 个 PRIVATE 编译宏（其 CMakeLists:146-152 从顶层变量取值）：`LIBTERMINAL_VERSION_MAJOR/MINOR/PATCH`（取自 `PROJECT_VERSION_*`）、`LIBTERMINAL_VERSION_STRING`（取自 `CONTOUR_VERSION_STRING`）、`LIBTERMINAL_NAME`（取自 `PROJECT_NAME`）。注入这些变量即可，值的内容不影响功能。
 - 裁剪选项：`CONTOUR_TESTING=OFF`（级联关闭 CRISPY/VTPTY/VTPARSER/LIBTERMINAL_TESTING）、`CONTOUR_WITH_UTEMPTER=OFF`（避免链接系统 utempter）。libssh2 由 pkg-config 自动探测，本机无此包即自动禁用，无需处理。
 - 第三方 pin（与 Contour `cmake/ContourThirdParties.cmake` 一致）：GSL `v3.1.0`、libunicode `v0.9.3`（OPTIONS 见任务 2）、boxed-cpp `v1.4.3`、reflection-cpp `v0.4.0`。target 名：`Microsoft.GSL::GSL`、`unicode::unicode`、`boxed-cpp::boxed-cpp`、`reflection-cpp::reflection-cpp`。
-- `vtparser::Parser` 是模板类 `template <ParserEventsConcept EventListener, bool TraceStateChanges = false>`，必须带 listener 构造；喂数据方法为 `void parseFragment(gsl::span<char const>)`。`vtparser::NullParserEvents`（`vtparser/ParserEvents.hpp`）是全部空实现的基类，可直接继承按需 override。bulk 快路径 `print(std::string_view, size_t)` 返回消费的 cell 数，返回 0 会退回逐字符 `print(char32_t)`。
+- `vtparser::Parser` 是模板类 `template <ParserEventsConcept EventListener, bool TraceStateChanges = false>`，必须带 listener 构造；喂数据方法为 `void parseFragment(gsl::span<char const>)`。`vtparser::NullParserEvents`（`vtparser/ParserEvents.hpp`）是全部空实现的基类，可直接继承按需 override。注意（任务 4 实测纠正）：bulk 快路径 `print(std::string_view, size_t)` 的返回值被 parser **忽略**（`Parser-impl.hpp:660`），不会退回逐字符 `print(char32_t)`——ASCII 段只走 bulk 通道，需要文本时必须 override bulk 并自行累积。
 - vtparser/vtbackend/crispy/vtpty 编译无任何代码生成步骤。
 - Doxyfile `INPUT = include docs pty`：`src/` 不被 doxygen 扫描，内部头不影响 doxygen；`include/ZzTerm/Terminal.h` 改动必须保持 doxygen 零 warning。
 
