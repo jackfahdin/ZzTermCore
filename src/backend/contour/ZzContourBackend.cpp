@@ -4,6 +4,7 @@
 
 #include <vtbackend/core/CellFlags.hpp>
 #include <vtbackend/core/Color.hpp>
+#include <vtbackend/grid/CellProxy.hpp>
 #include <vtbackend/render/RenderBuffer.hpp>
 #include <vtbackend/screen/Terminal.hpp>
 
@@ -25,37 +26,41 @@ ZzColor zzColor(vtbackend::Color color)
     {
         case vtbackend::ColorType::RGB: {
             auto const rgb = color.rgb();
-            return { ZzColor::Tag::RGB,
-                     (static_cast<std::uint32_t>(rgb.red) << 16)
-                         | (static_cast<std::uint32_t>(rgb.green) << 8)
-                         | static_cast<std::uint32_t>(rgb.blue) };
+            return ZzColor::Rgb(rgb.red, rgb.green, rgb.blue);
         }
         case vtbackend::ColorType::Indexed:
-            return { ZzColor::Tag::Indexed, color.index() };
+            return ZzColor::Indexed(color.index());
         case vtbackend::ColorType::Bright:
             // 亮 n 号色统一映射为索引 8+n，保留颜色身份。
-            return { ZzColor::Tag::Indexed, static_cast<std::uint32_t>(8 + color.index()) };
+            return ZzColor::Indexed(static_cast<std::uint8_t>(8 + color.index()));
         case vtbackend::ColorType::Default:
-            return { ZzColor::Tag::Default, 0 };
-        case vtbackend::ColorType::Undefined:
+        case vtbackend::ColorType::Undefined: // 无实际消费，统一按默认色
         default:
-            return { ZzColor::Tag::Undefined, 0 };
+            return ZzColor::Default();
     }
 }
 
-std::uint32_t zzFlags(vtbackend::CellFlags flags)
+ZzCellAttributes zzAttributes(vtbackend::CellFlags flags)
 {
-    std::uint32_t out = ZzCellFlag::None;
-    if (flags.contains(vtbackend::CellFlag::Bold)) out |= ZzCellFlag::Bold;
-    if (flags.contains(vtbackend::CellFlag::Faint)) out |= ZzCellFlag::Faint;
-    if (flags.contains(vtbackend::CellFlag::Italic)) out |= ZzCellFlag::Italic;
-    if (flags.contains(vtbackend::CellFlag::Underline)) out |= ZzCellFlag::Underline;
-    if (flags.contains(vtbackend::CellFlag::Blinking)) out |= ZzCellFlag::Blinking;
-    if (flags.contains(vtbackend::CellFlag::Inverse)) out |= ZzCellFlag::Inverse;
-    if (flags.contains(vtbackend::CellFlag::Hidden)) out |= ZzCellFlag::Hidden;
-    if (flags.contains(vtbackend::CellFlag::CrossedOut)) out |= ZzCellFlag::CrossedOut;
-    if (flags.contains(vtbackend::CellFlag::WideCharContinuation)) out |= ZzCellFlag::WideCharContinuation;
+    ZzCellAttributes out;
+    if (flags.contains(vtbackend::CellFlag::Bold)) out.setBold(true);
+    if (flags.contains(vtbackend::CellFlag::Faint)) out.setFaint(true);
+    if (flags.contains(vtbackend::CellFlag::Italic)) out.setItalic(true);
+    if (flags.contains(vtbackend::CellFlag::Underline)) out.setUnderline(ZzUnderlineStyle::Single);
+    if (flags.contains(vtbackend::CellFlag::DoublyUnderlined)) out.setUnderline(ZzUnderlineStyle::Double);
+    if (flags.contains(vtbackend::CellFlag::CurlyUnderlined)) out.setUnderline(ZzUnderlineStyle::Curly);
+    if (flags.contains(vtbackend::CellFlag::Blinking)) out.setBlink(ZzBlinkStyle::Slow);
+    if (flags.contains(vtbackend::CellFlag::Inverse)) out.setInverse(true);
+    if (flags.contains(vtbackend::CellFlag::Hidden)) out.setInvisible(true);
+    if (flags.contains(vtbackend::CellFlag::CrossedOut)) out.setStrikethrough(true);
     return out;
+}
+
+ZzCellWidth zzWidth(const vtbackend::BasicCellProxy<true>& cell) // const 版 CellProxy
+{
+    if (cell.flags().contains(vtbackend::CellFlag::WideCharContinuation))
+        return ZzCellWidth::WideContinuation;
+    return cell.width() == 2 ? ZzCellWidth::WideLead : ZzCellWidth::Narrow;
 }
 
 // 末尾不构成完整 UTF-8 序列的字节数（0 表示尾部完整或非法）。
@@ -235,7 +240,7 @@ ZzContourSnapshot ZzContourBackend::snapshot()
             auto const& fillAttrs = gridLine.storage().fillAttrs;
             ZzContourCell blank;
             blank.background = zzColor(fillAttrs.backgroundColor);
-            blank.flags = zzFlags(fillAttrs.flags);
+            blank.attributes = zzAttributes(fillAttrs.flags);
             for (int col = 0; col < snap.columns; ++col)
                 snap.cells.push_back(blank);
             continue;
@@ -248,10 +253,10 @@ ZzContourSnapshot ZzContourBackend::snapshot()
             {
                 auto const cell = screen.at(vtbackend::LineOffset(line), vtbackend::ColumnOffset(col));
                 out.codepoints = cell.codepoints();
-                out.width = static_cast<int>(cell.width());
+                out.width = zzWidth(cell);
                 out.foreground = zzColor(cell.foregroundColor());
                 out.background = zzColor(cell.backgroundColor());
-                out.flags = zzFlags(cell.flags());
+                out.attributes = zzAttributes(cell.flags());
             }
             snap.cells.push_back(std::move(out));
         }

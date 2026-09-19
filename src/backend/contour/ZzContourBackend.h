@@ -2,6 +2,8 @@
 
 #include "ZzContourEvents.h"
 
+#include <ZzTerm/Cell.h>
+
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -11,55 +13,14 @@
 #include <utility>
 #include <vector>
 
-/// \brief 单元格颜色，保留颜色身份（不预转 RGB）。
-struct ZzColor
-{
-    enum class Tag : std::uint8_t
-    {
-        Undefined, ///< 未设置
-        Default,   ///< 终端默认色
-        Indexed,   ///< 调色板索引（含亮色，亮 n 号色映射为索引 8+n）
-        RGB        ///< 真彩色，value 为 0xRRGGBB
-    };
-    Tag tag = Tag::Default;
-    std::uint32_t value = 0;
-};
-
-inline bool operator==(ZzColor const& a, ZzColor const& b)
-{
-    return a.tag == b.tag && a.value == b.value;
-}
-inline bool operator!=(ZzColor const& a, ZzColor const& b)
-{
-    return !(a == b);
-}
-
-/// \brief 单元格标志位掩码。
-struct ZzCellFlag
-{
-    enum : std::uint32_t
-    {
-        None = 0,
-        Bold = 1u << 0,
-        Faint = 1u << 1,
-        Italic = 1u << 2,
-        Underline = 1u << 3,
-        Blinking = 1u << 4,
-        Inverse = 1u << 5,
-        Hidden = 1u << 6,
-        CrossedOut = 1u << 7,
-        WideCharContinuation = 1u << 8 ///< 宽字符续格（本格无独立内容）
-    };
-};
-
 /// \brief 快照中的单个单元格（拷贝语义，不引用 Terminal 内部）。
 struct ZzContourCell
 {
-    std::u32string codepoints;         ///< 簇内全部 codepoint；续格与空格为空
-    ZzColor foreground;
-    ZzColor background;
-    std::uint32_t flags = ZzCellFlag::None;
-    int width = 1;                     ///< 1 或 2（宽字符首格为 2）
+    std::u32string  codepoints;   ///< 簇内全部 codepoint；续格与空格为空
+    ZzColor         foreground = ZzColor::Default();
+    ZzColor         background = ZzColor::Default();
+    ZzCellAttributes attributes;
+    ZzCellWidth     width      = ZzCellWidth::Narrow; ///< WideLead=宽字符首格；WideContinuation=续格
 };
 
 /// \brief 光标位置（0 起行列）。
