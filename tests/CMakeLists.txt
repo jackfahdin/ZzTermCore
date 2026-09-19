@@ -11,7 +11,8 @@ file(GLOB ZZTERM_UNIT_TEST_SOURCES CONFIGURE_DEPENDS
 list(REMOVE_ITEM ZZTERM_UNIT_TEST_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_contour_smoke.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_contour_backend.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_contour_adapter.cpp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_contour_adapter.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_backend_compat.cpp")
 
 foreach(test_source IN LISTS ZZTERM_UNIT_TEST_SOURCES)
     get_filename_component(test_name "${test_source}" NAME_WE)
@@ -52,6 +53,14 @@ if(TARGET ZzTermContourBackend)
     add_executable(test_contour_adapter unit/test_contour_adapter.cpp)
     target_link_libraries(test_contour_adapter PRIVATE ZzTermContourBackend ZzTermCore) # Contour target 一律 PRIVATE
     add_test(NAME test_contour_adapter COMMAND test_contour_adapter)
+endif()
+
+# M1b：双后端对照测试，同一 VT 序列喂 Native/Contour 逐格比对（native 为基准）。
+# 只碰公开头（C++20 即可），仅链接 ZzTermCore。
+if(TARGET ZzTermContourBackend)
+    add_executable(test_backend_compat unit/test_backend_compat.cpp)
+    target_link_libraries(test_backend_compat PRIVATE ZzTermCore)
+    add_test(NAME test_backend_compat COMMAND test_backend_compat)
 endif()
 
 # 脚本化冒烟：PTY 驱动 Core 全链路——真实 bash 输出经 ZzTerminal 渲染回 stdout，
