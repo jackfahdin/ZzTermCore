@@ -44,3 +44,46 @@ target_include_directories(contour_tracy SYSTEM INTERFACE
 # --- 裁剪选项（作用于后续 add_subdirectory 的 Contour 子目录） ---
 set(CONTOUR_TESTING OFF)          # 级联关闭 CRISPY_/VTPTY_/VTPARSER_/LIBTERMINAL_TESTING
 set(CONTOUR_WITH_UTEMPTER OFF)    # 避免 Linux 下链接系统 utempter
+
+# --- Contour 版本（供 vtbackend 的 LIBTERMINAL_VERSION_* 编译宏） ---
+# 从 submodule 的 metainfo.xml 解析最新 release 版本；失败回退 0.0.0。
+set(ZZTERM_CONTOUR_VERSION "0.0.0")
+if(EXISTS "${ZZTERM_CONTOUR_ROOT}/metainfo.xml")
+    file(READ "${ZZTERM_CONTOUR_ROOT}/metainfo.xml" _zz_metainfo)
+    string(REGEX MATCH "version=\"([0-9]+\\.[0-9]+\\.[0-9]+)" _zz_vm "${_zz_metainfo}")
+    if(CMAKE_MATCH_1)
+        set(ZZTERM_CONTOUR_VERSION "${CMAKE_MATCH_1}")
+    endif()
+endif()
+string(REGEX MATCH "^([0-9]+)\\.([0-9]+)\\.([0-9]+)" _zz_vp "${ZZTERM_CONTOUR_VERSION}")
+set(ZZTERM_CONTOUR_VERSION_MAJOR "${CMAKE_MATCH_1}")
+set(ZZTERM_CONTOUR_VERSION_MINOR "${CMAKE_MATCH_2}")
+set(ZZTERM_CONTOUR_VERSION_PATCH "${CMAKE_MATCH_3}")
+message(STATUS "Contour backend version: ${ZZTERM_CONTOUR_VERSION} (pinned commit 6777ff05)")
+
+# --- 聚合：目录/函数作用域变量注入，顶替 Contour 顶层 project() 的角色 ---
+# Contour 四个子目录的 CMakeLists 没有自己的 project()，会读取
+# PROJECT_SOURCE_DIR（include 根 ${PROJECT_SOURCE_DIR}/src）、PROJECT_VERSION_*、
+# PROJECT_NAME、CONTOUR_VERSION_STRING。函数作用域内 set 的变量会传入
+# add_subdirectory 的子目录，从而实现零 patch。该注入依赖 Contour 子目录
+# CMake 的当前假设（共约 8 行耦合），Contour 升级时由 smoke/regression 兜底。
+function(zzterm_add_contour_backend)
+    set(PROJECT_SOURCE_DIR "${ZZTERM_CONTOUR_ROOT}")
+    set(PROJECT_NAME "contour")
+    set(PROJECT_VERSION_MAJOR "${ZZTERM_CONTOUR_VERSION_MAJOR}")
+    set(PROJECT_VERSION_MINOR "${ZZTERM_CONTOUR_VERSION_MINOR}")
+    set(PROJECT_VERSION_PATCH "${ZZTERM_CONTOUR_VERSION_PATCH}")
+    set(CONTOUR_VERSION_STRING "${ZZTERM_CONTOUR_VERSION}")
+    # C++23 仅限 Contour 四个子目录的 target；ZzTermCore 自身保持 C++20。
+    set(CMAKE_CXX_STANDARD 23)
+    # 与 Contour 顶层 CMakeLists.txt:82 一致：crispy-core 假定 Threads::Threads 已由顶层提供。
+    find_package(Threads)
+    add_subdirectory("${ZZTERM_CONTOUR_ROOT}/src/crispy"   "${CMAKE_BINARY_DIR}/contour/crispy")
+    add_subdirectory("${ZZTERM_CONTOUR_ROOT}/src/vtpty"    "${CMAKE_BINARY_DIR}/contour/vtpty")
+    add_subdirectory("${ZZTERM_CONTOUR_ROOT}/src/vtparser" "${CMAKE_BINARY_DIR}/contour/vtparser")
+    add_subdirectory("${ZZTERM_CONTOUR_ROOT}/src/vtbackend" "${CMAKE_BINARY_DIR}/contour/vtbackend")
+endfunction()
+zzterm_add_contour_backend()
+
+# Contour targets 只允许被 PRIVATE 链接（Architecture-v2.md §7）；本里程碑的
+# 唯一消费方是 test_contour_smoke（任务 4），M1 的 ZzContourBackend 同样 PRIVATE。
