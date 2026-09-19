@@ -1,5 +1,5 @@
 # ZzTermCore 根构建脚本
-# 布局约定见 docs/Architecture.md 第 3、4 节：
+# 布局约定见 docs/Architecture.md 第 3、4 节（v1 文档；现行设计见 docs/Architecture-v2.md）：
 #   - include/ZzTerm/*.h   公开头文件
 #   - src/*/*.cpp          Core 实现（parser/unicode/screen/history/input/terminal）
 #   - tests/unit/*.cpp     单元测试（见 tests/CMakeLists.txt）
