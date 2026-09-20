@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <string>
 
 #include "ZzNativeBackend.h"
 
@@ -141,6 +142,21 @@ void ZzNativeBackend::dispatchCsi(const ZzParamSequence& seq)
     case 'T': // SD
         screen_.scrollDown(paramOr(seq, 0, 1), eraseFill());
         break;
+    case 'c': // DA1：省略/0 参数应答 VT102 级最小集（xterm 兼容）；回传不标脏
+        if (paramOr(seq, 0, 0) == 0)
+            emit("\x1B[?1;2c");
+        return;
+    case 'n': { // DSR：5=就绪；6=CPR（真实光标位置，1 起始）；其余安全忽略
+        const int p = paramOr(seq, 0, 0);
+        if (p == 5) {
+            emit("\x1B[0n");
+        } else if (p == 6) {
+            const std::string cpr = "\x1B[" + std::to_string(cur.row + 1) + ";"
+                                  + std::to_string(cur.col + 1) + "R";
+            emit(cpr);
+        }
+        return;
+    }
     case 'm':
         sgr(seq); // 任务 6 实现
         break;
