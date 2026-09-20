@@ -89,7 +89,7 @@ static void testCsiSaveRestore()
 static void testPrivateMarkerIgnored()
 {
     ZzTerminal term(10, 4, ZzBackendKind::Native, 100);
-    feedStr(term, "\x1b[?25l");       // DEC 私有模式：M3 范围，安全忽略
+    feedStr(term, "\x1b[?1000l");     // DEC 私有模式（鼠标上报）：M3 范围，安全忽略
     ZZ_TEST_EXPECT(term.cursor().visible); // 不受影响
 }
 

@@ -4,7 +4,12 @@
 
 用法：verify_smoke.py <ZzTermSmoke 路径> [工作目录（默认 /tmp/zz-smoke-verify）] [backend（默认 contour）]
 依赖：python3 + pexpect + pyte（pip install pexpect pyte）。
-退出码：0 全部通过；1 有失败断言；2 脚本自身异常。"""
+退出码：0 全部通过；1 有失败断言；2 脚本自身异常。
+
+M2 追加：CJK 混排格位、1049 备用屏裸序列进出、DECTCEM ?25 端到端断言。
+Core 层同语义另有双后端逐格强对照（tests/unit/test_backend_compat.cpp 的
+testCjkWide / testAltScreen / testCursorVisibility），此处走真实 PTY + bash，
+两层互补不重复。"""
 import os
 import sys
 import time
@@ -126,23 +131,75 @@ def main():
     snap = snapshot(screen, "after-resize")
     check("20 100" in screen_text(screen), "5.SIGWINCH同步", f"(快照 {snap})")
 
-    # 6. less：打开长文件、翻页、退出
+    # 6. CJK 混排：宽字符格位断言（pyte 与 Core 同按 UAX #11 解释宽度）
+    child.sendline("printf 'AB中文C-zz\\n'")
+    settle(child, stream)
+    snap = snapshot(screen, "cjk-mixed")
+    check("AB中文C-zz" in screen_text(screen), "6.CJK混排可见", f"(快照 {snap})")
+    # 格位：中/文 各占 2 列，命中行内应为 A B 中 _ 文 _ C - z z
+    row_cols = None
+    for r, line in screen.buffer.items():
+        cols = {c: ch.data for c, ch in line.items()}
+        for c, d in cols.items():
+            if d == "中" and cols.get(c - 2) == "A" and cols.get(c - 1) == "B":
+                row_cols = cols
+                break
+        if row_cols is not None:
+            break
+    ok_cells = False
+    if row_cols is not None:
+        c = next(cc for cc, d in row_cols.items() if d == "中")
+        ok_cells = (row_cols.get(c + 2) == "文" and row_cols.get(c + 4) == "C"
+                    and row_cols.get(c + 5) == "-")
+    check(ok_cells, "6.CJK格位(宽2列)", f"命中列 {c if row_cols else None}")
+
+    # 7. DECTCEM：Core 上报真实 cursor().visible，demo 重绘据此决定是否发 ?25h，
+    # pyte 光标 hidden 状态即端到端证据。
+    # 注意须排在任何 1049 之前：Contour 自 1049h 起 RenderBuffer 不再上报光标
+    #（visible 恒 false，?25h 亦不复现，compat testAltScreen 钉住的上游分歧），
+    # 1049 之后再断言 ?25h 恢复会对 Contour 误报失败。
+    child.sendline("printf '\\e[?25l'")
+    settle(child, stream)
+    check(screen.cursor.hidden, "7.光标隐藏(?25l)")
+    child.sendline("printf '\\e[?25h'")
+    settle(child, stream)
+    check(not screen.cursor.hidden, "7.光标恢复(?25h)")
+
+    # 8. 1049 备用屏裸序列进出：主屏标记 -> 1049h -> alt 写标记 -> 1049l -> 主屏恢复
+    child.sendline("printf 'zzMAIN-\\e[?1049h'")
+    settle(child, stream)
+    child.sendline("printf 'zzALT-IN'")  # 落在备用屏
+    settle(child, stream)
+    snap = snapshot(screen, "alt-1049")
+    check("zzALT-IN" in screen_text(screen), "8.备用屏写入(1049h)", f"(快照 {snap})")
+    child.sendline("printf '\\e[?1049l\\n'")
+    settle(child, stream)
+    snap = snapshot(screen, "alt-1049-exit")
+    txt = screen_text(screen)
+    check("zzMAIN-" in txt and "zzALT-IN" not in txt, "8.主屏恢复(1049l)", f"(快照 {snap})")
+
+    # 9. less：打开长文件、翻页、退出；less 的 smcup/rmcup 即 1049h/1049l，
+    # 退出后主屏标记应随 1049l 恢复
+    child.sendline("echo zz-main-mark-1049")
+    settle(child, stream)
     child.sendline("less lines.txt")
     settle(child, stream)
     snap = snapshot(screen, "less-open")
-    check("line-01" in screen_text(screen), "6.less打开", f"(快照 {snap})")
+    check("line-01" in screen_text(screen), "9.less打开", f"(快照 {snap})")
     child.send(" ")  # 翻页
     settle(child, stream)
     snap = snapshot(screen, "less-page2")
     check("line-20" in screen_text(screen) or "line-19" in screen_text(screen),
-          "6.less翻页", f"(快照 {snap})")
+          "9.less翻页", f"(快照 {snap})")
     child.send("q")
     settle(child, stream)
     snap = snapshot(screen, "less-quit")
     check("lines.txt" not in screen_text(screen) or "$" in screen_text(screen),
-          "6.less退出回提示符", f"(快照 {snap})")
+          "9.less退出回提示符", f"(快照 {snap})")
+    check("zz-main-mark-1049" in screen_text(screen), "9.less退出主屏恢复(1049)",
+          f"(快照 {snap})")
 
-    # 7. vim：打开、插入、保存退出
+    # 10. vim：打开、插入、保存退出
     vim_path = os.path.join(PLAY, "vim-test.txt")
     if os.path.exists(vim_path):
         os.remove(vim_path)  # 可重复运行：避免上次内容干扰
@@ -150,7 +207,7 @@ def main():
     settle(child, stream, quiet=1.0)
     snap = snapshot(screen, "vim-open")
     txt = screen_text(screen)
-    check("~" in txt or "vim-test.txt" in txt, "7.vim打开", f"(快照 {snap})")
+    check("~" in txt or "vim-test.txt" in txt, "10.vim打开", f"(快照 {snap})")
     child.send("i")
     child.send("zz-vim-content")
     time.sleep(0.3)
@@ -161,10 +218,10 @@ def main():
     snap = snapshot(screen, "vim-quit")
     ok_file = os.path.exists(vim_path)
     content = open(vim_path).read() if ok_file else ""
-    check(ok_file and "zz-vim-content" in content, "7.vim写入并退出",
+    check(ok_file and "zz-vim-content" in content, "10.vim写入并退出",
           f"文件内容 {content!r} (快照 {snap})")
 
-    # 8. Ctrl+C：中断 sleep，提示符恢复
+    # 11. Ctrl+C：中断 sleep，提示符恢复
     child.sendline("sleep 100")
     time.sleep(0.5)
     settle(child, stream)
@@ -173,16 +230,16 @@ def main():
     child.sendline("echo zz-after-ctrlc")
     settle(child, stream)
     snap = snapshot(screen, "ctrl-c")
-    check("zz-after-ctrlc" in screen_text(screen), "8.Ctrl+C中断恢复", f"(快照 {snap})")
+    check("zz-after-ctrlc" in screen_text(screen), "11.Ctrl+C中断恢复", f"(快照 {snap})")
 
-    # 9. exit：demo 应以子进程退出码 0 退出
+    # 12. exit：demo 应以子进程退出码 0 退出
     child.sendline("exit")
     try:
         child.expect(pexpect.EOF, timeout=10)
     except pexpect.TIMEOUT:
         pass
     child.close()
-    check(child.exitstatus == 0, "9.exit干净退出", f"exitstatus={child.exitstatus}")
+    check(child.exitstatus == 0, "12.exit干净退出", f"exitstatus={child.exitstatus}")
 
     rawlog.close()
     print(f"\n原始字节日志: {OUT}/raw.log")

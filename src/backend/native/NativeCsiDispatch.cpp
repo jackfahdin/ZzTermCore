@@ -3,11 +3,11 @@
 #include "ZzNativeBackend.h"
 
 // CSI 语义（ZzNativeBackend 方法，分文件实现以控制单文件规模）。
-// 约定：参数省略（kOmitted）或 <= 0 一律回退默认值；数值钳到网格范围；
-// DEC 私有序列（privateMarker != 0）与带 intermediate 的序列本文件安全忽略：
-// 备用屏幕（1049/1047/1048）、DECAWM（?7）、DECTCEM（?25）属 M2，
-// 其余 DEC 私有模式（mouse/bracketed paste 等）与 intermediate 序列属 M3
-//（里程碑划分见 Architecture.md 第 19 节）。
+// 约定：参数省略（kOmitted）或 <= 0 一律回退默认值；数值钳到网格范围。
+// DEC 私有序列（privateMarker == '?'）走 dispatchDecPrivate：M2 已交付
+// 备用屏幕（1049/1047/1048）、DECAWM（?7）、DECTCEM（?25）；其余 DEC
+// 私有模式（mouse/bracketed paste 等）与 intermediate 序列安全忽略，属
+// M3（里程碑划分见 Architecture.md 第 19 节）。
 
 namespace {
 
@@ -24,8 +24,13 @@ int paramOr(const ZzParamSequence& seq, std::size_t i, int fallback)
 
 void ZzNativeBackend::dispatchCsi(const ZzParamSequence& seq)
 {
+    if (seq.privateMarker == '?') {
+        if (seq.intermediates.empty())
+            dispatchDecPrivate(seq);
+        return; // 带 intermediate 的 DEC 私有：安全忽略（M3）
+    }
     if (seq.privateMarker != 0 || !seq.intermediates.empty())
-        return; // DEC 私有 / intermediate 序列：安全忽略（M2/M3 处理，见文件头注释）
+        return; // 其余私有 / intermediate 序列：安全忽略（M3，见文件头注释）
 
     const ZzSize sz = screen_.size();
     const ZzCellRange region = screen_.scrollRegionRows();
@@ -90,6 +95,10 @@ void ZzNativeBackend::dispatchCsi(const ZzParamSequence& seq)
     case 's': // SCOSC（无左右边距模式时 CSI s = 保存光标）
         screen_.saveCursor();
         break;
+    case 'r': // DECSTBM：滚动区（1 起始，含端点；省略回退边界）。
+              // 非法参数由 ZzScreen::setScrollRegion 复位为全屏。
+        screen_.setScrollRegion(paramOr(seq, 0, 1) - 1, paramOr(seq, 1, sz.rows) - 1);
+        break;
     case 'u': // SCORC
         screen_.restoreCursor();
         break;
@@ -138,5 +147,81 @@ void ZzNativeBackend::dispatchCsi(const ZzParamSequence& seq)
     default:
         return; // 未知 final 安全忽略（不标脏）
     }
+    noteScreenDirty();
+}
+
+void ZzNativeBackend::dispatchDecPrivate(const ZzParamSequence& seq)
+{
+    const bool set = (seq.final == 'h');
+    if (!set && seq.final != 'l')
+        return; // DEC 私有非 h/l final：安全忽略
+    // CSI ? Pm h/l 可携带多个模式参数，逐个应用（如 ESC[?1049;25h）。
+    for (const std::int32_t p : seq.params) {
+        if (p == ZzParamSequence::kOmitted || p <= 0)
+            continue;
+        switch (static_cast<int>(p)) {
+        case 7: // DECAWM 自动换行（默认开）
+            screen_.setAutoWrapMode(set);
+            break;
+        case 25: { // DECTCEM 光标可见性（形状/闪烁位不动）
+            const ZzCursorState cur = screen_.cursor();
+            screen_.setCursorStyle(cur.shape, set, cur.blinking);
+            break;
+        }
+        case 1047: // 使用备用屏幕（进入清屏），不动光标保存
+            if (set)
+                switchToAlternate(false);
+            else
+                switchToPrimary(false);
+            break;
+        case 1048: // 仅保存/恢复光标
+            if (set)
+                screen_.saveCursor();
+            else
+                screen_.restoreCursor();
+            break;
+        case 1049: // = 1048（保存光标）+ 1047（切 alt 清屏）；退出恢复光标
+            if (set)
+                switchToAlternate(true);
+            else
+                switchToPrimary(true);
+            break;
+        default:
+            continue; // 其余 DEC 私有模式：M3，安全忽略（不标脏）
+        }
+        noteScreenDirty();
+    }
+}
+
+void ZzNativeBackend::switchToAlternate(bool saveCur)
+{
+    if (saveCur)
+        screen_.saveCursor();
+    if (screen_.activeBuffer() != ZzScreenBuffer::Alternate) {
+        // 保存主屏滚动区；alt 期间复位为全屏（xterm 语义），回主屏时恢复。
+        const ZzCellRange r = screen_.scrollRegionRows();
+        savedScrollTop_ = r.startCol;
+        savedScrollBottom_ = r.endCol - 1;
+        hasSavedScrollRegion_ = true;
+        screen_.setActiveBuffer(ZzScreenBuffer::Alternate);
+        screen_.resetScrollRegion();
+    }
+    // xterm：1049h/1047h 进入 alt 均清全屏；alt 光标为该 buffer 自存位置
+    // （初次进入即原点），eraseInDisplay 不动光标。
+    screen_.eraseInDisplay(ZzEraseMode::All, eraseFill());
+    noteScreenDirty();
+}
+
+void ZzNativeBackend::switchToPrimary(bool restoreCur)
+{
+    if (screen_.activeBuffer() == ZzScreenBuffer::Primary)
+        return; // 幂等
+    screen_.setActiveBuffer(ZzScreenBuffer::Primary);
+    if (hasSavedScrollRegion_) {
+        screen_.setScrollRegion(savedScrollTop_, savedScrollBottom_);
+        hasSavedScrollRegion_ = false;
+    }
+    if (restoreCur)
+        screen_.restoreCursor();
     noteScreenDirty();
 }

@@ -45,6 +45,7 @@ public:
     {
         outputHandlerSet = static_cast<bool>(handler);
     }
+    void setAmbiguousWidthMode(bool) noexcept override {}
 
     std::size_t fedBytes = 0;
     bool outputHandlerSet = false;

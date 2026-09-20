@@ -45,6 +45,11 @@ parser/screen/scrollback 等引擎组件归各后端实现持有，`ZzTerminal`
   并恢复，feed 不抛异常。
 - `setOutputHandler` 设置终端回传字节通道（DA 响应、光标上报等）；
   Contour 后端有效，native 暂不回传。
+- `setAmbiguousWidthMode(bool)` 设置 Ambiguous 宽度模式（UAX #11
+  A 类别码位列宽）：true 按 2 列（CJK 环境）、false 按 1 列
+  （xterm 默认，构造初值）。仅 native 后端生效，Contour 无对应
+  配置项、调用为空操作（适配层注释钉住的已知分歧）；设置对其后
+  的 feed 生效，已落格内容不 retroactive 重排。
 - `screen()` 与 `scrollback()` 为 Core 内部协作口（可变访问工作区/
   历史后端），仅 Native 后端可用、不带 noexcept，Contour 后端调用
   抛 `std::logic_error`。
@@ -61,7 +66,14 @@ Native 引擎已落地语义：
 
 - print 采用 pending-wrap 语义：字符写满行尾后不立即换行，置位
   wrap-pending；下一个可打印字符到达时才执行换行（滚屏在此时发生），
-  保证行尾字符不被提前挤出且 autowrap 行为与 xterm 一致。
+  保证行尾字符不被提前挤出且 autowrap 行为与 xterm 一致。M2 起
+  wrap-pending 对齐 xterm 无条件置位模型：写满右边距即置位、与
+  DECAWM 开关无关，消费时按当时的 DECAWM 状态决定是否换行
+  （DECAWM 关闭时后续字符覆写最后一格）。
+- 宽字符落格（M2）：print 通路按 `zzCellWidthOf` 取码位列宽，
+  W/F 类别占双格（首格 WideLead、续格 WideContinuation，续格不
+  单独渲染）；行尾仅剩一格放不下宽字符时先换行再落格；覆写宽
+  字符半格时清理另一侧配对格，不残留半格。
 - SGR 画笔模型：引擎持有当前画笔（属性位 + 前景/背景色），
   SGR 序列只改画笔，print 时把画笔快照写入单元格；支持 Reset、
   Bold/Faint/Italic/Blink/Inverse/Invisible/Strikethrough、
@@ -70,8 +82,18 @@ Native 引擎已落地语义：
   变化在 `ZzTermChanges::titleChanged` 中上报；DCS 载荷安全忽略。
 - C0/C1 控制（BEL/BS/HT/LF/VT/FF/CR、IND/NEL/RI/HTS）、CSI 光标移动
   （CUU/CUD/CUF/CUB、CNL/CPL、CHA/VPA、CUP/HVP、Save/Restore）、
-  擦除/插删/滚动（ED/EL/ECH/ICH/DCH/IL/DL/SU/SD）均已接入；
+  擦除/插删/滚动（ED/EL/ECH/ICH/DCH/IL/DL/SU/SD）与 DECSTBM
+  （CSI r 滚动区）均已接入；
   逐项覆盖见 `docs/VT-Xterm-Checklist.md`。
+- DEC 私有模式（M2）：1049/1047/1048 备用屏幕切换（1049 取 xterm
+  语义，即 1048 保存光标加 1047 切屏，退出时恢复主屏内容、光标
+  与滚动区）、DECAWM `?7`（自动换行）、DECTCEM `?25`（光标可见性）
+  已接入 native；`isAlternateScreen()` 与 `cursor().visible` 对
+  native 上报真实值。已知差异：native 进入 alt 后光标取 alt
+  缓冲区自存位置（首次进入即原点 (0,0)），xterm 则保持主屏光标
+  位置不动——真实应用进 alt 后均自行定位光标，此为规格 4.3 的
+  有意简化。其余 DEC 私有模式（鼠标、bracketed paste 等）
+  安全忽略，属 M3。
 
 ### Parser（UTF-8 / VT / xterm）
 
@@ -85,7 +107,17 @@ CSI Entry/Param/Intermediate、OSC String、DCS Entry/Data。
 分片 UTF-8、East Asian Width、combining mark、variation selector、
 emoji/ZWJ grapheme。禁止假设 1 code point == 1 cell。
 
-> 随实现补充。
+- `zzCellWidthOf(char32_t cp, bool ambiguousWide = false)`
+  （`ZzTerm/UnicodeWidth.h`）返回单码位单元格宽度（1 或 2 列，
+  UAX #11）：W/F 类别 2 列；Ambiguous 由 `ambiguousWide` 决定
+  （true 2 列、默认 false 1 列，xterm 兼容）；其余码位（含未
+  列出、combining、控制区间）1 列，越界码位防御性返回 1。
+  实现为 `constexpr` 二分查找紧凑区间表。
+- 宽度数据内嵌为 303 个 EAW 区间（`ZzTerm/detail/UnicodeWidthData.inc`），
+  由 `scripts/gen_unicode_width.py` 从 Unicode 官方 16.0.0 钉版
+  数据生成，不依赖系统 wcwidth(3)；更新须重跑脚本而非手改。
+- grapheme 聚簇（combining/VS/emoji/ZWJ，UAX #29）在本接口之上
+  分层实现，属 M3；当前每码位独立落格。
 
 ### Screen / Cell / Line
 

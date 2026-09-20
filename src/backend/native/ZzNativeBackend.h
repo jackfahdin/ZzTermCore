@@ -26,6 +26,7 @@ public:
     [[nodiscard]] const std::string& title() const noexcept override;
     void clearDirty() noexcept override;
     void setOutputHandler(std::function<void(std::string_view)> handler) override;
+    void setAmbiguousWidthMode(bool wide) noexcept override;
 
     // ---- facade 的 screen()/scrollback() 委托用（Native 限定访问） ----
     [[nodiscard]] ZzScreen& screen() noexcept { return screen_; }
@@ -39,7 +40,12 @@ public:
     void dispatchEsc(std::string_view intermediates, char final);
     void dispatchOsc(std::string_view payload);
     void sgr(const ZzParamSequence& seq);
+    void dispatchDecPrivate(const ZzParamSequence& seq); // DEC 私有 CSI（? 前缀）
+    void switchToAlternate(bool saveCursor); // 1049h/1047h 进入备用屏幕
+    void switchToPrimary(bool restoreCursor); // 1049l/1047l 退回主屏幕
     [[nodiscard]] ZzCell eraseFill() const noexcept;
+    /// 覆写一致性：pos 覆盖既有宽字符任一半时，另一半清为空格（保留被清格背景）。
+    void clearWidePairAt(ZzPosition pos) noexcept;
     void noteScreenDirty() noexcept;
 
     struct Sink; // 嵌套类：ZzParserSink 实现，定义在 ZzNativeBackend.cpp。
@@ -49,6 +55,9 @@ public:
     ZzNativeRenderView           renderView_; ///< 渲染边界（借用 screen_）。
     std::string                  title_;      ///< OSC 标题（UTF-8）。
     std::size_t                  scrolledOutPending_ = 0; ///< feed 内滚出行计数（回调聚合用）。
+    int  savedScrollTop_ = 0;    ///< 切 Alternate 时保存的主屏滚动区上沿（0 起始）。
+    int  savedScrollBottom_ = 0; ///< 切 Alternate 时保存的主屏滚动区下沿（0 起始，含）。
+    bool hasSavedScrollRegion_ = false; ///< 是否有待恢复的滚动区。
     std::unique_ptr<Sink>       sink_;    ///< 先于 parser_ 声明：析构逆序保证 parser 先销毁。
     std::unique_ptr<ZzVtParser> parser_;  ///< VT 解析器（语法 dispatch）。
     ZzUtf8Decoder               utf8_;    ///< print 通道 UTF-8 增量解码。
@@ -56,4 +65,5 @@ public:
     ZzColor penFg_ = ZzColor::Default();  ///< 当前画笔前景色。
     ZzColor penBg_ = ZzColor::Default();  ///< 当前画笔背景色。
     ZzTermChanges* activeChanges_ = nullptr; ///< feed 期间的变化聚合目标。
+    bool ambiguousWide_ = false; ///< Ambiguous 按 2 列（CJK 模式）。
 };

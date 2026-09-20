@@ -33,4 +33,6 @@ public:
     virtual void clearDirty() noexcept = 0;
     /// \brief 设置终端回传字节（DA 响应、光标上报等）的输出通道；native 暂为空实现。
     virtual void setOutputHandler(std::function<void(std::string_view)> handler) = 0;
+    /// Ambiguous 宽度模式（true=CJK 按 2 列）；Contour 无对应配置，空操作。
+    virtual void setAmbiguousWidthMode(bool wide) noexcept = 0;
 };

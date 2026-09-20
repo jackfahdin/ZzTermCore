@@ -73,6 +73,11 @@ public:
     {
         outputHandler_ = std::move(handler);
     }
+    void setAmbiguousWidthMode(bool /*wide*/) noexcept override
+    {
+        // Contour 未暴露 ambiguous 宽度配置：空操作（已知分歧，规格 4.1 钉住；
+        // compat 测试不含 Ambiguous 维度对照）。
+    }
 
 private:
     // ZzContourEvents 实现：锁内回调（title/bell/altBuffer）只写 adapter 自有状态

@@ -94,60 +94,36 @@ void testStyles()
              == ZzUnderlineStyle::Single);
 }
 
-// 5. CJK 宽字符。差异研判（b 类，两后端真实语义分歧，非转换层 bug）：
-// native 的 zzCellWidthOf 是 M1 占位实现、恒返回窄（UnicodeWidth.h 明确真实
-// East Asian Width 区间表属 M2），故 "中" 按 Narrow 落格 0、"A" 落格 1；
-// Contour vtbackend 有真实 UAX #11 宽度：WideLead / WideContinuation / "A"。
-// 按规则 (b) 分别断言各自语义；M2 接入真实宽度表后本用例应恢复逐格对照。
+// 5. CJK 宽字符（M2：两后端均为真实 UAX #11 宽度，恢复逐格强对照）。
+// 样例码位取两后端 Unicode 数据中稳定为宽的常用 CJK 区间，规避版本漂移。
 void testCjkWide()
 {
     Dual d;
-    d.feedBoth("\xE4\xB8\xAD" "A"); // "中A"
-    // native：M1 占位宽度表（恒窄）
-    ZZ_CHECK(d.native.renderView().lineAt(0).cellAt(0).text == "\xE4\xB8\xAD");
-    ZZ_CHECK(d.native.renderView().lineAt(0).cellAt(0).width == ZzCellWidth::Narrow);
-    ZZ_CHECK(d.native.renderView().lineAt(0).cellAt(1).text == "A");
-    ZZ_CHECK(d.native.renderView().lineAt(0).cellAt(1).width == ZzCellWidth::Narrow);
-    // Contour：真实 UAX #11 宽度
-    ZZ_CHECK(d.contour.renderView().lineAt(0).cellAt(0).text == "\xE4\xB8\xAD");
-    ZZ_CHECK(d.contour.renderView().lineAt(0).cellAt(0).width == ZzCellWidth::WideLead);
-    ZZ_CHECK(d.contour.renderView().lineAt(0).cellAt(1).width == ZzCellWidth::WideContinuation);
-    ZZ_CHECK(d.contour.renderView().lineAt(0).cellAt(1).text.empty());
-    ZZ_CHECK(d.contour.renderView().lineAt(0).cellAt(2).text == "A");
-    ZZ_CHECK(d.contour.renderView().lineAt(0).cellAt(2).width == ZzCellWidth::Narrow);
+    d.feedBoth("\xE4\xB8\xAD" "A" "\xE4\xB8\x96"); // "中A世"
+    checkRowEqual(d.native, d.contour, 0, 5, "cjk-wide");
+    ZZ_CHECK(d.native.cursor().position == d.contour.cursor().position);
 }
 
-// 6. Alternate Screen。差异研判（b 类，两后端真实语义分歧，非转换层 bug）：
-// native 的 dispatchCsi 明确忽略全部 DEC 私有 CSI（备用屏幕 1049/1047/1048 属
-// M2，见 NativeCsiDispatch.cpp 文件头注释），故 isAlternateScreen 恒 false，
-// "ALT" 直接续写在主屏行 0（"MAINALT"），1049l 亦为无操作；
-// Contour 实现完整 1049 语义：切 alt 清屏写 ALT，退出时主屏 "MAIN" 恢复。
-// 按规则 (b) 分别断言各自语义；M2 native 支持备用屏幕后应恢复逐格对照。
+// 6. Alternate Screen（M2：两后端均实现 1049，内容恢复逐格强对照）。
+// 光标断言为 b 类分别断言（两后端真实语义分歧，非转换层 bug，钉住不强行对齐）：
+// xterm 语义 1049 = 1048 + 1047，1049l 恢复 1049h 保存的光标，native 对齐
+// xterm 得 (0,4)；Contour 经 RenderBuffer 上报光标，实测自 1049h 起即不再上报
+// （visible=false，position 为占位 (0,0)，?25h 亦不复现），属上游渲染光标
+// 可见性条件差异（contour Terminal.cpp fillRenderBufferInternal 的页耦合判定）。
 void testAltScreen()
 {
     Dual d;
     d.feedBoth("MAIN\x1b[?1049h");
-    ZZ_CHECK(d.contour.isAlternateScreen());  // Contour：1049h 生效
-    ZZ_CHECK(!d.native.isAlternateScreen());  // native：DEC 私有 CSI 忽略（M2）
+    ZZ_CHECK(d.native.isAlternateScreen());
+    ZZ_CHECK(d.contour.isAlternateScreen());
     d.feedBoth("ALT");
-    // Contour：alt 屏行 0 写入 "ALT"
-    ZZ_CHECK(d.contour.renderView().lineAt(0).cellAt(0).text == "A");
-    ZZ_CHECK(d.contour.renderView().lineAt(0).cellAt(1).text == "L");
-    ZZ_CHECK(d.contour.renderView().lineAt(0).cellAt(2).text == "T");
-    // native：主屏行 0 续写 → "MAINALT"
-    ZZ_CHECK(d.native.renderView().lineAt(0).cellAt(0).text == "M");
-    ZZ_CHECK(d.native.renderView().lineAt(0).cellAt(4).text == "A");
-    ZZ_CHECK(d.native.renderView().lineAt(0).cellAt(6).text == "T");
+    checkRowEqual(d.native, d.contour, 0, 3, "alt-write");
     d.feedBoth("\x1b[?1049l");
-    ZZ_CHECK(!d.contour.isAlternateScreen());
     ZZ_CHECK(!d.native.isAlternateScreen());
-    // Contour：主屏 "MAIN" 恢复
-    ZZ_CHECK(d.contour.renderView().lineAt(0).cellAt(0).text == "M");
-    ZZ_CHECK(d.contour.renderView().lineAt(0).cellAt(3).text == "N");
-    ZZ_CHECK(d.contour.renderView().lineAt(0).cellAt(4).text.empty());
-    // native：无切换语义，行 0 保持 "MAINALT"
-    ZZ_CHECK(d.native.renderView().lineAt(0).cellAt(0).text == "M");
-    ZZ_CHECK(d.native.renderView().lineAt(0).cellAt(6).text == "T");
+    ZZ_CHECK(!d.contour.isAlternateScreen());
+    checkRowEqual(d.native, d.contour, 0, 4, "alt-restore");
+    ZZ_CHECK(d.native.cursor().position == (ZzPosition { 0, 4 })); // native：xterm 语义恢复
+    ZZ_CHECK(!d.contour.cursor().visible); // Contour：RenderBuffer 不上报光标（见函数头注释）
 }
 
 // 7. changes 标志：bell 与 title。
@@ -207,18 +183,30 @@ void testResize()
     checkRowEqual(d.native, d.contour, 0, 4, "resize-keep");
 }
 
-// 10. 光标可见性（DECTCEM ?25l/h）。差异研判（b 类，两后端真实语义分歧）：
-// native 忽略 DEC 私有 CSI（DECTCEM 属 M2，同 testAltScreen 注释），visible
-// 恒 true；Contour 经 RenderBuffer 上报真实可见性。分别断言各自语义。
+// 10. 光标可见性（DECTCEM ?25l/h；M2：两后端均上报真实值，恢复强对照）。
 void testCursorVisibility()
 {
     Dual d;
     d.feedBoth("AB\x1b[?25l");
-    ZZ_CHECK(!d.contour.cursor().visible); // Contour：?25l 生效
-    ZZ_CHECK(d.native.cursor().visible);   // native：DECTCEM 未实现（M2）
+    ZZ_CHECK(!d.native.cursor().visible);
+    ZZ_CHECK(!d.contour.cursor().visible);
     d.feedBoth("\x1b[?25h");
-    ZZ_CHECK(d.contour.cursor().visible);
     ZZ_CHECK(d.native.cursor().visible);
+    ZZ_CHECK(d.contour.cursor().visible);
+}
+
+// 11. DECAWM ?7l：右边界覆写不换行（M2 新增强对照）。
+void testAutoWrapMode()
+{
+    Dual d; // 80x24
+    d.feedBoth("\x1b[?7l");
+    std::string seq(80, 'X');
+    seq += "YZ"; // 前 80 填满行 0；Y/Z 依次覆写最后一格
+    d.feedBoth(seq);
+    checkRowEqual(d.native, d.contour, 0, 80, "decawm-off");
+    ZZ_CHECK(d.native.cursor().position == d.contour.cursor().position);
+    ZZ_CHECK(d.native.renderView().lineAt(1).cellAt(0).text.empty());
+    ZZ_CHECK(d.contour.renderView().lineAt(1).cellAt(0).text.empty());
 }
 
 } // namespace
@@ -235,6 +223,7 @@ int main()
     testScrollback();
     testResize();
     testCursorVisibility();
+    testAutoWrapMode();
     if (g_failures != 0)
         std::fprintf(stderr, "test_backend_compat: %d failure(s)\n", g_failures);
     return g_failures == 0 ? 0 : 1;
