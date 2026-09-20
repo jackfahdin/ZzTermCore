@@ -100,11 +100,34 @@ ZzCell ZzNativeBackend::eraseFill() const noexcept
     return fill;
 }
 
+void ZzNativeBackend::clearWidePairAt(ZzPosition pos) noexcept
+{
+    const ZzSize sz = screen_.size();
+    const ZzLine& line = screen_.lineAt(pos.row);
+    const ZzCell& c = line.cellAt(pos.col);
+    if (c.width() == ZzCellWidth::WideLead && pos.col + 1 < sz.cols) {
+        const ZzCell& right = line.cellAt(pos.col + 1);
+        if (right.width() == ZzCellWidth::WideContinuation) {
+            ZzCell blank;
+            blank.setBackground(right.background());
+            screen_.putCell(ZzPosition{pos.row, pos.col + 1}, blank);
+        }
+    } else if (c.width() == ZzCellWidth::WideContinuation && pos.col > 0) {
+        const ZzCell& left = line.cellAt(pos.col - 1);
+        if (left.width() == ZzCellWidth::WideLead) {
+            ZzCell blank;
+            blank.setBackground(left.background());
+            screen_.putCell(ZzPosition{pos.row, pos.col - 1}, blank);
+        }
+    }
+}
+
 void ZzNativeBackend::putChar(char32_t cp)
 {
     const ZzSize sz = screen_.size();
     const ZzCellRange region = screen_.scrollRegionRows(); // [top, bottom+1)
     ZzPosition cur = screen_.cursor().position;
+    const int width = zzCellWidthOf(cp); // Ambiguous 配置口任务 4 接入第二参
 
     // xterm pending-wrap：上一字符写在最后一列时，先换行再落格。
     if (screen_.wrapPending()) {
@@ -119,18 +142,51 @@ void ZzNativeBackend::putChar(char32_t cp)
         }
     }
 
+    // 宽字符在最后一列放不下：当前格留空（画笔背景），立即换行到新行行首。
+    // 与 DECAWM 无关：xterm 宽字符不可截半显示，总是换行（若实测 Contour
+    // 行为不同，compat 用例注释钉住分歧）。
+    if (width == 2 && cur.col == sz.cols - 1) {
+        ZzCell blank;
+        blank.setBackground(penBg_);
+        clearWidePairAt(cur);
+        screen_.putCell(cur, blank);
+        screen_.setLineWrapped(cur.row, true);
+        if (cur.row == region.endCol - 1)
+            screen_.scrollUp(1, eraseFill());
+        else
+            ++cur.row;
+        cur.col = 0;
+    }
+
     ZzCell cell;
-    // zzCellWidthOf 为 M1 占位（恒窄）；M2 接入真实 EAW 表后，
-    // 宽字符需在此处补写 WideContinuation 续格（M2 任务，非本次范围）。
-    cell.setWidth(zzCellWidthOf(cp) == 2 ? ZzCellWidth::WideLead : ZzCellWidth::Narrow);
+    cell.setWidth(width == 2 ? ZzCellWidth::WideLead : ZzCellWidth::Narrow);
     cell.setCodePoint(cp);
     cell.setForeground(penFg_);
     cell.setBackground(penBg_);
     cell.setAttributes(penAttrs_);
+    clearWidePairAt(cur);
     screen_.putCell(cur, cell);
+    if (width == 2) {
+        ZzCell cont;
+        cont.setWidth(ZzCellWidth::WideContinuation);
+        cont.setForeground(penFg_);
+        cont.setBackground(penBg_);
+        const ZzPosition contPos{cur.row, cur.col + 1};
+        clearWidePairAt(contPos);
+        screen_.putCell(contPos, cont);
+    }
     noteScreenDirty();
 
-    if (cur.col < sz.cols - 1) {
+    if (width == 2) {
+        // 宽字符占满行尾两格：光标停最后一列，置 wrap-pending（下一字符换行）。
+        if (cur.col + 1 == sz.cols - 1) {
+            screen_.setCursorPosition(ZzPosition{cur.row, sz.cols - 1});
+            if (screen_.autoWrapMode())
+                screen_.setWrapPending(true);
+        } else {
+            screen_.setCursorPosition(ZzPosition{cur.row, cur.col + 2});
+        }
+    } else if (cur.col < sz.cols - 1) {
         screen_.setCursorPosition(ZzPosition{cur.row, cur.col + 1});
     } else if (screen_.autoWrapMode()) {
         // 最后一列：光标不动，置 wrap-pending（下一个可打印字符才换行）。

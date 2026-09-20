@@ -52,10 +52,10 @@ static void testPrintAscii()
 static void testPrintUtf8()
 {
     ZzTerminal term(10, 4, ZzBackendKind::Native, 100);
-    feedStr(term, "中文"); // M1 宽度占位：均按窄格落格
+    feedStr(term, "中文"); // M2 真实 EAW 宽度：均按宽格落格（各占 2 列）
     ZZ_TEST_EXPECT(cpAt(term, 0, 0) == U'中');
-    ZZ_TEST_EXPECT(cpAt(term, 0, 1) == U'文');
-    ZZ_TEST_EXPECT(term.cursor().position.col == 2);
+    ZZ_TEST_EXPECT(cpAt(term, 0, 2) == U'文');
+    ZZ_TEST_EXPECT(term.cursor().position.col == 4);
 }
 
 static void testPendingWrap()

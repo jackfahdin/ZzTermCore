@@ -94,27 +94,14 @@ void testStyles()
              == ZzUnderlineStyle::Single);
 }
 
-// 5. CJK 宽字符。差异研判（b 类，两后端真实语义分歧，非转换层 bug）：
-// native 的 zzCellWidthOf 是 M1 占位实现、恒返回窄（UnicodeWidth.h 明确真实
-// East Asian Width 区间表属 M2），故 "中" 按 Narrow 落格 0、"A" 落格 1；
-// Contour vtbackend 有真实 UAX #11 宽度：WideLead / WideContinuation / "A"。
-// 按规则 (b) 分别断言各自语义；M2 接入真实宽度表后本用例应恢复逐格对照。
+// 5. CJK 宽字符（M2：两后端均为真实 UAX #11 宽度，恢复逐格强对照）。
+// 样例码位取两后端 Unicode 数据中稳定为宽的常用 CJK 区间，规避版本漂移。
 void testCjkWide()
 {
     Dual d;
-    d.feedBoth("\xE4\xB8\xAD" "A"); // "中A"
-    // native：M1 占位宽度表（恒窄）
-    ZZ_CHECK(d.native.renderView().lineAt(0).cellAt(0).text == "\xE4\xB8\xAD");
-    ZZ_CHECK(d.native.renderView().lineAt(0).cellAt(0).width == ZzCellWidth::Narrow);
-    ZZ_CHECK(d.native.renderView().lineAt(0).cellAt(1).text == "A");
-    ZZ_CHECK(d.native.renderView().lineAt(0).cellAt(1).width == ZzCellWidth::Narrow);
-    // Contour：真实 UAX #11 宽度
-    ZZ_CHECK(d.contour.renderView().lineAt(0).cellAt(0).text == "\xE4\xB8\xAD");
-    ZZ_CHECK(d.contour.renderView().lineAt(0).cellAt(0).width == ZzCellWidth::WideLead);
-    ZZ_CHECK(d.contour.renderView().lineAt(0).cellAt(1).width == ZzCellWidth::WideContinuation);
-    ZZ_CHECK(d.contour.renderView().lineAt(0).cellAt(1).text.empty());
-    ZZ_CHECK(d.contour.renderView().lineAt(0).cellAt(2).text == "A");
-    ZZ_CHECK(d.contour.renderView().lineAt(0).cellAt(2).width == ZzCellWidth::Narrow);
+    d.feedBoth("\xE4\xB8\xAD" "A" "\xE4\xB8\x96"); // "中A世"
+    checkRowEqual(d.native, d.contour, 0, 5, "cjk-wide");
+    ZZ_CHECK(d.native.cursor().position == d.contour.cursor().position);
 }
 
 // 6. Alternate Screen。差异研判（b 类，两后端真实语义分歧，非转换层 bug）：

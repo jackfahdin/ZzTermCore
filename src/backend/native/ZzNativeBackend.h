@@ -40,6 +40,8 @@ public:
     void dispatchOsc(std::string_view payload);
     void sgr(const ZzParamSequence& seq);
     [[nodiscard]] ZzCell eraseFill() const noexcept;
+    /// 覆写一致性：pos 覆盖既有宽字符任一半时，另一半清为空格（保留被清格背景）。
+    void clearWidePairAt(ZzPosition pos) noexcept;
     void noteScreenDirty() noexcept;
 
     struct Sink; // 嵌套类：ZzParserSink 实现，定义在 ZzNativeBackend.cpp。
