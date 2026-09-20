@@ -3,7 +3,7 @@
 // 子进程退出后以子进程退出码退出。
 //
 // 结构：PTY 输出 -> ZzTerminal -> RenderView 全屏重绘到 stdout（ANSI SGR）；
-//       stdin 经 Core 输入链路（sendText/sendKey）-> output 通道 -> PTY；
+//       stdin 经 Core 输入链路（sendText/sendKey/sendMouse）-> output 通道 -> PTY；
 //       SIGWINCH 自管道同步 PTY 与 Terminal 尺寸。
 // 非 tty 场景（CTest 管道）：termios guard 不生效、尺寸回退 80x24、
 // stdin EOF 后停止监听，仍可完整跑通（脚本化冒烟依赖此行为）。
@@ -121,16 +121,20 @@ private:
         if (code & 16)
             ev.modifiers = ev.modifiers | ZzKeyModifier::Ctrl;
         if (code & 64) {
-            // 滚轮只有按下；横向滚轮（66/67）demo 忽略。
-            if ((code & 1) != 0 || (code & 2) != 0)
-                return;
+            if (code & 2)
+                return; // 横向滚轮（66/67）demo 忽略
             ev.action = ZzMouseAction::Press;
-            ev.button = ZzMouseButton::WheelUp;
-        } else if ((code & 3) == 3 || sgrRelease) {
-            ev.action = ZzMouseAction::Release;
-            ev.button = ZzMouseButton::None;
+            ev.button = (code & 1) ? ZzMouseButton::WheelDown : ZzMouseButton::WheelUp;
         } else if (code & 32) {
             ev.action = ZzMouseAction::Move;
+            // 拖拽移动按低位恢复按钮（3 = 无按钮移动）；先判 Move 再判
+            // Release，否则 SGR 无按钮移动码 35（=32+3）会被误判为 Release。
+            ev.button = (code & 3) == 0 ? ZzMouseButton::Left
+                      : (code & 3) == 1 ? ZzMouseButton::Middle
+                      : (code & 3) == 2 ? ZzMouseButton::Right
+                                        : ZzMouseButton::None;
+        } else if ((code & 3) == 3 || sgrRelease) {
+            ev.action = ZzMouseAction::Release;
             ev.button = ZzMouseButton::None;
         } else {
             ev.action = ZzMouseAction::Press;

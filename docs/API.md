@@ -175,9 +175,10 @@ Cold mmap-file 扩展。Screen 不知道历史后端类型。
 `sendText` / `sendKey`（M3a）与 `sendMouse` / `sendPaste` /
 `sendFocus`（M3b，语义与模式联动见 Terminal 节）；`ZzInputEncoder`
 为 native 后端内部组件（`ZzTerm/Input.h` 定义事件类型），Contour
-后端经类型映射（`ZzContourConvert.h`）委托其自家输入路径，两后端
-编码逐字节一致（键盘 compat 用例 12、鼠标/粘贴/焦点用例 15-17
-钉住）。当前覆盖方向键/Home/End/Insert/Delete/PageUp/PageDown/
+后端经类型映射（`ZzContourConvert.h`）委托其自家输入路径，两后端在
+compat 用例覆盖的输入类上编码逐字节一致（键盘 compat 用例 12、鼠标/
+粘贴/焦点用例 15-17 钉住；Release 携带 None 按钮的域外输入两后端
+编码不同，见 compat 注释与后续跟踪）。当前覆盖方向键/Home/End/Insert/Delete/PageUp/PageDown/
 F1-F12、Enter/Tab/Backspace/Escape 及修饰键组合；Ctrl+非字母 C0
 映射（Space/@、方括号区间符号键、?）已支持；鼠标（经典与
 SGR 1006 两编码格式）、bracketed paste、focus 上报已随 M3b 落地。

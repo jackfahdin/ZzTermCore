@@ -188,6 +188,8 @@ void ZzNativeBackend::dispatchDecPrivate(const ZzParamSequence& seq)
             screen_.setCursorStyle(cur.shape, set, cur.blinking);
             break;
         }
+        // 以下四档 l 一律清 None 而不论当前激活档位（xterm 分档语义的理论出入；
+        // 现实应用只 reset 自己 set 的模式，无实际影响，钉住）。
         case 9: // X10 鼠标（仅按下）
             encoder_.setMouseReportMode(set ? ZzMouseReportMode::X10 : ZzMouseReportMode::None);
             break;
