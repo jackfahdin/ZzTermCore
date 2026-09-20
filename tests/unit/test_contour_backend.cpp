@@ -119,9 +119,9 @@ void testSgrColors()
     auto snap = backend.snapshot();
     auto const& cell = snap.at(0, 0);
     ZZ_CHECK(cell.codepoints == U"R");
-    ZZ_CHECK(cell.foreground == (ZzColor { ZzColor::Tag::Indexed, 1 }));
+    ZZ_CHECK(cell.foreground == ZzColor::Indexed(1));
     // 复位后写入的格子回到默认色。
-    ZZ_CHECK(snap.at(0, 1).foreground == (ZzColor { ZzColor::Tag::Default, 0 }));
+    ZZ_CHECK(snap.at(0, 1).foreground == ZzColor::Default());
 }
 
 // SGR 亮红色映射为索引 8+1。
@@ -131,7 +131,7 @@ void testBrightColor()
     ZzContourBackend backend(80, 24, events);
     backend.feed("\x1b[91mB");
     auto snap = backend.snapshot();
-    ZZ_CHECK(snap.at(0, 0).foreground == (ZzColor { ZzColor::Tag::Indexed, 9 }));
+    ZZ_CHECK(snap.at(0, 0).foreground == ZzColor::Indexed(9));
 }
 
 // RGB 真彩色前景与背景。
@@ -142,13 +142,11 @@ void testRgbColor()
     backend.feed("\x1b[38;2;10;20;30m\x1b[48;2;200;100;50mX");
     auto snap = backend.snapshot();
     auto const& cell = snap.at(0, 0);
-    ZZ_CHECK(cell.foreground
-             == (ZzColor { ZzColor::Tag::RGB, (10u << 16) | (20u << 8) | 30u }));
-    ZZ_CHECK(cell.background
-             == (ZzColor { ZzColor::Tag::RGB, (200u << 16) | (100u << 8) | 50u }));
+    ZZ_CHECK(cell.foreground == ZzColor::Rgb(10, 20, 30));
+    ZZ_CHECK(cell.background == ZzColor::Rgb(200, 100, 50));
 }
 
-// 粗体/斜体/下划线 flags。
+// 粗体/斜体/下划线属性。
 void testStyleFlags()
 {
     RecordingEvents events;
@@ -156,11 +154,33 @@ void testStyleFlags()
     // 各 SGR 样式间显式复位：SGR 属性是累加的（ECMA-48），不复位则粗体会带进斜体格。
     backend.feed("\x1b[1mB\x1b[0m\x1b[3mI\x1b[0m\x1b[4mU");
     auto snap = backend.snapshot();
-    ZZ_CHECK(snap.at(0, 0).flags & ZzCellFlag::Bold);
-    ZZ_CHECK(snap.at(0, 1).flags & ZzCellFlag::Italic);
-    ZZ_CHECK(snap.at(0, 2).flags & ZzCellFlag::Underline);
+    ZZ_CHECK(snap.at(0, 0).attributes.bold());
+    ZZ_CHECK(snap.at(0, 1).attributes.italic());
+    ZZ_CHECK(snap.at(0, 2).attributes.underline() == ZzUnderlineStyle::Single);
     // 斜体格不带粗体位。
-    ZZ_CHECK(!(snap.at(0, 1).flags & ZzCellFlag::Bold));
+    ZZ_CHECK(!snap.at(0, 1).attributes.bold());
+}
+
+// 点线/虚线下划线（SGR 4:4 / 4:5）不降级——vtbackend DottedUnderline/DashedUnderline 映射。
+void testDottedDashedUnderline()
+{
+    RecordingEvents events;
+    ZzContourBackend backend(80, 24, events);
+    backend.feed("\x1b[4:4mD\x1b[0m\x1b[4:5mE");
+    auto snap = backend.snapshot();
+    ZZ_CHECK(snap.at(0, 0).attributes.underline() == ZzUnderlineStyle::Dotted);
+    ZZ_CHECK(snap.at(0, 1).attributes.underline() == ZzUnderlineStyle::Dashed);
+}
+
+// SGR 5/6 闪烁：Slow/Rapid 均不降级（RapidBlinking 映射 ZzBlinkStyle::Rapid）。
+void testBlinkStyles()
+{
+    RecordingEvents events;
+    ZzContourBackend backend(80, 24, events);
+    backend.feed("\x1b[5mS\x1b[0m\x1b[6mR");
+    auto snap = backend.snapshot();
+    ZZ_CHECK(snap.at(0, 0).attributes.blink() == ZzBlinkStyle::Slow);
+    ZZ_CHECK(snap.at(0, 1).attributes.blink() == ZzBlinkStyle::Rapid);
 }
 
 // BCE 擦除场景：空行（isBlank 分支）须从 fillAttrs 还原背景色，前景保持默认。
@@ -172,8 +192,8 @@ void testBlankLineFillAttrs()
     auto snap = backend.snapshot();
     auto const& cell = snap.at(1, 0);
     ZZ_CHECK(cell.codepoints.empty());
-    ZZ_CHECK(cell.background == (ZzColor { ZzColor::Tag::Indexed, 1 }));
-    ZZ_CHECK(cell.foreground == (ZzColor { ZzColor::Tag::Default, 0 }));
+    ZZ_CHECK(cell.background == ZzColor::Indexed(1));
+    ZZ_CHECK(cell.foreground == ZzColor::Default());
 }
 
 // 光标随写入推进；DECTCEM（CSI ?25l/h）控制可见性。
@@ -291,10 +311,10 @@ void testChunkBoundaries()
     auto snap = backend.snapshot();
     ZZ_CHECK(snap.at(0, 0).codepoints == U"中");
     ZZ_CHECK(snap.at(0, 2).codepoints == U"R");
-    ZZ_CHECK(snap.at(0, 2).foreground == (ZzColor { ZzColor::Tag::Indexed, 1 }));
+    ZZ_CHECK(snap.at(0, 2).foreground == ZzColor::Indexed(1));
 }
 
-// CJK 宽字符：首格 width=2，续格带 WideCharContinuation 标志且无内容。
+// CJK 宽字符：首格 width 为 WideLead，续格为 WideContinuation 且无内容。
 void testCjkWideCell()
 {
     RecordingEvents events;
@@ -303,10 +323,10 @@ void testCjkWideCell()
     auto snap = backend.snapshot();
     auto const& head = snap.at(0, 0);
     ZZ_CHECK(head.codepoints == U"中");
-    ZZ_CHECK(head.width == 2);
+    ZZ_CHECK(head.width == ZzCellWidth::WideLead);
     auto const& cont = snap.at(0, 1);
     ZZ_CHECK(cont.codepoints.empty());
-    ZZ_CHECK(cont.flags & ZzCellFlag::WideCharContinuation);
+    ZZ_CHECK(cont.width == ZzCellWidth::WideContinuation);
     // 光标停在宽字符之后（第 2 列）。
     ZZ_CHECK(snap.cursor.has_value() && snap.cursor->column == 2);
 }
@@ -322,6 +342,8 @@ int main()
     testBrightColor();
     testRgbColor();
     testStyleFlags();
+    testDottedDashedUnderline();
+    testBlinkStyles();
     testBlankLineFillAttrs();
     testCursor();
     testTitleBellDirty();

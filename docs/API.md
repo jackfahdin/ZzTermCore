@@ -32,20 +32,37 @@ Core 平台无关：不依赖 Qt、Windows API、POSIX PTY、OpenGL、网络等�
 
 ### Terminal（语义调度）
 
-Parser 只负责语法 dispatch，Terminal 负责语义。
+`ZzTerminal` 是双后端顶层外观（Facade，M1b 起）：构造签名
+`ZzTerminal(int cols, int rows, ZzBackendKind backend, std::size_t scrollbackMaxLines = 10000)`，
+backend 显式选择终端引擎——`ZzBackendKind::Native`（自研引擎，兼容性
+对照基准）或 `ZzBackendKind::Contour`（Contour vtbackend，需
+ZZTERM_WITH_CONTOUR=ON 构建；OFF 构建传 Contour 抛 `std::logic_error`）。
+parser/screen/scrollback 等引擎组件归各后端实现持有，`ZzTerminal`
+只经后端接口委托，公开 API 不暴露任何后端类型。
 
-`ZzTerminal::feed` 的真实链路：原始字节流先经 `ZzVtParser` 做增量
-语法解析（可在 UTF-8 字符或 VT 序列中间截断，状态跨 feed 保留），
-print 通路再经 `ZzUtf8Decoder` 增量解码为码位，CSI/ESC/OSC/C0 事件
-由 Terminal 的语义层消费（模式解释、画笔状态、历史入栈等）。
-远端输入一律视为不可信：畸形/超长序列被安全丢弃并恢复，feed 不抛异常。
+- `feed` 返回 `ZzTermChanges` 变化摘要（屏幕/历史/活动缓冲区/标题/
+  BEL/滚入行数），远端输入一律视为不可信：畸形/超长序列被安全丢弃
+  并恢复，feed 不抛异常。
+- `setOutputHandler` 设置终端回传字节通道（DA 响应、光标上报等）；
+  Contour 后端有效，native 暂不回传。
+- `screen()` 与 `scrollback()` 为 Core 内部协作口（可变访问工作区/
+  历史后端），仅 Native 后端可用、不带 noexcept，Contour 后端调用
+  抛 `std::logic_error`。
+- `ZzTermChanges::scrolledOutLines` 存在已知后端语义差：native 按
+  实际滚出行计数、与容量无关；Contour 以历史行数差值近似，scrollback
+  饱和后停止上报（以 Doxygen 注释为准）。
 
-已落地语义：
+Native 引擎链路：原始字节流先经 `ZzVtParser` 做增量语法解析（可在
+UTF-8 字符或 VT 序列中间截断，状态跨 feed 保留），print 通路再经
+`ZzUtf8Decoder` 增量解码为码位，CSI/ESC/OSC/C0 事件由引擎语义层消费
+（模式解释、画笔状态、历史入栈等）。
+
+Native 引擎已落地语义：
 
 - print 采用 pending-wrap 语义：字符写满行尾后不立即换行，置位
   wrap-pending；下一个可打印字符到达时才执行换行（滚屏在此时发生），
   保证行尾字符不被提前挤出且 autowrap 行为与 xterm 一致。
-- SGR 画笔模型：Terminal 持有当前画笔（属性位 + 前景/背景色），
+- SGR 画笔模型：引擎持有当前画笔（属性位 + 前景/背景色），
   SGR 序列只改画笔，print 时把画笔快照写入单元格；支持 Reset、
   Bold/Faint/Italic/Blink/Inverse/Invisible/Strikethrough、
   ANSI 16/Bright、256 色、RGB TrueColor、Default FG/BG。
@@ -106,9 +123,21 @@ Cold mmap-file 扩展。Screen 不知道历史后端类型。
 
 ### RenderView
 
-Core 与 Renderer 的稳定只读边界，Renderer 不访问 Core 私有容器。
+Core 与 Renderer 的稳定只读边界（M1b 重写为后端无关抽象契约），
+Renderer 不访问 Core 私有容器。
 
-> 随实现补充。
+- `ZzRenderView` 为纯虚接口：`size` / `isAlternateScreen` / `lineAt` /
+  `cursor` / `dirtyGeneration` / `rowDirty` / `dirtyRange`，经
+  `ZzTerminal::renderView` 获取，由各后端提供实现。
+- `ZzLineView` 为类型擦除的行只读句柄：值语义、行状态内联存储
+  （无堆分配），拷贝廉价；`cellAt` 产出值语义单格视图 `ZzCellView`
+  （UTF-8 文本、前景/背景色、属性位、单元格宽度）。
+- 借用寿命：视图借用 Terminal，不得比 Terminal 长寿；帧内使用、
+  跨帧重新读取查询结果，feed/resize 后既有视图与 `ZzLineView`
+  句柄全部失效；与 feed 同线程使用，非线程安全。
+- Dirty 粒度：native 为行级 dirty，`dirtyRange` 精确到行内格区间；
+  粗粒度后端（Contour）有脏时 `rowDirty` 恒 true、`dirtyRange`
+  恒全行，契约对两种实现均成立。
 
 ## 版本与 ABI 策略
 

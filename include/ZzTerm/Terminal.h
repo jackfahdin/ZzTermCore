@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <span>
 #include <string>
@@ -17,16 +18,17 @@
  * @file Terminal.h
  * @brief ZzTerminal：终端模拟器顶层外观（Facade）。
  *
- * 职责（Architecture.md 第 2/7 节）：
- * - 持有并协调 ZzVtParser（语法 dispatch）、ZzScreen（工作区）、
- *   ZzScrollback（历史）、ZzRenderView（渲染边界）；
- *   实现经 PImpl 隔离（M0 起），后端抽象边界见 docs/Architecture-v2.md §7。
- * - Parser 只负责语法，语义（模式解释、画笔状态、历史入栈、
- *   Alternate Screen 切换语义等）集中在 Terminal；
+ * 职责（docs/Architecture-v2.md §7）：
+ * - 对前端暴露唯一的后端无关入口；具体终端引擎经 ZzBackendKind
+ *   在构造时显式选择（Native 自研引擎 / Contour vtbackend），
+ *   运行期由 PImpl 持有的后端接口分派，公开 API 不暴露任何后端类型。
+ * - ZzTerminal 只做委托：parser/screen/scrollback 等引擎组件归各后端
+ *   实现持有（native 在 src/backend/native，contour 经 vtbackend），
+ *   feed/resize/renderView 等调用转发给所选后端并聚合 ZzTermChanges。
  * - 远端输入一律视为不可信（Architecture.md 第 15 节），feed 不抛异常、
  *   不因畸形输入产生未定义行为。
  *
- * ownership：ZzTerminal 独占拥有 parser/screen/scrollback；
+ * ownership：ZzTerminal 独占拥有所选后端实例；
  * renderView() 返回的视图借用 Terminal，不得比 Terminal 长寿。
  *
  * 线程安全：非线程安全。feed/resize/renderView 必须在同一线程调用
@@ -44,7 +46,16 @@ struct ZzTermChanges {
     bool        activeBufferChanged = false; ///< Primary/Alternate 发生切换。
     bool        titleChanged       = false; ///< 窗口/图标标题变化（OSC 0/1/2）。
     bool        bell               = false; ///< BEL 触发（前端决定响铃/闪烁）。
-    std::size_t scrolledOutLines   = 0;     ///< 本次滚入历史的行数。
+
+    /**
+     * @brief 本次滚入历史的行数。
+     * @note 后端语义差（M1b 现状，钉住待后续统一）：native 统计实际滚出行数，
+     *       与 scrollback 容量无关，饱和后仍如实上报；Contour 以历史行数差值
+     *       近似，scrollback 达容量上限后差值恒 0，scrollbackChanged 与本字段
+     *       停止上报（历史内容仍在滚动，只是不再计数）。前端不得依赖本字段
+     *       推断「不再有新行滚出」。
+     */
+    std::size_t scrolledOutLines   = 0;
 
     /**
      * @brief 合并另一份变化（连续多次 feed 聚合用）。
@@ -61,6 +72,12 @@ struct ZzTermChanges {
     }
 };
 
+/// \brief 终端引擎后端选择（运行期）。
+enum class ZzBackendKind {
+    Native,  ///< 自研引擎（一等后端，兼容性对照基准）
+    Contour  ///< Contour vtbackend（默认方向；需 ZZTERM_WITH_CONTOUR=ON 构建）
+};
+
 /**
  * @brief 终端模拟器顶层对象。
  */
@@ -70,9 +87,10 @@ public:
      * @brief 构造终端。
      * @param cols 列数（> 0）。
      * @param rows 行数（> 0）。
+     * @param backend 后端选择（显式，无默认值）。OFF 构建传 Contour 抛 std::logic_error。
      * @param scrollbackMaxLines 历史容量上限（行），0 表示不保留历史。
      */
-    ZzTerminal(int cols, int rows, std::size_t scrollbackMaxLines = 10000);
+    ZzTerminal(int cols, int rows, ZzBackendKind backend, std::size_t scrollbackMaxLines = 10000);
 
     ~ZzTerminal();
 
@@ -141,23 +159,31 @@ public:
      */
     void clearDirty() noexcept;
 
+    /**
+     * @brief 设置终端回传字节的输出通道（DA 响应、光标上报等）。
+     * @param handler 输出回调；Contour 后端有效，native 暂不回传。
+     */
+    void setOutputHandler(std::function<void(std::string_view)> handler);
+
     // ---- Core 内部访问（供 parser/terminal 模块协作，不属于 Renderer API） ----
 
     /**
-     * @brief 可变访问工作区（Core 内部使用）。
+     * @brief 可变访问工作区（Core 内部使用；仅 Native 后端可用）。
      * @return 工作区可变引用。
+     * @note 仅 Native 后端可用，Contour 后端调用抛 std::logic_error。
      */
-    [[nodiscard]] ZzScreen& screen() noexcept;
+    [[nodiscard]] ZzScreen& screen();
 
     /**
-     * @brief 可变访问历史后端（Core 内部使用）。
+     * @brief 可变访问历史后端（Core 内部使用；仅 Native 后端可用）。
      * @return 历史后端可变引用。
+     * @note 仅 Native 后端可用，Contour 后端调用抛 std::logic_error。
      */
-    [[nodiscard]] ZzScrollback& scrollback() noexcept;
+    [[nodiscard]] ZzScrollback& scrollback();
 
 private:
-    // PImpl：实现细节（含 native 引擎全部状态）定义在内部头
-    // src/terminal/TerminalImpl.h；公开 API 不暴露任何后端类型
+    // PImpl：实现细节定义在 src/terminal/Terminal.cpp（持有后端接口指针，
+    // 运行期按 ZzBackendKind 分派）；公开 API 不暴露任何后端类型
     //（docs/Architecture-v2.md §7）。Backend 抽象见 src/backend/ZzTerminalBackend.h。
     class Impl;
     std::unique_ptr<Impl> impl_;

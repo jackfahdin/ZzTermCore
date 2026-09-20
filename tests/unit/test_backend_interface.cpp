@@ -3,13 +3,28 @@
 #include "backend/ZzTerminalBackend.h"
 
 #include <cassert>
+#include <stdexcept>
 
 namespace {
 
+class FakeRenderView final : public ZzRenderView {
+public:
+    ZzSize size() const noexcept override { return {}; }
+    bool isAlternateScreen() const noexcept override { return false; }
+    ZzLineView lineAt(int) const override
+    {
+        return ZzLineView(0, [](const void*, int) { return ZzCellView {}; },
+                          [](const void*) noexcept { return 0; },
+                          [](const void*) noexcept { return false; });
+    }
+    ZzCursorState cursor() const override { return {}; }
+    std::uint64_t dirtyGeneration() const noexcept override { return 0; }
+    bool rowDirty(int) const noexcept override { return false; }
+    ZzCellRange dirtyRange(int) const noexcept override { return {}; }
+};
+
 class FakeBackend : public ZzTerminalBackend {
 public:
-    FakeBackend() : view_(nullptr, nullptr) {}
-
     ZzTermChanges feed(std::span<const std::byte> data) override
     {
         fedBytes += data.size();
@@ -26,10 +41,15 @@ public:
     bool isAlternateScreen() const noexcept override { return false; }
     const std::string& title() const noexcept override { return title_; }
     void clearDirty() noexcept override { ++clearCount; }
+    void setOutputHandler(std::function<void(std::string_view)> handler) override
+    {
+        outputHandlerSet = static_cast<bool>(handler);
+    }
 
     std::size_t fedBytes = 0;
+    bool outputHandlerSet = false;
     ZzSize lastSize{80, 24};
-    ZzRenderView view_;
+    FakeRenderView view_;
     std::string title_;
     int clearCount = 0;
 };
@@ -51,5 +71,20 @@ int main()
     assert(!base.isAlternateScreen());
     base.clearDirty();
     assert(backend.clearCount == 1);
+
+    backend.setOutputHandler([](std::string_view) {});
+    assert(backend.outputHandlerSet);
+
+    // ZzBackendKind 显式构造签名（双后端 facade）编译期用法。
+    ZzTerminal term(10, 4, ZzBackendKind::Native, 100);
+    assert(term.size() == (ZzSize { 10, 4 }));
+
+#ifndef ZZTERM_WITH_CONTOUR
+    // OFF 构建下 Contour kind 必须抛 std::logic_error（facade 兜底分支）。
+    bool thrown = false;
+    try { ZzTerminal t(10, 4, ZzBackendKind::Contour, 100); (void)t; }
+    catch (const std::logic_error&) { thrown = true; }
+    assert(thrown);
+#endif
     return 0;
 }

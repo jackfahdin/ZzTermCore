@@ -1,9 +1,8 @@
 #include "ZzContourBackend.h"
 
+#include "ZzContourConvert.h"
 #include "ZzContourPtyBridge.h"
 
-#include <vtbackend/core/CellFlags.hpp>
-#include <vtbackend/core/Color.hpp>
 #include <vtbackend/render/RenderBuffer.hpp>
 #include <vtbackend/screen/Terminal.hpp>
 
@@ -17,45 +16,6 @@ namespace {
 vtbackend::PageSize makePageSize(int columns, int rows)
 {
     return vtbackend::PageSize { vtbackend::LineCount(rows), vtbackend::ColumnCount(columns) };
-}
-
-ZzColor zzColor(vtbackend::Color color)
-{
-    switch (color.type())
-    {
-        case vtbackend::ColorType::RGB: {
-            auto const rgb = color.rgb();
-            return { ZzColor::Tag::RGB,
-                     (static_cast<std::uint32_t>(rgb.red) << 16)
-                         | (static_cast<std::uint32_t>(rgb.green) << 8)
-                         | static_cast<std::uint32_t>(rgb.blue) };
-        }
-        case vtbackend::ColorType::Indexed:
-            return { ZzColor::Tag::Indexed, color.index() };
-        case vtbackend::ColorType::Bright:
-            // 亮 n 号色统一映射为索引 8+n，保留颜色身份。
-            return { ZzColor::Tag::Indexed, static_cast<std::uint32_t>(8 + color.index()) };
-        case vtbackend::ColorType::Default:
-            return { ZzColor::Tag::Default, 0 };
-        case vtbackend::ColorType::Undefined:
-        default:
-            return { ZzColor::Tag::Undefined, 0 };
-    }
-}
-
-std::uint32_t zzFlags(vtbackend::CellFlags flags)
-{
-    std::uint32_t out = ZzCellFlag::None;
-    if (flags.contains(vtbackend::CellFlag::Bold)) out |= ZzCellFlag::Bold;
-    if (flags.contains(vtbackend::CellFlag::Faint)) out |= ZzCellFlag::Faint;
-    if (flags.contains(vtbackend::CellFlag::Italic)) out |= ZzCellFlag::Italic;
-    if (flags.contains(vtbackend::CellFlag::Underline)) out |= ZzCellFlag::Underline;
-    if (flags.contains(vtbackend::CellFlag::Blinking)) out |= ZzCellFlag::Blinking;
-    if (flags.contains(vtbackend::CellFlag::Inverse)) out |= ZzCellFlag::Inverse;
-    if (flags.contains(vtbackend::CellFlag::Hidden)) out |= ZzCellFlag::Hidden;
-    if (flags.contains(vtbackend::CellFlag::CrossedOut)) out |= ZzCellFlag::CrossedOut;
-    if (flags.contains(vtbackend::CellFlag::WideCharContinuation)) out |= ZzCellFlag::WideCharContinuation;
-    return out;
 }
 
 // 末尾不构成完整 UTF-8 序列的字节数（0 表示尾部完整或非法）。
@@ -214,6 +174,22 @@ void ZzContourBackend::flushReplies()
     impl_->terminal->flushInput();
 }
 
+std::optional<std::pair<int, int>> ZzContourBackend::cursorPosition()
+{
+    impl_->terminal->refreshRenderBuffer();
+    auto ref = impl_->terminal->renderBuffer(); // RAII 读锁句柄
+    auto const& renderBuffer = ref.get();
+    if (!renderBuffer.cursor)
+        return std::nullopt;
+    return std::make_pair(renderBuffer.cursor->position.line.value,
+                          renderBuffer.cursor->position.column.value);
+}
+
+const void* ZzContourBackend::screenForView() const
+{
+    return &impl_->terminal->currentScreen();
+}
+
 ZzContourSnapshot ZzContourBackend::snapshot()
 {
     auto const& screen = impl_->terminal->currentScreen();
@@ -235,7 +211,7 @@ ZzContourSnapshot ZzContourBackend::snapshot()
             auto const& fillAttrs = gridLine.storage().fillAttrs;
             ZzContourCell blank;
             blank.background = zzColor(fillAttrs.backgroundColor);
-            blank.flags = zzFlags(fillAttrs.flags);
+            blank.attributes = zzAttributes(fillAttrs.flags);
             for (int col = 0; col < snap.columns; ++col)
                 snap.cells.push_back(blank);
             continue;
@@ -248,23 +224,15 @@ ZzContourSnapshot ZzContourBackend::snapshot()
             {
                 auto const cell = screen.at(vtbackend::LineOffset(line), vtbackend::ColumnOffset(col));
                 out.codepoints = cell.codepoints();
-                out.width = static_cast<int>(cell.width());
+                out.width = zzWidth(cell);
                 out.foreground = zzColor(cell.foregroundColor());
                 out.background = zzColor(cell.backgroundColor());
-                out.flags = zzFlags(cell.flags());
+                out.attributes = zzAttributes(cell.flags());
             }
             snap.cells.push_back(std::move(out));
         }
     }
-    impl_->terminal->refreshRenderBuffer();
-    {
-        auto ref = impl_->terminal->renderBuffer(); // RAII 读锁句柄
-        auto const& renderBuffer = ref.get();
-        if (renderBuffer.cursor)
-        {
-            snap.cursor = ZzContourCursor { renderBuffer.cursor->position.line.value,
-                                            renderBuffer.cursor->position.column.value };
-        }
-    }
+    if (auto const cursor = cursorPosition())
+        snap.cursor = ZzContourCursor { cursor->first, cursor->second };
     return snap;
 }

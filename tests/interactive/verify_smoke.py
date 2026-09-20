@@ -2,7 +2,7 @@
 """ZzTermSmoke 自动化交互验证：pexpect 驱动真实 PTY，pyte 作为独立终端模拟器
 解释 demo 的渲染输出，逐步断言屏幕内容。全程保存原始字节日志与屏幕快照。
 
-用法：verify_smoke.py <ZzTermSmoke 路径> [工作目录（默认 /tmp/zz-smoke-verify）]
+用法：verify_smoke.py <ZzTermSmoke 路径> [工作目录（默认 /tmp/zz-smoke-verify）] [backend（默认 contour）]
 依赖：python3 + pexpect + pyte（pip install pexpect pyte）。
 退出码：0 全部通过；1 有失败断言；2 脚本自身异常。"""
 import os
@@ -16,6 +16,7 @@ import pyte
 COLS, ROWS = 80, 24
 DEMO = os.path.abspath(sys.argv[1]) if len(sys.argv) > 1 else "ZzTermSmoke"
 OUT = sys.argv[2] if len(sys.argv) > 2 else "/tmp/zz-smoke-verify"
+BACKEND = sys.argv[3] if len(sys.argv) > 3 else "contour"
 PLAY = os.path.join(OUT, "playground")
 
 failures = []
@@ -53,7 +54,7 @@ def snapshot(screen, label):
 
 def check(ok, name, detail=""):
     tag = "PASS" if ok else "FAIL"
-    print(f"[{tag}] {name} {detail}", flush=True)
+    print(f"[{tag}] [{BACKEND}] {name} {detail}", flush=True)
     if not ok:
         failures.append(name)
 
@@ -81,7 +82,7 @@ def main():
     stream = pyte.ByteStream(screen)
 
     env = dict(os.environ, TERM="xterm-256color", LANG="C.UTF-8")
-    child = pexpect.spawn(DEMO, [], cwd=PLAY, dimensions=(ROWS, COLS),
+    child = pexpect.spawn(DEMO, [f"--backend={BACKEND}"], cwd=PLAY, dimensions=(ROWS, COLS),
                           encoding=None, timeout=10, env=env)
     rawlog = open(os.path.join(OUT, "raw.log"), "wb")
     child.logfile_read = rawlog

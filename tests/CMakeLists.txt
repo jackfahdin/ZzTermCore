@@ -10,7 +10,9 @@ file(GLOB ZZTERM_UNIT_TEST_SOURCES CONFIGURE_DEPENDS
 # 从通用 GLOB 中剔除后单独注册。
 list(REMOVE_ITEM ZZTERM_UNIT_TEST_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_contour_smoke.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_contour_backend.cpp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_contour_backend.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_contour_adapter.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_backend_compat.cpp")
 
 foreach(test_source IN LISTS ZZTERM_UNIT_TEST_SOURCES)
     get_filename_component(test_name "${test_source}" NAME_WE)
@@ -25,6 +27,9 @@ endforeach()
 # 内部头（src/）的编译契约测试需要 src/ 在 include 路径上。
 if(TARGET test_backend_interface)
     target_include_directories(test_backend_interface PRIVATE "${CMAKE_SOURCE_DIR}/src")
+    # OFF 路径断言（Contour kind 抛 logic_error）依赖该宏透传。
+    target_compile_definitions(test_backend_interface
+        PRIVATE $<$<BOOL:${ZZTERM_WITH_CONTOUR}>:ZZTERM_WITH_CONTOUR=1>)
 endif()
 
 if(TARGET vtparser)
@@ -42,14 +47,36 @@ if(TARGET ZzTermContourBackend)
     add_test(NAME test_contour_backend COMMAND test_contour_backend)
 endif()
 
+# M1b：ZzContourBackendAdapter 经 ZzTerminal facade 的端到端测试，仅 Contour 后端启用时构建。
+# 只碰公开头（C++20 即可），仅链接 ZzTermCore（多链 ZzTermContourBackend 会在
+# shared 构建下把静态 contour 库的第二份副本链进测试可执行文件）。
+if(TARGET ZzTermContourBackend)
+    add_executable(test_contour_adapter unit/test_contour_adapter.cpp)
+    target_link_libraries(test_contour_adapter PRIVATE ZzTermCore) # Contour target 一律 PRIVATE
+    add_test(NAME test_contour_adapter COMMAND test_contour_adapter)
+endif()
+
+# M1b：双后端对照测试，同一 VT 序列喂 Native/Contour 逐格比对（native 为基准）。
+# 只碰公开头（C++20 即可），仅链接 ZzTermCore。
+if(TARGET ZzTermContourBackend)
+    add_executable(test_backend_compat unit/test_backend_compat.cpp)
+    target_link_libraries(test_backend_compat PRIVATE ZzTermCore)
+    add_test(NAME test_backend_compat COMMAND test_backend_compat)
+endif()
+
 # 脚本化冒烟：PTY 驱动 Core 全链路——真实 bash 输出经 ZzTerminal 渲染回 stdout，
 # 断言标记串出现且以子进程退出码 0 退出（仅 Unix 构建存在 demo 目标时）。
 if(TARGET ZzTermSmoke)
-    add_test(NAME ZzTermSmokeEcho
-        COMMAND ZzTermSmoke -- bash -c "echo zz-smoke-ok")
-    set_tests_properties(ZzTermSmokeEcho PROPERTIES
-        PASS_REGULAR_EXPRESSION "zz-smoke-ok"
-        TIMEOUT 30)
+    foreach(ZZTERM_SMOKE_BACKEND IN ITEMS native contour)
+        if(ZZTERM_SMOKE_BACKEND STREQUAL "contour" AND NOT TARGET ZzTermContourBackend)
+            continue() # OFF 构建无 Contour 后端
+        endif()
+        add_test(NAME ZzTermSmokeEcho_${ZZTERM_SMOKE_BACKEND}
+            COMMAND ZzTermSmoke --backend=${ZZTERM_SMOKE_BACKEND} -- bash -c "echo zz-smoke-ok")
+        set_tests_properties(ZzTermSmokeEcho_${ZZTERM_SMOKE_BACKEND} PROPERTIES
+            PASS_REGULAR_EXPRESSION "zz-smoke-ok"
+            TIMEOUT 30)
+    endforeach()
 
     # 交互式冒烟：pexpect 驱动真实 PTY + pyte 独立终端模拟器交叉验证渲染
     #（bash 提示符/echo/ls 着色/SIGWINCH/less/vim/Ctrl+C/退出码）。
@@ -61,12 +88,18 @@ if(TARGET ZzTermSmoke)
             RESULT_VARIABLE ZZTERM_PY_DEPS
             OUTPUT_QUIET ERROR_QUIET)
         if(ZZTERM_PY_DEPS EQUAL 0)
-            add_test(NAME ZzTermSmokeInteractive
-                COMMAND ${ZZTERM_PYTHON3}
-                    ${CMAKE_CURRENT_SOURCE_DIR}/interactive/verify_smoke.py
-                    $<TARGET_FILE:ZzTermSmoke>
-                    ${CMAKE_CURRENT_BINARY_DIR}/interactive-scratch)
-            set_tests_properties(ZzTermSmokeInteractive PROPERTIES TIMEOUT 180)
+            foreach(ZZTERM_SMOKE_BACKEND IN ITEMS native contour)
+                if(ZZTERM_SMOKE_BACKEND STREQUAL "contour" AND NOT TARGET ZzTermContourBackend)
+                    continue()
+                endif()
+                add_test(NAME ZzTermSmokeInteractive_${ZZTERM_SMOKE_BACKEND}
+                    COMMAND ${ZZTERM_PYTHON3}
+                        ${CMAKE_CURRENT_SOURCE_DIR}/interactive/verify_smoke.py
+                        $<TARGET_FILE:ZzTermSmoke>
+                        ${CMAKE_CURRENT_BINARY_DIR}/interactive-scratch-${ZZTERM_SMOKE_BACKEND}
+                        ${ZZTERM_SMOKE_BACKEND})
+                set_tests_properties(ZzTermSmokeInteractive_${ZZTERM_SMOKE_BACKEND} PROPERTIES TIMEOUT 180)
+            endforeach()
         else()
             message(STATUS "python3 pexpect/pyte 不可用，跳过 ZzTermSmokeInteractive")
         endif()

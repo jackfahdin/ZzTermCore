@@ -33,12 +33,20 @@ static bool posEq(ZzPosition p, int row, int col)
 
 static char32_t cpAt(const ZzTerminal& term, int row, int col)
 {
-    return term.renderView().lineAt(row).cellAt(col).codePoint();
+    const ZzCellView cell = term.renderView().lineAt(row).cellAt(col);
+    if (cell.text.empty()) return 0;
+    // 解码首码位（本文件断言均为单码位文本）。
+    const auto* p = reinterpret_cast<const unsigned char*>(cell.text.data());
+    if (p[0] < 0x80) return p[0];
+    if ((p[0] & 0xE0) == 0xC0) return ((p[0] & 0x1F) << 6) | (p[1] & 0x3F);
+    if ((p[0] & 0xF0) == 0xE0)
+        return ((p[0] & 0x0F) << 12) | ((p[1] & 0x3F) << 6) | (p[2] & 0x3F);
+    return ((p[0] & 0x07) << 18) | ((p[1] & 0x3F) << 12) | ((p[2] & 0x3F) << 6) | (p[3] & 0x3F);
 }
 
 static void testCupAndHvp()
 {
-    ZzTerminal term(10, 4, 100);
+    ZzTerminal term(10, 4, ZzBackendKind::Native, 100);
     feedStr(term, "\x1b[2;3H");       // CUP：行列 1 起始
     ZZ_TEST_EXPECT(posEq(cursorOf(term), 1, 2));
     feedStr(term, "\x1b[H");          // 缺省 = 1;1
@@ -49,7 +57,7 @@ static void testCupAndHvp()
 
 static void testCursorMoves()
 {
-    ZzTerminal term(10, 4, 100);
+    ZzTerminal term(10, 4, ZzBackendKind::Native, 100);
     feedStr(term, "\x1b[2;5H");
     feedStr(term, "\x1b[A");          // CUU 1
     ZZ_TEST_EXPECT(posEq(cursorOf(term), 0, 4));
@@ -71,7 +79,7 @@ static void testCursorMoves()
 
 static void testCsiSaveRestore()
 {
-    ZzTerminal term(10, 4, 100);
+    ZzTerminal term(10, 4, ZzBackendKind::Native, 100);
     feedStr(term, "\x1b[2;5H\x1b[s"); // SCOSC
     feedStr(term, "\x1b[1;1H");
     feedStr(term, "\x1b[u");          // SCORC
@@ -80,14 +88,14 @@ static void testCsiSaveRestore()
 
 static void testPrivateMarkerIgnored()
 {
-    ZzTerminal term(10, 4, 100);
+    ZzTerminal term(10, 4, ZzBackendKind::Native, 100);
     feedStr(term, "\x1b[?25l");       // DEC 私有模式：M3 范围，安全忽略
     ZZ_TEST_EXPECT(term.cursor().visible); // 不受影响
 }
 
 static void testScrollRegionClamping()
 {
-    ZzTerminal term(10, 6, 100);
+    ZzTerminal term(10, 6, ZzBackendKind::Native, 100);
     term.screen().setScrollRegion(2, 4); // 区内行 2..4
 
     feedStr(term, "\x1b[4;1H");   // 光标进区：row=3
@@ -107,7 +115,7 @@ static void testScrollRegionClamping()
 
 static void testOriginMode()
 {
-    ZzTerminal term(10, 6, 100);
+    ZzTerminal term(10, 6, ZzBackendKind::Native, 100);
     term.screen().setScrollRegion(2, 4);
     term.screen().setOriginMode(true); // DECOM
 
@@ -119,7 +127,7 @@ static void testOriginMode()
 
 static void testVpa()
 {
-    ZzTerminal term(10, 6, 100);
+    ZzTerminal term(10, 6, ZzBackendKind::Native, 100);
     feedStr(term, "\x1b[2;5H");   // row=1, col=4
     feedStr(term, "\x1b[3d");     // VPA：绝对行 3（1 起始），列不变
     ZZ_TEST_EXPECT(posEq(cursorOf(term), 2, 4));
@@ -129,7 +137,7 @@ static void testVpa()
 
 static void testEraseInLine()
 {
-    ZzTerminal term(10, 4, 100);
+    ZzTerminal term(10, 4, ZzBackendKind::Native, 100);
     feedStr(term, "0123456789");
     feedStr(term, "\x1b[1G\x1b[K");   // 光标到行首；EL 0：擦到行尾
     ZZ_TEST_EXPECT(cpAt(term, 0, 0) == 0);
@@ -147,7 +155,7 @@ static void testEraseInLine()
 
 static void testEraseInDisplay()
 {
-    ZzTerminal term(5, 3, 100);
+    ZzTerminal term(5, 3, ZzBackendKind::Native, 100);
     feedStr(term, "aaa\r\nbbb\r\nccc");
     feedStr(term, "\x1b[2;2H\x1b[J"); // ED 0：光标（含）到屏尾
     ZZ_TEST_EXPECT(cpAt(term, 0, 2) == U'a'); // 行 0 不受 ED 0 影响（简报原文断言 (0,4)，该行仅 3 字符宽，(0,4) 恒为空格，此处按语义修正到行尾字符 (0,2)）
@@ -162,7 +170,7 @@ static void testEraseInDisplay()
 
 static void testEchIchDch()
 {
-    ZzTerminal term(10, 4, 100);
+    ZzTerminal term(10, 4, ZzBackendKind::Native, 100);
     feedStr(term, "0123456789\r");
     feedStr(term, "\x1b[3G\x1b[2X");  // ECH 2：原位擦除两格，其余不动
     ZZ_TEST_EXPECT(cpAt(term, 0, 1) == U'1');
@@ -187,7 +195,7 @@ static void testEchIchDch()
 
 static void testIlDlSuSd()
 {
-    ZzTerminal term(5, 3, 100);
+    ZzTerminal term(5, 3, ZzBackendKind::Native, 100);
     feedStr(term, "aaa\r\nbbb\r\nccc");
     feedStr(term, "\x1b[2;1H\x1b[L"); // IL 1：光标行处插入一行
     ZZ_TEST_EXPECT(cpAt(term, 1, 0) == 0);

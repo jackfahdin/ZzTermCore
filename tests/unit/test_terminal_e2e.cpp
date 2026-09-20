@@ -26,13 +26,13 @@ static std::string screenText(const ZzTerminal& term)
 {
     std::string out;
     for (int row = 0; row < term.size().rows; ++row) {
-        const ZzLine& line = term.renderView().lineAt(row);
+        const ZzLineView line = term.renderView().lineAt(row);
         for (int col = 0; col < line.cellCount(); ++col) {
-            const ZzCell& cell = line.cellAt(col);
-            if (cell.isEmpty())
+            const ZzCellView cell = line.cellAt(col);
+            if (cell.text.empty())
                 out.push_back(' ');
-            else if (!cell.isCluster() && cell.codePoint() < 0x80)
-                out.push_back(static_cast<char>(cell.codePoint()));
+            else if (cell.text.size() == 1)
+                out.push_back(cell.text[0]);
             else
                 out.push_back('?');
         }
@@ -44,15 +44,15 @@ static std::string screenText(const ZzTerminal& term)
 static void testColoredLs()
 {
     // 模拟 ls --color：蓝色加粗目录名 + 普通文件名。
-    ZzTerminal term(20, 5, 100);
+    ZzTerminal term(20, 5, ZzBackendKind::Native, 100);
     feedStr(term, "\x1b[1;34msrc\x1b[0m/  README.md\r\n");
     ZZ_TEST_EXPECT(screenText(term).substr(0, 20) == "src/  README.md     ");
-    const ZzCell dir = term.renderView().lineAt(0).cellAt(0);
-    ZZ_TEST_EXPECT(dir.attributes().bold());
-    ZZ_TEST_EXPECT(dir.foreground() == ZzColor::Indexed(4));
-    const ZzCell file = term.renderView().lineAt(0).cellAt(7);
-    ZZ_TEST_EXPECT(file.attributes() == ZzCellAttributes{});
-    ZZ_TEST_EXPECT(file.foreground().isDefault());
+    const ZzCellView dir = term.renderView().lineAt(0).cellAt(0);
+    ZZ_TEST_EXPECT(dir.attributes.bold());
+    ZZ_TEST_EXPECT(dir.foreground == ZzColor::Indexed(4));
+    const ZzCellView file = term.renderView().lineAt(0).cellAt(7);
+    ZZ_TEST_EXPECT(file.attributes == ZzCellAttributes{});
+    ZZ_TEST_EXPECT(file.foreground.isDefault());
     ZZ_TEST_EXPECT(term.cursor().position.row == 1);
     ZZ_TEST_EXPECT(term.cursor().position.col == 0);
 }
@@ -60,7 +60,7 @@ static void testColoredLs()
 static void testVimStyleRedraw()
 {
     // 模拟全屏程序：清屏 + 光标归位 + 逐行重绘。
-    ZzTerminal term(10, 3, 100);
+    ZzTerminal term(10, 3, ZzBackendKind::Native, 100);
     feedStr(term, "junk\r\njunk\r\njunk");
     feedStr(term, "\x1b[2J\x1b[H");
     feedStr(term, "~\r\n~\r\n~");
@@ -76,12 +76,12 @@ static void testSplitInvariance()
         "abc\x1b[K\x1b[1;3H\x1b[7mQ\x1b[0m",
     };
     for (const std::string& input : scenarios) {
-        ZzTerminal reference(20, 5, 100);
+        ZzTerminal reference(20, 5, ZzBackendKind::Native, 100);
         feedStr(reference, input);
         const std::string want = screenText(reference);
 
         for (std::size_t cut = 0; cut <= input.size(); ++cut) {
-            ZzTerminal term(20, 5, 100);
+            ZzTerminal term(20, 5, ZzBackendKind::Native, 100);
             feedStr(term, input.substr(0, cut));
             feedStr(term, input.substr(cut));
             ZZ_TEST_EXPECT(screenText(term) == want);
@@ -96,7 +96,7 @@ static void testScrollThenWriteRemainsVisible()
     // 底部行写入 + LF 滚动后，新写入的行必须可见。
     // 回归场景：滚动移位留下被 move 掏空的行，clear 不恢复列数，
     // 后续写入被 ZzLine::setCell 的边界检查静默丢弃（屏幕"冻结"）。
-    ZzTerminal term(10, 4, 100);
+    ZzTerminal term(10, 4, ZzBackendKind::Native, 100);
     feedStr(term, "\x1b[4;1H"); // 光标到底部行
     feedStr(term, "A\r\nB\r\nC\r\nD");
     ZZ_TEST_EXPECT(screenText(term) == "A         \nB         \nC         \nD         \n");
@@ -105,7 +105,7 @@ static void testScrollThenWriteRemainsVisible()
 static void testScrollDownThenWriteRemainsVisible()
 {
     // 反方向：IL（scrollRegionDown）移位同样产生掏空行，腾出的空行必须可写。
-    ZzTerminal term(10, 4, 100);
+    ZzTerminal term(10, 4, ZzBackendKind::Native, 100);
     feedStr(term, "A\r\nB\r\nC\r\nD"); // 写满 4 行（无滚动）
     feedStr(term, "\x1b[1;1H\x1b[L"); // 光标回 row 0，插入一行（D 滚出底部）
     feedStr(term, "X");
