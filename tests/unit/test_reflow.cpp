@@ -212,6 +212,31 @@ static void testCursorInTrimmedBlanks()
     ZZ_TEST_EXPECT(cur.col >= 0 && cur.col < 40); // 兜底到链内容尾/clamp
 }
 
+// 11. 硬行宽字符落新列宽边界：整体截断丢弃，不多行化、无续格泄漏
+static void testHardLineWideCharAtBoundary()
+{
+    // 10 列硬行：8 个窄字符 + 第 8 列 WideLead（占 8-9 两列），reflow 到 9 列。
+    std::vector<ZzLine> lines;
+    ZzLine l0(10);
+    for (int i = 0; i < 8; ++i) {
+        ZzCell c; c.setWidth(ZzCellWidth::Narrow); c.setCodePoint(U'a' + i);
+        l0.setCell(i, c);
+    }
+    ZzCell lead; lead.setWidth(ZzCellWidth::WideLead); lead.setCodePoint(0x4E2D);
+    ZzCell cont; cont.setWidth(ZzCellWidth::WideContinuation);
+    l0.setCell(8, lead);
+    l0.setCell(9, cont);
+    lines.push_back(std::move(l0));
+    auto out = zzReflowLines(std::move(lines), 10, 9);
+    ZZ_TEST_EXPECT(out.size() == 1);        // 硬行永不多行化
+    ZZ_TEST_EXPECT(!out[0].wrapped());
+    ZZ_TEST_EXPECT(out[0].cellCount() == 9);
+    ZZ_TEST_EXPECT(lineText(out[0]).substr(0, 8) == "abcdefgh");
+    ZZ_TEST_EXPECT(out[0].cellAt(8).isEmpty()); // 宽字符整体丢弃，边界补空白
+    for (int i = 0; i < out[0].cellCount(); ++i)
+        ZZ_TEST_EXPECT(out[0].cellAt(i).width() != ZzCellWidth::WideContinuation); // 无续格泄漏
+}
+
 int main()
 {
     testWidenMergesChain();
@@ -224,6 +249,7 @@ int main()
     testBlankLines();
     testClusterReintern();
     testCursorInTrimmedBlanks();
+    testHardLineWideCharAtBoundary();
     if (g_failures == 0)
         std::printf("test_reflow: all passed\n");
     return g_failures;
