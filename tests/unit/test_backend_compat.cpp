@@ -183,18 +183,30 @@ void testResize()
     checkRowEqual(d.native, d.contour, 0, 4, "resize-keep");
 }
 
-// 10. 光标可见性（DECTCEM ?25l/h）。差异研判（b 类，两后端真实语义分歧）：
-// native 忽略 DEC 私有 CSI（DECTCEM 属 M2，同 testAltScreen 注释），visible
-// 恒 true；Contour 经 RenderBuffer 上报真实可见性。分别断言各自语义。
+// 10. 光标可见性（DECTCEM ?25l/h；M2：两后端均上报真实值，恢复强对照）。
 void testCursorVisibility()
 {
     Dual d;
     d.feedBoth("AB\x1b[?25l");
-    ZZ_CHECK(!d.contour.cursor().visible); // Contour：?25l 生效
-    ZZ_CHECK(d.native.cursor().visible);   // native：DECTCEM 未实现（M2）
+    ZZ_CHECK(!d.native.cursor().visible);
+    ZZ_CHECK(!d.contour.cursor().visible);
     d.feedBoth("\x1b[?25h");
-    ZZ_CHECK(d.contour.cursor().visible);
     ZZ_CHECK(d.native.cursor().visible);
+    ZZ_CHECK(d.contour.cursor().visible);
+}
+
+// 11. DECAWM ?7l：右边界覆写不换行（M2 新增强对照）。
+void testAutoWrapMode()
+{
+    Dual d; // 80x24
+    d.feedBoth("\x1b[?7l");
+    std::string seq(80, 'X');
+    seq += "YZ"; // 前 80 填满行 0；Y/Z 依次覆写最后一格
+    d.feedBoth(seq);
+    checkRowEqual(d.native, d.contour, 0, 80, "decawm-off");
+    ZZ_CHECK(d.native.cursor().position == d.contour.cursor().position);
+    ZZ_CHECK(d.native.renderView().lineAt(1).cellAt(0).text.empty());
+    ZZ_CHECK(d.contour.renderView().lineAt(1).cellAt(0).text.empty());
 }
 
 } // namespace
@@ -211,6 +223,7 @@ int main()
     testScrollback();
     testResize();
     testCursorVisibility();
+    testAutoWrapMode();
     if (g_failures != 0)
         std::fprintf(stderr, "test_backend_compat: %d failure(s)\n", g_failures);
     return g_failures == 0 ? 0 : 1;

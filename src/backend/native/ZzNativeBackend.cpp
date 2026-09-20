@@ -181,18 +181,19 @@ void ZzNativeBackend::putChar(char32_t cp)
         // 宽字符占满行尾两格：光标停最后一列，置 wrap-pending（下一字符换行）。
         if (cur.col + 1 == sz.cols - 1) {
             screen_.setCursorPosition(ZzPosition{cur.row, sz.cols - 1});
-            if (screen_.autoWrapMode())
-                screen_.setWrapPending(true);
+            screen_.setWrapPending(true);
         } else {
             screen_.setCursorPosition(ZzPosition{cur.row, cur.col + 2});
         }
     } else if (cur.col < sz.cols - 1) {
         screen_.setCursorPosition(ZzPosition{cur.row, cur.col + 1});
-    } else if (screen_.autoWrapMode()) {
+    } else {
         // 最后一列：光标不动，置 wrap-pending（下一个可打印字符才换行）。
         screen_.setWrapPending(true);
     }
-    // DECAWM 关闭时在最后一列：光标不动、不置标志，后续字符覆盖该格。
+    // wrap-pending 无论 DECAWM 开关都置位（对齐 xterm charproc.c：
+    // 写满右边距即置 do_wrap，仅消费时按当时 WRAPAROUND 决定是否换行）。
+    // DECAWM 关闭时后续字符在入口处消费该标志但不换行，仍覆盖最后一格。
 }
 
 void ZzNativeBackend::executeControl(std::uint8_t control)

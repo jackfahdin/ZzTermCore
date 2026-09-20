@@ -160,6 +160,14 @@ void ZzNativeBackend::dispatchDecPrivate(const ZzParamSequence& seq)
         if (p == ZzParamSequence::kOmitted || p <= 0)
             continue;
         switch (static_cast<int>(p)) {
+        case 7: // DECAWM 自动换行（默认开）
+            screen_.setAutoWrapMode(set);
+            break;
+        case 25: { // DECTCEM 光标可见性（形状/闪烁位不动）
+            const ZzCursorState cur = screen_.cursor();
+            screen_.setCursorStyle(cur.shape, set, cur.blinking);
+            break;
+        }
         case 1047: // 使用备用屏幕（进入清屏），不动光标保存
             if (set)
                 switchToAlternate(false);
