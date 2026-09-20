@@ -46,6 +46,8 @@ public:
         outputHandlerSet = static_cast<bool>(handler);
     }
     void setAmbiguousWidthMode(bool) noexcept override {}
+    void sendText(std::string_view /*utf8*/) override {}
+    void sendKey(const ZzKeyEvent& /*event*/) override {}
 
     std::size_t fedBytes = 0;
     bool outputHandlerSet = false;

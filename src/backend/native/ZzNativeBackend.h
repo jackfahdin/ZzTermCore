@@ -6,6 +6,7 @@
 
 #include "../ZzTerminalBackend.h"
 
+#include "ZzTerm/Input.h"
 #include "ZzTerm/Parser.h"
 #include "ZzTerm/Utf8.h"
 
@@ -27,6 +28,8 @@ public:
     void clearDirty() noexcept override;
     void setOutputHandler(std::function<void(std::string_view)> handler) override;
     void setAmbiguousWidthMode(bool wide) noexcept override;
+    void sendText(std::string_view utf8) override;
+    void sendKey(const ZzKeyEvent& event) override;
 
     // ---- facade 的 screen()/scrollback() 委托用（Native 限定访问） ----
     [[nodiscard]] ZzScreen& screen() noexcept { return screen_; }
@@ -47,6 +50,8 @@ public:
     /// 覆写一致性：pos 覆盖既有宽字符任一半时，另一半清为空格（保留被清格背景）。
     void clearWidePairAt(ZzPosition pos) noexcept;
     void noteScreenDirty() noexcept;
+    /// 经 outputHandler_ 发出字节；handler 未设或字节为空时丢弃。
+    void emit(std::string_view bytes);
 
     struct Sink; // 嵌套类：ZzParserSink 实现，定义在 ZzNativeBackend.cpp。
 
@@ -66,4 +71,6 @@ public:
     ZzColor penBg_ = ZzColor::Default();  ///< 当前画笔背景色。
     ZzTermChanges* activeChanges_ = nullptr; ///< feed 期间的变化聚合目标。
     bool ambiguousWide_ = false; ///< Ambiguous 按 2 列（CJK 模式）。
+    ZzInputEncoder encoder_; ///< 输入编码器（模式位由 CSI/ESC 分发同步，M3a）。
+    std::function<void(std::string_view)> outputHandler_; ///< output 通道（M3a 启用）。
 };

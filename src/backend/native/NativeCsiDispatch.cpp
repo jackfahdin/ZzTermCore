@@ -5,9 +5,9 @@
 // CSI 语义（ZzNativeBackend 方法，分文件实现以控制单文件规模）。
 // 约定：参数省略（kOmitted）或 <= 0 一律回退默认值；数值钳到网格范围。
 // DEC 私有序列（privateMarker == '?'）走 dispatchDecPrivate：M2 已交付
-// 备用屏幕（1049/1047/1048）、DECAWM（?7）、DECTCEM（?25）；其余 DEC
-// 私有模式（mouse/bracketed paste 等）与 intermediate 序列安全忽略，属
-// M3（里程碑划分见 Architecture.md 第 19 节）。
+// 备用屏幕（1049/1047/1048）、DECAWM（?7）、DECTCEM（?25），M3a 交付
+// DECCKM（?1，同步输入编码器）；其余 DEC 私有模式（mouse/bracketed paste
+// 等）与 intermediate 序列安全忽略，属 M3（里程碑划分见 Architecture.md 第 19 节）。
 
 namespace {
 
@@ -160,6 +160,9 @@ void ZzNativeBackend::dispatchDecPrivate(const ZzParamSequence& seq)
         if (p == ZzParamSequence::kOmitted || p <= 0)
             continue;
         switch (static_cast<int>(p)) {
+        case 1: // DECCKM：application cursor keys（同步到输入编码器）
+            encoder_.setApplicationCursorKeys(set);
+            break;
         case 7: // DECAWM 自动换行（默认开）
             screen_.setAutoWrapMode(set);
             break;
