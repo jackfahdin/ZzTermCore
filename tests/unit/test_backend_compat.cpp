@@ -104,37 +104,26 @@ void testCjkWide()
     ZZ_CHECK(d.native.cursor().position == d.contour.cursor().position);
 }
 
-// 6. Alternate Screen。差异研判（b 类，两后端真实语义分歧，非转换层 bug）：
-// native 的 dispatchCsi 明确忽略全部 DEC 私有 CSI（备用屏幕 1049/1047/1048 属
-// M2，见 NativeCsiDispatch.cpp 文件头注释），故 isAlternateScreen 恒 false，
-// "ALT" 直接续写在主屏行 0（"MAINALT"），1049l 亦为无操作；
-// Contour 实现完整 1049 语义：切 alt 清屏写 ALT，退出时主屏 "MAIN" 恢复。
-// 按规则 (b) 分别断言各自语义；M2 native 支持备用屏幕后应恢复逐格对照。
+// 6. Alternate Screen（M2：两后端均实现 1049，内容恢复逐格强对照）。
+// 光标断言为 b 类分别断言（两后端真实语义分歧，非转换层 bug，钉住不强行对齐）：
+// xterm 语义 1049 = 1048 + 1047，1049l 恢复 1049h 保存的光标，native 对齐
+// xterm 得 (0,4)；Contour 经 RenderBuffer 上报光标，实测自 1049h 起即不再上报
+// （visible=false，position 为占位 (0,0)，?25h 亦不复现），属上游渲染光标
+// 可见性条件差异（contour Terminal.cpp fillRenderBufferInternal 的页耦合判定）。
 void testAltScreen()
 {
     Dual d;
     d.feedBoth("MAIN\x1b[?1049h");
-    ZZ_CHECK(d.contour.isAlternateScreen());  // Contour：1049h 生效
-    ZZ_CHECK(!d.native.isAlternateScreen());  // native：DEC 私有 CSI 忽略（M2）
+    ZZ_CHECK(d.native.isAlternateScreen());
+    ZZ_CHECK(d.contour.isAlternateScreen());
     d.feedBoth("ALT");
-    // Contour：alt 屏行 0 写入 "ALT"
-    ZZ_CHECK(d.contour.renderView().lineAt(0).cellAt(0).text == "A");
-    ZZ_CHECK(d.contour.renderView().lineAt(0).cellAt(1).text == "L");
-    ZZ_CHECK(d.contour.renderView().lineAt(0).cellAt(2).text == "T");
-    // native：主屏行 0 续写 → "MAINALT"
-    ZZ_CHECK(d.native.renderView().lineAt(0).cellAt(0).text == "M");
-    ZZ_CHECK(d.native.renderView().lineAt(0).cellAt(4).text == "A");
-    ZZ_CHECK(d.native.renderView().lineAt(0).cellAt(6).text == "T");
+    checkRowEqual(d.native, d.contour, 0, 3, "alt-write");
     d.feedBoth("\x1b[?1049l");
-    ZZ_CHECK(!d.contour.isAlternateScreen());
     ZZ_CHECK(!d.native.isAlternateScreen());
-    // Contour：主屏 "MAIN" 恢复
-    ZZ_CHECK(d.contour.renderView().lineAt(0).cellAt(0).text == "M");
-    ZZ_CHECK(d.contour.renderView().lineAt(0).cellAt(3).text == "N");
-    ZZ_CHECK(d.contour.renderView().lineAt(0).cellAt(4).text.empty());
-    // native：无切换语义，行 0 保持 "MAINALT"
-    ZZ_CHECK(d.native.renderView().lineAt(0).cellAt(0).text == "M");
-    ZZ_CHECK(d.native.renderView().lineAt(0).cellAt(6).text == "T");
+    ZZ_CHECK(!d.contour.isAlternateScreen());
+    checkRowEqual(d.native, d.contour, 0, 4, "alt-restore");
+    ZZ_CHECK(d.native.cursor().position == (ZzPosition { 0, 4 })); // native：xterm 语义恢复
+    ZZ_CHECK(!d.contour.cursor().visible); // Contour：RenderBuffer 不上报光标（见函数头注释）
 }
 
 // 7. changes 标志：bell 与 title。
