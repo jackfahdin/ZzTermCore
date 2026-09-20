@@ -40,4 +40,10 @@ public:
     virtual void sendText(std::string_view utf8) = 0;
     /// 编码并发出按键事件；编码依据后端当前终端模式（application cursor 等）。
     virtual void sendKey(const ZzKeyEvent& event) = 0;
+    /// 编码并发出鼠标事件；当前上报模式下不该上报时静默丢弃。
+    virtual void sendMouse(const ZzMouseEvent& event) = 0;
+    /// 编码并发出粘贴文本（bracketed paste 2004 开启时包裹 200~/201~）。
+    virtual void sendPaste(std::string_view utf8) = 0;
+    /// 编码并发出焦点事件（focus reporting 1004 开启时 CSI I/O）。
+    virtual void sendFocus(bool focused) = 0;
 };

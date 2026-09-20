@@ -102,6 +102,21 @@ void ZzNativeBackend::sendKey(const ZzKeyEvent& event)
     emit(encoder_.encodeKey(event));
 }
 
+void ZzNativeBackend::sendMouse(const ZzMouseEvent& event)
+{
+    emit(encoder_.encodeMouse(event));
+}
+
+void ZzNativeBackend::sendPaste(std::string_view utf8)
+{
+    emit(encoder_.encodePaste(utf8));
+}
+
+void ZzNativeBackend::sendFocus(bool focused)
+{
+    emit(encoder_.encodeFocus(focused));
+}
+
 void ZzNativeBackend::setAmbiguousWidthMode(bool wide) noexcept
 {
     ambiguousWide_ = wide;

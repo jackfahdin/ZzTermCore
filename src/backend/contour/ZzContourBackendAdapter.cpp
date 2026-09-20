@@ -88,6 +88,21 @@ public:
         backend_->sendKeyEvent(event);
         backend_->flushReplies(); // send 同步生成的编码字节立即上行
     }
+    void sendMouse(const ZzMouseEvent& event) override
+    {
+        backend_->sendMouseEvent(event);
+        backend_->flushReplies();
+    }
+    void sendPaste(std::string_view utf8) override
+    {
+        backend_->sendPasteText(utf8);
+        backend_->flushReplies();
+    }
+    void sendFocus(bool focused) override
+    {
+        backend_->sendFocusEvent(focused);
+        backend_->flushReplies();
+    }
 
 private:
     // ZzContourEvents 实现：锁内回调（title/bell/altBuffer）只写 adapter 自有状态

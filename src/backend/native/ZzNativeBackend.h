@@ -30,6 +30,9 @@ public:
     void setAmbiguousWidthMode(bool wide) noexcept override;
     void sendText(std::string_view utf8) override;
     void sendKey(const ZzKeyEvent& event) override;
+    void sendMouse(const ZzMouseEvent& event) override;
+    void sendPaste(std::string_view utf8) override;
+    void sendFocus(bool focused) override;
 
     // ---- facade 的 screen()/scrollback() 委托用（Native 限定访问） ----
     [[nodiscard]] ZzScreen& screen() noexcept { return screen_; }

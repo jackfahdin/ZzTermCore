@@ -7,8 +7,9 @@
 // 约定：参数省略（kOmitted）或 <= 0 一律回退默认值；数值钳到网格范围。
 // DEC 私有序列（privateMarker == '?'）走 dispatchDecPrivate：M2 已交付
 // 备用屏幕（1049/1047/1048）、DECAWM（?7）、DECTCEM（?25），M3a 交付
-// DECCKM（?1，同步输入编码器）；其余 DEC 私有模式（mouse/bracketed paste
-// 等）与 intermediate 序列安全忽略，属 M3（里程碑划分见 Architecture.md 第 19 节）。
+// DECCKM（?1，同步输入编码器），M3b 交付鼠标上报（?9/?1000/?1002/?1003）、
+// SGR 1006 编码、bracketed paste（?2004）、焦点上报（?1004，同步输入编码器）；
+// 其余 DEC 私有模式与 intermediate 序列安全忽略（里程碑划分见 Architecture.md 第 19 节）。
 
 namespace {
 
@@ -187,6 +188,29 @@ void ZzNativeBackend::dispatchDecPrivate(const ZzParamSequence& seq)
             screen_.setCursorStyle(cur.shape, set, cur.blinking);
             break;
         }
+        case 9: // X10 鼠标（仅按下）
+            encoder_.setMouseReportMode(set ? ZzMouseReportMode::X10 : ZzMouseReportMode::None);
+            break;
+        case 1000: // Normal 鼠标（按下+释放）
+            encoder_.setMouseReportMode(set ? ZzMouseReportMode::Normal : ZzMouseReportMode::None);
+            break;
+        case 1002: // Button-event 鼠标（+按下时拖动）
+            encoder_.setMouseReportMode(set ? ZzMouseReportMode::ButtonEvent
+                                            : ZzMouseReportMode::None);
+            break;
+        case 1003: // Any-event 鼠标（+任意移动）
+            encoder_.setMouseReportMode(set ? ZzMouseReportMode::AnyEvent
+                                            : ZzMouseReportMode::None);
+            break;
+        case 1004: // 焦点上报（CSI I/O）
+            encoder_.setFocusReporting(set);
+            break;
+        case 1006: // SGR 1006 鼠标编码格式
+            encoder_.setMouseSgrEncoding(set);
+            break;
+        case 2004: // bracketed paste
+            encoder_.setBracketedPaste(set);
+            break;
         case 1047: // 使用备用屏幕（进入清屏），不动光标保存
             if (set)
                 switchToAlternate(false);
