@@ -17,10 +17,10 @@ int g_failures = 0;
         }                                                                                           \
     } while (0)
 
-void feed(ZzTerminal& t, std::string_view bytes)
+ZzTermChanges feed(ZzTerminal& t, std::string_view bytes)
 {
-    t.feed(std::span<const std::byte>(reinterpret_cast<const std::byte*>(bytes.data()),
-                                      bytes.size()));
+    return t.feed(std::span<const std::byte>(reinterpret_cast<const std::byte*>(bytes.data()),
+                                               bytes.size()));
 }
 
 ZzCellView cell(const ZzTerminal& t, int row, int col)
@@ -32,13 +32,16 @@ ZzCellView cell(const ZzTerminal& t, int row, int col)
 void test1049RoundTrip()
 {
     ZzTerminal t(10, 4, ZzBackendKind::Native, 0);
-    feed(t, "MAIN\x1b[?1049h");
+    feed(t, "MAIN");
+    const ZzTermChanges enter = feed(t, "\x1b[?1049h");
+    ZZ_CHECK(enter.screenDirty);                   // 1049h 切 alt 置 dirty
     ZZ_CHECK(t.isAlternateScreen());
     ZZ_CHECK(cell(t, 0, 0).text.empty());        // alt 已清屏
     ZZ_CHECK(t.cursor().position == (ZzPosition { 0, 0 }));
     feed(t, "ALT");
     ZZ_CHECK(cell(t, 0, 0).text == "A");
-    feed(t, "\x1b[?1049l");
+    const ZzTermChanges leave = feed(t, "\x1b[?1049l");
+    ZZ_CHECK(leave.screenDirty);                   // 1049l 回主屏置 dirty
     ZZ_CHECK(!t.isAlternateScreen());
     ZZ_CHECK(cell(t, 0, 0).text == "M");         // 主屏恢复
     ZZ_CHECK(cell(t, 0, 3).text == "N");
