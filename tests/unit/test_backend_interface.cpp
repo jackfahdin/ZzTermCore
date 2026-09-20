@@ -48,6 +48,9 @@ public:
     void setAmbiguousWidthMode(bool) noexcept override {}
     void sendText(std::string_view /*utf8*/) override {}
     void sendKey(const ZzKeyEvent& /*event*/) override {}
+    void sendMouse(const ZzMouseEvent& /*event*/) override {}
+    void sendPaste(std::string_view /*utf8*/) override {}
+    void sendFocus(bool /*focused*/) override {}
 
     std::size_t fedBytes = 0;
     bool outputHandlerSet = false;

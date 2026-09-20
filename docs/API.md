@@ -51,6 +51,22 @@ parser/screen/scrollback 等引擎组件归各后端实现持有，`ZzTerminal`
   IME commit text；入参为已确认合法 UTF-8，Core 不重复校验）；
   `sendKey(const ZzKeyEvent&)` 发送按键语义事件（功能键、组合键；
   普通字符优先 sendText）。两者编码字节统一经 output 通道发出。
+- `sendMouse(const ZzMouseEvent&)` 发送鼠标语义事件（网格坐标
+  0 起始，编码时换算为协议 1 起始）；`sendPaste(std::string_view)`
+  发送粘贴文本；`sendFocus(bool)` 发送焦点事件。三者编码字节同样
+  统一经 output 通道发出；未开对应模式或未设 handler 时静默丢弃
+  （M3b 起，两后端均支持）。
+- 鼠标/粘贴/焦点模式联动（M3b，由 feed 接收的 DEC 序列驱动，前端
+  无需自管）：鼠标上报模式 ?9/?1000/?1002/?1003 互斥（X10 仅按下、
+  Normal 按下+释放、Button-event 加按下时拖动、Any-event 加任意
+  移动），?1006 选择鼠标编码格式；?2004 bracketed paste 开启时
+  sendPaste 自动包裹 200~/201~；?1004 focus reporting 开启时
+  sendFocus 发 CSI I（获得焦点）或 CSI O（失去焦点）。
+- 鼠标编码两格式：经典 X10/Normal（码值 +32 得三字节，坐标上限
+  223）与 SGR 1006（CSI 以小于号引导，分号分隔按钮码、列、行，
+  M 结尾为按下、m 结尾为释放）；无按钮移动上报码为 35。Contour
+  侧经 `zzMouseButton` 映射委托其自家输入路径（两端枚举顺序差
+  已在映射层处理）。
 - 输入编码与终端模式联动：application cursor（DECCKM ?1）下
   方向键/Home/End 编码为 SS3（ESC O x），否则为 CSI（ESC [ x）；
   application keypad（ESC=/ESC>）模式位已同步到 native 编码器，
@@ -155,13 +171,17 @@ Cold mmap-file 扩展。Screen 不知道历史后端类型。
 ### Input Encoder
 
 以 `ZzKeyEvent`、`ZzMouseEvent`、Paste、Focus 等语义事件进入输入
-链路，UI 不直接拼 escape sequence。M3a 落地的输入方向公开面为
-facade 的 `sendText` / `sendKey`（见 Terminal 节）；`ZzInputEncoder`
+链路，UI 不直接拼 escape sequence。输入方向公开面为 facade 的
+`sendText` / `sendKey`（M3a）与 `sendMouse` / `sendPaste` /
+`sendFocus`（M3b，语义与模式联动见 Terminal 节）；`ZzInputEncoder`
 为 native 后端内部组件（`ZzTerm/Input.h` 定义事件类型），Contour
-后端经类型映射（`ZzContourConvert.h`）委托其自家输入路径，两后端
-编码逐字节一致（compat 用例 12 钉住）。当前覆盖方向键/Home/End/
-Insert/Delete/PageUp/PageDown/F1-F12、Enter/Tab/Backspace/Escape
-及修饰键组合；鼠标、paste、focus 上报属后续里程碑。
+后端经类型映射（`ZzContourConvert.h`）委托其自家输入路径，两后端在
+compat 用例覆盖的输入类上编码逐字节一致（键盘 compat 用例 12、鼠标/
+粘贴/焦点用例 15-17 钉住；Release 携带 None 按钮的域外输入两后端
+编码不同，见 compat 注释与后续跟踪）。当前覆盖方向键/Home/End/Insert/Delete/PageUp/PageDown/
+F1-F12、Enter/Tab/Backspace/Escape 及修饰键组合；Ctrl+非字母 C0
+映射（Space/@、方括号区间符号键、?）已支持；鼠标（经典与
+SGR 1006 两编码格式）、bracketed paste、focus 上报已随 M3b 落地。
 
 > 随实现补充。
 
@@ -176,8 +196,8 @@ Insert/Delete/PageUp/PageDown/F1-F12、Enter/Tab/Backspace/Escape
   128 + 信号号）。析构 SIGHUP（必要时 SIGKILL）子进程并回收僵尸。
 - 调试工具 `ZzTermSmoke`（`examples/ZzTermSmoke`）：PTY -> ZzTerminal ->
   stdout 全屏重绘的控制台冒烟 Demo；stdin 经 demo 本地 InputTranslator
-  走 sendText/sendKey 输入链路（不再字节透传），子进程退出即以其
-  退出码退出。
+  走 sendText/sendKey/sendMouse 输入链路（不再字节透传；鼠标识别
+  经典 X10 与 SGR 1006 两种形态），子进程退出即以其退出码退出。
 
 ### RenderView
 

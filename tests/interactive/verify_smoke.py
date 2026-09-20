@@ -12,8 +12,12 @@ M3a 追加：输入链路端到端——sendText 回显、sendKey 方向键（DE
 而是经 demo InputTranslator -> Core sendText/sendKey -> output 通道。
 Core 层同语义另有双后端逐格强对照（tests/unit/test_backend_compat.cpp 的
 testCjkWide / testAltScreen / testCursorVisibility），此处走真实 PTY + bash，
-两层互补不重复。"""
+两层互补不重复。
+M3b 追加：vim 鼠标点击定位——合成 SGR 1006 点击经 demo InputTranslator ->
+sendMouse -> PTY -> vim，以 vim ruler 状态行文本断言（Contour 备用屏
+不上报光标，见步骤 14 注释）。"""
 import os
+import re
 import sys
 import time
 import traceback
@@ -264,14 +268,40 @@ def main():
     child.sendline("true")
     settle(child, stream)
 
-    # 14. exit：demo 应以子进程退出码 0 退出
+    # 14. 鼠标（M3b）——vim mouse=a，合成 SGR 点击经 InputTranslator ->
+    # sendMouse -> PTY -> vim；点击定位结果经 vim ruler（状态行右下
+    # "行,列" 文本）断言。两点实测钉住（2026-09-20，双后端）：
+    # - 空缓冲区点击会被 vim 钳到最近文本位（仅 1 行时落 (1,1)），故
+    #   预置 12 行内容使点击行/列精确可达；
+    # - Contour 进 1049 备用屏后 RenderBuffer 不再上报光标（步骤 7 注释
+    #   钉住的上游分歧），pyte screen.cursor 对 Contour 是主屏残留值，
+    #   不能用光标位置断言——ruler 是屏幕文本，两后端均可读。
+    mouse_path = os.path.join(PLAY, "mouse-m3b.txt")
+    with open(mouse_path, "w") as f:  # 每次重写：可重复运行
+        for i in range(1, 13):
+            f.write(f"m3b-line-{i:02d} aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n")
+    child.sendline("vim -u NONE -c 'set mouse=a ruler' mouse-m3b.txt")
+    settle(child, stream, quiet=1.0)
+    child.send("\x1b[<0;10;5M")  # 左键点击第 5 行第 10 列（SGR 1006，1 起始）
+    settle(child, stream)
+    snap = snapshot(screen, "vim-mouse-click")
+    status_line = screen_text(screen).splitlines()[-1]
+    m = re.search(r"(\d+),(\d+)", status_line)
+    ok_click = m is not None and abs(int(m.group(1)) - 5) <= 1 \
+        and abs(int(m.group(2)) - 10) <= 1
+    check(ok_click, "14.vim鼠标点击定位",
+          f"状态行 {status_line.strip()!r} (快照 {snap})")
+    child.send(":q!\r")
+    settle(child, stream)
+
+    # 15. exit：demo 应以子进程退出码 0 退出
     child.sendline("exit")
     try:
         child.expect(pexpect.EOF, timeout=10)
     except pexpect.TIMEOUT:
         pass
     child.close()
-    check(child.exitstatus == 0, "14.exit干净退出", f"exitstatus={child.exitstatus}")
+    check(child.exitstatus == 0, "15.exit干净退出", f"exitstatus={child.exitstatus}")
 
     rawlog.close()
     print(f"\n原始字节日志: {OUT}/raw.log")

@@ -270,6 +270,72 @@ void testDeviceAttributes()
     ZZ_CHECK(contourOut.starts_with("\x1b[?"));
 }
 
+ZzMouseEvent mouseEvent(ZzMouseAction action, ZzMouseButton button, int col, int row)
+{
+    ZzMouseEvent ev;
+    ev.action = action;
+    ev.button = button;
+    ev.col = col;
+    ev.row = row;
+    return ev;
+}
+
+// 15. 鼠标 SGR 编码（M3b）：?1000h+?1006h 后 sendMouse 两后端发出字节强对照。
+void testMouseSgrCompat()
+{
+    Dual d;
+    std::string nativeOut, contourOut;
+    d.native.setOutputHandler([&](std::string_view b) { nativeOut.append(b); });
+    d.contour.setOutputHandler([&](std::string_view b) { contourOut.append(b); });
+    d.feedBoth("\x1b[?1000h\x1b[?1006h");
+    const ZzMouseEvent press = mouseEvent(ZzMouseAction::Press, ZzMouseButton::Left, 4, 2);
+    d.native.sendMouse(press);
+    d.contour.sendMouse(press);
+    ZZ_CHECK(nativeOut == "\x1b[<0;5;3M");
+    ZZ_CHECK(nativeOut == contourOut);
+    nativeOut.clear();
+    contourOut.clear();
+    const ZzMouseEvent release = mouseEvent(ZzMouseAction::Release, ZzMouseButton::Left, 4, 2);
+    d.native.sendMouse(release);
+    d.contour.sendMouse(release);
+    ZZ_CHECK(nativeOut == "\x1b[<0;5;3m");
+    ZZ_CHECK(nativeOut == contourOut);
+}
+
+// 16. bracketed paste（M3b）：?2004h 后 sendPaste 两后端包裹字节强对照。
+void testBracketedPasteCompat()
+{
+    Dual d;
+    std::string nativeOut, contourOut;
+    d.native.setOutputHandler([&](std::string_view b) { nativeOut.append(b); });
+    d.contour.setOutputHandler([&](std::string_view b) { contourOut.append(b); });
+    d.feedBoth("\x1b[?2004h");
+    d.native.sendPaste("hello");
+    d.contour.sendPaste("hello");
+    ZZ_CHECK(nativeOut == "\x1b[200~hello\x1b[201~");
+    ZZ_CHECK(nativeOut == contourOut);
+}
+
+// 17. 焦点上报（M3b）：?1004h 后 sendFocus 两后端 CSI I/O 强对照。
+void testFocusReportingCompat()
+{
+    Dual d;
+    std::string nativeOut, contourOut;
+    d.native.setOutputHandler([&](std::string_view b) { nativeOut.append(b); });
+    d.contour.setOutputHandler([&](std::string_view b) { contourOut.append(b); });
+    d.feedBoth("\x1b[?1004h");
+    d.native.sendFocus(true);
+    d.contour.sendFocus(true);
+    ZZ_CHECK(nativeOut == "\x1b[I");
+    ZZ_CHECK(nativeOut == contourOut);
+    nativeOut.clear();
+    contourOut.clear();
+    d.native.sendFocus(false);
+    d.contour.sendFocus(false);
+    ZZ_CHECK(nativeOut == "\x1b[O");
+    ZZ_CHECK(nativeOut == contourOut);
+}
+
 } // namespace
 
 int main()
@@ -288,6 +354,9 @@ int main()
     testInputApplicationCursor();
     testCursorPositionReport();
     testDeviceAttributes();
+    testMouseSgrCompat();
+    testBracketedPasteCompat();
+    testFocusReportingCompat();
     if (g_failures != 0)
         std::fprintf(stderr, "test_backend_compat: %d failure(s)\n", g_failures);
     return g_failures == 0 ? 0 : 1;

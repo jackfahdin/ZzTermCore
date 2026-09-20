@@ -80,6 +80,13 @@ public:
     ///（KAM 开启时按 contour 语义阻断，与 sendKeyEvent 路径一致，注释钉住）。
     void sendText(std::string_view utf8);
 
+    /// \brief 透传鼠标事件到 contour Terminal（网格坐标 → CellLocation；像素坐标缺省）。
+    void sendMouseEvent(const ZzMouseEvent& event);
+    /// \brief 透传粘贴文本（contour 按自身 bracketed 模式包裹）。
+    void sendPasteText(std::string_view utf8);
+    /// \brief 透传焦点事件。
+    void sendFocusEvent(bool focused);
+
     /// \brief 取当前屏拷贝式快照（非 const：内部需刷新 RenderBuffer 取光标）。
     ZzContourSnapshot snapshot();
 

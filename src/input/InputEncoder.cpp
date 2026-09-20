@@ -65,17 +65,30 @@ std::string ZzInputEncoder::encodeKey(const ZzKeyEvent& event) const
             return out;
         // Ctrl+字母 → C0 控制字节（xterm：Ctrl+C = 0x03，大小写同值）；
         // Alt → ESC 前缀（Meta 语义）。其余修饰组合按无修饰透传。
-        // Ctrl+非字母的 C0 映射（xterm 对 [@\]^_ 等有定义）未实现，归 M3b 输入完善。
         const bool ctrl = zzHasModifier(event.modifiers, ZzKeyModifier::Ctrl);
         const bool alt = zzHasModifier(event.modifiers, ZzKeyModifier::Alt);
         const bool letter = (event.character >= U'a' && event.character <= U'z')
                          || (event.character >= U'A' && event.character <= U'Z');
         if (alt)
             out.push_back('\x1B');
-        if (ctrl && letter)
+        if (ctrl && letter) {
             out.push_back(static_cast<char>(event.character & 0x1F));
-        else
+        } else if (ctrl) {
+            // xterm Ctrl+非字母 C0 映射：Space/@=NUL、[\]^_=0x1B-0x1F、?=DEL；
+            // 未定义的非字母透传原字符。
+            switch (event.character) {
+            case U' ': case U'@': out.push_back('\x00'); break;
+            case U'[':  out.push_back('\x1B'); break;
+            case U'\\': out.push_back('\x1C'); break;
+            case U']':  out.push_back('\x1D'); break;
+            case U'^':  out.push_back('\x1E'); break;
+            case U'_':  out.push_back('\x1F'); break;
+            case U'?':  out.push_back('\x7F'); break;
+            default:    appendUtf8(out, event.character); break;
+            }
+        } else {
             appendUtf8(out, event.character);
+        }
         return out;
     }
     case Key::Enter:     return "\r";
@@ -194,10 +207,14 @@ std::string ZzInputEncoder::encodeMouse(const ZzMouseEvent& event) const
     case ZzMouseButton::WheelDown:  code = 65; break;
     case ZzMouseButton::WheelLeft:  code = 66; break;
     case ZzMouseButton::WheelRight: code = 67; break;
-    case ZzMouseButton::None:       code = 0; break;
+    case ZzMouseButton::None:
+        // xterm：无按钮移动按按钮 3 编码（CB 低两位 3 + 移动位 32 = 35）。
+        code = (event.action == ZzMouseAction::Move) ? 3 : 0;
+        break;
     }
-    if (event.action == ZzMouseAction::Release)
-        code = 3; // 经典编码释放为按钮 3；SGR 编码用 'm' 结尾。
+    // 经典编码释放为按钮 3；SGR 编码保留原按钮码、用 'm' 结尾表示释放。
+    if (event.action == ZzMouseAction::Release && !mouseSgr_)
+        code = 3;
     if (event.action == ZzMouseAction::Move)
         code |= 32;
     if (zzHasModifier(event.modifiers, ZzKeyModifier::Shift)) code |= 4;

@@ -61,6 +61,21 @@ void ZzTerminal::sendKey(const ZzKeyEvent& event)
     impl_->backend->sendKey(event);
 }
 
+void ZzTerminal::sendMouse(const ZzMouseEvent& event)
+{
+    impl_->backend->sendMouse(event);
+}
+
+void ZzTerminal::sendPaste(std::string_view utf8)
+{
+    impl_->backend->sendPaste(utf8);
+}
+
+void ZzTerminal::sendFocus(bool focused)
+{
+    impl_->backend->sendFocus(focused);
+}
+
 ZzScreen& ZzTerminal::screen()
 {
     auto* native = dynamic_cast<ZzNativeBackend*>(impl_->backend.get());

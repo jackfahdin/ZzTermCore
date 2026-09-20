@@ -200,6 +200,39 @@ void ZzContourBackend::sendText(std::string_view utf8)
     impl_->terminal->sendRawInput(utf8);
 }
 
+void ZzContourBackend::sendMouseEvent(const ZzMouseEvent& event)
+{
+    const vtbackend::Modifiers mods { zzModifiers(event.modifiers) };
+    const vtbackend::CellLocation pos { .line = vtbackend::LineOffset(event.row),
+                                        .column = vtbackend::ColumnOffset(event.col) };
+    switch (event.action) {
+    case ZzMouseAction::Press:
+        impl_->terminal->sendMousePressEvent(mods, zzMouseButton(event.button), pos,
+                                             vtbackend::PixelCoordinate{}, false);
+        break;
+    case ZzMouseAction::Move:
+        impl_->terminal->sendMouseMoveEvent(mods, pos, vtbackend::PixelCoordinate{}, false);
+        break;
+    case ZzMouseAction::Release:
+        impl_->terminal->sendMouseReleaseEvent(mods, zzMouseButton(event.button),
+                                               vtbackend::PixelCoordinate{}, false);
+        break;
+    }
+}
+
+void ZzContourBackend::sendPasteText(std::string_view utf8)
+{
+    impl_->terminal->sendPaste(utf8);
+}
+
+void ZzContourBackend::sendFocusEvent(bool focused)
+{
+    if (focused)
+        impl_->terminal->sendFocusInEvent();
+    else
+        impl_->terminal->sendFocusOutEvent();
+}
+
 std::optional<std::pair<int, int>> ZzContourBackend::cursorPosition()
 {
     impl_->terminal->refreshRenderBuffer();

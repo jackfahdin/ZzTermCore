@@ -3,7 +3,7 @@
 // 子进程退出后以子进程退出码退出。
 //
 // 结构：PTY 输出 -> ZzTerminal -> RenderView 全屏重绘到 stdout（ANSI SGR）；
-//       stdin 经 Core 输入链路（sendText/sendKey）-> output 通道 -> PTY；
+//       stdin 经 Core 输入链路（sendText/sendKey/sendMouse）-> output 通道 -> PTY；
 //       SIGWINCH 自管道同步 PTY 与 Terminal 尺寸。
 // 非 tty 场景（CTest 管道）：termios guard 不生效、尺寸回退 80x24、
 // stdin EOF 后停止监听，仍可完整跑通（脚本化冒烟依赖此行为）。
@@ -68,8 +68,9 @@ private:
     bool active_ = false;
 };
 
-/// 输入翻译器（demo 本地）：stdin 字节流 → sendText / sendKey。
-/// 功能键按 xterm 编码识别（CSI/SS3），其余字节（含 UTF-8 多字节）走 sendText。
+/// 输入翻译器（demo 本地）：stdin 字节流 → sendText / sendKey / sendMouse。
+/// 功能键按 xterm 编码识别（CSI/SS3），鼠标按经典 X10 与 SGR 1006 两种
+/// 形态识别，其余字节（含 UTF-8 多字节）走 sendText。
 /// 不完整转义序列在缓冲中等待后续字节；无法识别的序列丢弃。
 /// 已知限制：裸 ESC 无超时消歧，会延迟到下一个输入字节连带发出
 /// （经典终端输入二义性；demo 可接受，生产前端应自带超时）。
@@ -106,6 +107,44 @@ private:
         term_.sendKey(ev);
     }
 
+    // 鼠标码（xterm 位布局）→ ZzMouseEvent → sendMouse。sgrRelease 仅 SGR 编码
+    // 用（m 结尾）；经典编码释放由码 3 表达。坐标入参为协议 1 起始。
+    void sendMouseFromCode(int code, int x, int y, bool sgrRelease)
+    {
+        ZzMouseEvent ev;
+        ev.col = x - 1;
+        ev.row = y - 1;
+        if (code & 4)
+            ev.modifiers = ev.modifiers | ZzKeyModifier::Shift;
+        if (code & 8)
+            ev.modifiers = ev.modifiers | ZzKeyModifier::Alt;
+        if (code & 16)
+            ev.modifiers = ev.modifiers | ZzKeyModifier::Ctrl;
+        if (code & 64) {
+            if (code & 2)
+                return; // 横向滚轮（66/67）demo 忽略
+            ev.action = ZzMouseAction::Press;
+            ev.button = (code & 1) ? ZzMouseButton::WheelDown : ZzMouseButton::WheelUp;
+        } else if (code & 32) {
+            ev.action = ZzMouseAction::Move;
+            // 拖拽移动按低位恢复按钮（3 = 无按钮移动）；先判 Move 再判
+            // Release，否则 SGR 无按钮移动码 35（=32+3）会被误判为 Release。
+            ev.button = (code & 3) == 0 ? ZzMouseButton::Left
+                      : (code & 3) == 1 ? ZzMouseButton::Middle
+                      : (code & 3) == 2 ? ZzMouseButton::Right
+                                        : ZzMouseButton::None;
+        } else if ((code & 3) == 3 || sgrRelease) {
+            ev.action = ZzMouseAction::Release;
+            ev.button = ZzMouseButton::None;
+        } else {
+            ev.action = ZzMouseAction::Press;
+            ev.button = (code & 3) == 0 ? ZzMouseButton::Left
+                      : (code & 3) == 1 ? ZzMouseButton::Middle
+                                        : ZzMouseButton::Right;
+        }
+        term_.sendMouse(ev);
+    }
+
     // 返回消费字节数；0 = 序列不完整需等待。
     std::size_t tryEscape(std::string_view s)
     {
@@ -131,6 +170,32 @@ private:
         if (s[1] != '[') {
             sendKey(ZzKeyEvent::Key::Escape);
             return 1; // 裸 ESC
+        }
+        if (s.size() >= 3 && s[2] == 'M') {
+            // 经典 X10 鼠标：ESC [ M Cb Cx Cy（各 -32）
+            if (s.size() < 6)
+                return 0;
+            const int code = static_cast<unsigned char>(s[3]) - 32;
+            const int x = static_cast<unsigned char>(s[4]) - 32;
+            const int y = static_cast<unsigned char>(s[5]) - 32;
+            sendMouseFromCode(code, x, y, false);
+            return 6;
+        }
+        if (s.size() >= 3 && s[2] == '<') {
+            // SGR 1006 鼠标：ESC [ < code ; x ; y M/m
+            std::size_t j = 3;
+            while (j < s.size()
+                   && (std::isdigit(static_cast<unsigned char>(s[j])) || s[j] == ';'))
+                ++j;
+            if (j >= s.size())
+                return 0; // 不完整
+            if (s[j] != 'M' && s[j] != 'm')
+                return j; // 非鼠标 < 序列：丢弃已扫描部分
+            int code = 0, x = 0, y = 0;
+            if (std::sscanf(std::string(s.substr(3, j - 3)).c_str(), "%d;%d;%d", &code, &x, &y)
+                == 3)
+                sendMouseFromCode(code, x, y, s[j] == 'm');
+            return j + 1;
         }
         // CSI：ESC [ 参数 final
         std::size_t j = 2;

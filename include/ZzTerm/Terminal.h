@@ -193,6 +193,28 @@ public:
      */
     void sendKey(const ZzKeyEvent& event);
 
+    /**
+     * @brief 发送鼠标事件（网格坐标，0 起始）。
+     * @param event 鼠标语义事件（见 ZzTerm/Input.h）。
+     * @note 编码依当前鼠标上报模式（?9/?1000/?1002/?1003）与编码格式（?1006），
+     *       由 feed 接收的 DEC 序列联动；未开模式或未设 handler 时静默丢弃。
+     */
+    void sendMouse(const ZzMouseEvent& event);
+
+    /**
+     * @brief 发送粘贴文本。
+     * @param utf8 已确认的合法 UTF-8 文本。
+     * @note bracketed paste（?2004）开启时自动包裹 200~/201~；未设 handler 静默丢弃。
+     */
+    void sendPaste(std::string_view utf8);
+
+    /**
+     * @brief 发送焦点事件。
+     * @param focused true = 获得焦点，false = 失去焦点。
+     * @note focus reporting（?1004）开启时发 CSI I/O；未开或未设 handler 静默丢弃。
+     */
+    void sendFocus(bool focused);
+
     // ---- Core 内部访问（供 parser/terminal 模块协作，不属于 Renderer API） ----
 
     /**

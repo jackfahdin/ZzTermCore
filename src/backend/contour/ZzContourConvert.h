@@ -144,3 +144,21 @@ inline std::optional<vtbackend::Key> zzKey(ZzKeyEvent::Key key)
     default:            return std::nullopt;
     }
 }
+
+/// \brief ZzMouseButton → vtbackend::MouseButton。
+/// 注意枚举顺序差：Zz 为 None/Left/Middle/Right，vtbackend 为 Left/Right/Middle；
+/// None/Release 统一映射为 vtbackend::MouseButton::Release。
+inline vtbackend::MouseButton zzMouseButton(ZzMouseButton button)
+{
+    switch (button) {
+    case ZzMouseButton::Left:       return vtbackend::MouseButton::Left;
+    case ZzMouseButton::Middle:     return vtbackend::MouseButton::Middle;
+    case ZzMouseButton::Right:      return vtbackend::MouseButton::Right;
+    case ZzMouseButton::WheelUp:    return vtbackend::MouseButton::WheelUp;
+    case ZzMouseButton::WheelDown:  return vtbackend::MouseButton::WheelDown;
+    case ZzMouseButton::WheelLeft:  return vtbackend::MouseButton::WheelLeft;
+    case ZzMouseButton::WheelRight: return vtbackend::MouseButton::WheelRight;
+    case ZzMouseButton::None:
+    default:                        return vtbackend::MouseButton::Release;
+    }
+}
