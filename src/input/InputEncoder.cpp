@@ -60,10 +60,23 @@ std::string ZzInputEncoder::encodeKey(const ZzKeyEvent& event) const
 
     using Key = ZzKeyEvent::Key;
     switch (event.key) {
-    case Key::Character:
-        if (event.character != 0)
+    case Key::Character: {
+        if (event.character == 0)
+            return out;
+        // Ctrl+字母 → C0 控制字节（xterm：Ctrl+C = 0x03，大小写同值）；
+        // Alt → ESC 前缀（Meta 语义）。其余修饰组合按无修饰透传。
+        const bool ctrl = zzHasModifier(event.modifiers, ZzKeyModifier::Ctrl);
+        const bool alt = zzHasModifier(event.modifiers, ZzKeyModifier::Alt);
+        const bool letter = (event.character >= U'a' && event.character <= U'z')
+                         || (event.character >= U'A' && event.character <= U'Z');
+        if (alt)
+            out.push_back('\x1B');
+        if (ctrl && letter)
+            out.push_back(static_cast<char>(event.character & 0x1F));
+        else
             appendUtf8(out, event.character);
         return out;
+    }
     case Key::Enter:     return "\r";
     case Key::Tab:       return "\t";
     case Key::Backspace: return "\x7F";
