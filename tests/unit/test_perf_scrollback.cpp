@@ -75,14 +75,17 @@ int main()
     ZZ_TEST_EXPECT(bytes < 160u * 1024u * 1024u); // 理论约 133MB，留 20% 余量
 
     // 4. reflow 耗时：80 -> 120 -> 40（10 万行全量重组）
+    // 门控标定：本机（i7-14700，-O0）基线 widen 约 173ms / narrow 约 178ms
+    // （见 tests/perf/records/2026-09-20-m4-reflow.json）；500ms 保证 CI runner
+    // 慢 2-3 倍仍不误报，同时劣化约 3 倍即触发，仍是有效回归绊线。
     t0 = std::chrono::steady_clock::now();
     sb->reflow(120);
     const double widenMs = millisSince(t0);
-    ZZ_TEST_EXPECT(widenMs < 200);
+    ZZ_TEST_EXPECT(widenMs < 500);
     t0 = std::chrono::steady_clock::now();
     sb->reflow(40);
     const double narrowMs = millisSince(t0);
-    ZZ_TEST_EXPECT(narrowMs < 200);
+    ZZ_TEST_EXPECT(narrowMs < 500);
 
     // 5. JSON 落盘（cwd，ctest 下为 build/linux-gcc-debug/tests）
     std::ofstream js("zzterm-perf-scrollback.json");
