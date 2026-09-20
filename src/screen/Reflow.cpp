@@ -64,9 +64,23 @@ std::vector<ZzLine> zzReflowLines(std::vector<ZzLine> lines, int oldCols, int ne
             ? std::min(trimEnd, static_cast<std::size_t>(newCols)) // 硬行截断
             : trimEnd;
 
+        // 热循环：cells_ 连续存储，取行首指针顺序推进源位置，
+        // 避免逐格 cellAt 调用与整数除法（s / oldCols）开销。
+        std::size_t srcIdx = chainStart;
+        int srcCol = 0;
+        const ZzLine* nextLine = &lines[srcIdx];
+        const ZzCell* nextCells = &nextLine->cellAt(0);
         for (std::size_t s = 0; s < limit; ++s) {
-            const ZzLine& srcLine = lines[chainStart + s / oldCols];
-            const ZzCell& cell = srcLine.cellAt((int)(s % oldCols));
+            const ZzLine* srcLine = nextLine;   // 本格所属行（cluster 文本取自此行）
+            const ZzCell* srcCells = nextCells;
+            const ZzCell& cell = srcCells[srcCol];
+            if (++srcCol == oldCols) {
+                srcCol = 0;
+                if (s + 1 < limit) { // 链尾最后一格之后不再推进，避免越界
+                    nextLine = &lines[++srcIdx];
+                    nextCells = &nextLine->cellAt(0);
+                }
+            }
             if (cell.width() == ZzCellWidth::WideContinuation)
                 continue; // 续格随 lead 再生
 
@@ -88,7 +102,7 @@ std::vector<ZzLine> zzReflowLines(std::vector<ZzLine> lines, int oldCols, int ne
 
             ZzCell placed = cell;
             if (placed.isCluster())
-                placed.setCluster(row.internCluster(srcLine.clusterText(cell.clusterIndex())));
+                placed.setCluster(row.internCluster(srcLine->clusterText(cell.clusterIndex())));
             row.setCell(outCol, placed);
             if (w == 2) {
                 // 续格再生规则与 ZzNativeBackend::putChar 一致：
