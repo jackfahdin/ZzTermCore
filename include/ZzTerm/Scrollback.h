@@ -54,6 +54,8 @@ public:
      * @param lines 滚出行（以值移交所有权，追加后参数处于移后状态）。
      * @note 超出容量时从最旧一端裁掉。实现应保持行的 wrapped 标记，
      *       logical line 重组由 reflow() 承担。
+     * @note 不变量：历史行宽度必须等于终端当前列宽；resize 路径由
+     *       reflow() 重组维持该不变量（调用方保证以当前列宽的行入库）。
      */
     virtual void append(std::vector<ZzLine> lines) = 0;
 
@@ -85,6 +87,9 @@ public:
      * @note 不变量：历史行宽度与终端当前列宽一致（resize 先历史后屏幕，
      *       屏幕溢出行以新宽度入库）；重组算法与屏幕区共用 zzReflowLines；
      *       重组后超容量仍从最旧一端裁剪并计入 totalDropped。
+     * @note 固有边界：历史与屏幕分域重组，横跨两域的逻辑行会在接缝处
+     *       被拆成两条独立链（内容零丢失），与 Contour 统一重组的折行
+     *       位置可能不同（M5 选区工作前加 compat 钉住）。
      */
     virtual void reflow(int newCols) = 0;
 

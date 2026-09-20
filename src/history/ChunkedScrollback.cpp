@@ -1,6 +1,7 @@
 #include "ZzTerm/Scrollback.h"
 
 #include <algorithm>
+#include <cassert>
 #include <cstdint>
 #include <deque>
 
@@ -71,8 +72,10 @@ public:
         std::vector<ZzLine> all;
         all.reserve(totalLines_);
         for (auto& chunk : chunks_)
-            for (auto& line : chunk)
+            for (auto& line : chunk) {
+                assert(line.cellCount() == oldCols); // debug 断言：全历史同宽不变量
                 all.push_back(std::move(line));
+            }
         all = zzReflowLines(std::move(all), oldCols, newCols);
         chunks_.clear();
         totalLines_ = 0;

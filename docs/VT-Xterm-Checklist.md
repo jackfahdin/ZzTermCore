@@ -201,16 +201,16 @@
 -   [x] CJK Wide Character at Right Boundary
 -   [ ] Combining Character at Right Boundary
 -   [x] WideContinuation Consistency
--   [ ] Grow Columns Reflow
--   [ ] Shrink Columns Reflow
--   [ ] Grow Rows
--   [ ] Shrink Rows
--   [ ] Cursor Mapping after Reflow
+-   [x] Grow Columns Reflow（M4 已交付，见 Resize / Reflow 节）
+-   [x] Shrink Columns Reflow（M4 已交付，见 Resize / Reflow 节）
+-   [x] Grow Rows（纯行数增减不触发 reflow，M4 已交付，见 Resize / Reflow 节）
+-   [x] Shrink Rows（纯行数增减不触发 reflow，M4 已交付，见 Resize / Reflow 节）
+-   [x] Cursor Mapping after Reflow（M4 已交付，见 Resize / Reflow 节）
 -   [ ] Selection Mapping after Reflow
 -   [ ] Search Match Mapping after Reflow
 -   [ ] Scrollback View Anchor after Reflow
--   [ ] Alternate Screen Resize Behavior
--   [ ] 100k-line Reflow Benchmark
+-   [x] Alternate Screen Resize Behavior（备用屏重组、溢出丢弃，M4 已交付，见 Resize / Reflow 节）
+-   [x] 100k-line Reflow Benchmark（M4 已交付 test_perf_scrollback 10 万行 reflow 门控）
 -   [ ] 1M-line Reflow Benchmark
 
 ## Terminal Font Zoom

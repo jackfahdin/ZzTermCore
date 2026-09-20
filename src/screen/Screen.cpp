@@ -232,7 +232,7 @@ void ZzScreen::resetScrollRegion() noexcept
 
 ZzCellRange ZzScreen::scrollRegionRows() const noexcept
 {
-    // 复用 ZzCellRange 表达 [top, bottom] 闭区间：endCol 存 bottom + 1。
+    // 复用 ZzCellRange 的半开区间约定：startCol 存上沿 top（含），endCol 存 bottom + 1（不含）。
     return ZzCellRange{scrollTop_, scrollBottom_ + 1};
 }
 

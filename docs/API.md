@@ -93,6 +93,9 @@ parser/screen/scrollback 等引擎组件归各后端实现持有，`ZzTerminal`
   适配层显式钉住）。Alternate Screen 溢出行直接丢弃（备用屏无历史）。
   resize 后 RenderView 与既有 `ZzLineView` 句柄全部失效，前端需重新
   获取。尺寸未变或参数非法（非正）时返回 false 且为空操作。
+  resize/reflow 经 ScrollOutCallback 溢出的行不计入 ZzTermChanges 的
+  scrollbackChanged/scrolledOutLines（resize 无 changes 通道，前端
+  resize 后重取视图）。
 - `screen()` 与 `scrollback()` 为 Core 内部协作口（可变访问工作区/
   历史后端），仅 Native 后端可用、不带 noexcept，Contour 后端调用
   抛 `std::logic_error`。

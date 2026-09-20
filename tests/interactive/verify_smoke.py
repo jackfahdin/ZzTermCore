@@ -148,7 +148,7 @@ def main():
     snap = snapshot(screen, "reflow-before")
     check(marker in "".join(line.rstrip() for line in screen.display),
           "5b.reflow基线(100列)", f"(快照 {snap})")
-    # 每次 setwinsch 后 pyte 屏幕须与 Core 同尺寸再触发重绘：先 settle 排干
+    # 每次 setwinsize 后 pyte 屏幕须与 Core 同尺寸再触发重绘：先 settle 排干
     # bash 的 SIGWINCH 提示符重绘（pyte 仍是旧几何，内容随即被覆盖），
     # screen.resize 对齐后由 stty 触发一次几何一致的全屏重绘（同步骤 5 的
     # 既定模式）。否则变宽时 100 列重绘落进 50 列 pyte 会折行滚屏，把
