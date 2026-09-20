@@ -176,6 +176,9 @@ void ZzContourBackend::flushReplies()
 
 void ZzContourBackend::sendKeyEvent(const ZzKeyEvent& event)
 {
+    // xterm 默认不上报 Release（与 native encoder 行为对齐）；Repeat 按 Press。
+    if (event.action == ZzKeyEvent::Action::Release)
+        return;
     const auto now = std::chrono::steady_clock::now();
     const vtbackend::KeyboardModifiers mods { zzModifiers(event.modifiers) };
     if (event.key == ZzKeyEvent::Key::Character) {

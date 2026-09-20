@@ -71,6 +71,8 @@ private:
 /// 输入翻译器（demo 本地）：stdin 字节流 → sendText / sendKey。
 /// 功能键按 xterm 编码识别（CSI/SS3），其余字节（含 UTF-8 多字节）走 sendText。
 /// 不完整转义序列在缓冲中等待后续字节；无法识别的序列丢弃。
+/// 已知限制：裸 ESC 无超时消歧，会延迟到下一个输入字节连带发出
+/// （经典终端输入二义性；demo 可接受，生产前端应自带超时）。
 class InputTranslator {
 public:
     explicit InputTranslator(ZzTerminal& term) : term_(term) {}

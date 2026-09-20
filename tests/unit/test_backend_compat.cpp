@@ -230,6 +230,14 @@ void testInputApplicationCursor()
     d.contour.sendKey(up);
     ZZ_CHECK(nativeOut == "\x1b[A");
     ZZ_CHECK(nativeOut == contourOut);
+    // Release 对称性：双后端均静默丢弃（xterm 默认不上报 Release），无新增字节。
+    nativeOut.clear();
+    contourOut.clear();
+    up.action = ZzKeyEvent::Action::Release;
+    d.native.sendKey(up);
+    d.contour.sendKey(up);
+    ZZ_CHECK(nativeOut.empty());
+    ZZ_CHECK(contourOut.empty());
 }
 
 // 13. CPR（CSI 6n）：双后端写相同文本后应答强对照（1 起始）。
@@ -248,6 +256,8 @@ void testCursorPositionReport()
 // 14. DA1 应答。差异研判（b 类，实现相关的应答串，非转换层 bug）：
 // native 应答 VT102 级最小集（规格 4.3）；Contour 应答自有 DA 串（能力位不同，
 // 应用据此启用特性，抬级归后续里程碑）。分别断言各自应答形态，注释钉住。
+// Contour 实测应答为 ESC 开头 ?65;1;3;4;7;9;18;21;22;29;52;314c（2026-09-20 实测，
+// 能力位高于 native 的 VT102 最小集）。
 void testDeviceAttributes()
 {
     Dual d;

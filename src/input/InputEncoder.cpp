@@ -65,6 +65,7 @@ std::string ZzInputEncoder::encodeKey(const ZzKeyEvent& event) const
             return out;
         // Ctrl+字母 → C0 控制字节（xterm：Ctrl+C = 0x03，大小写同值）；
         // Alt → ESC 前缀（Meta 语义）。其余修饰组合按无修饰透传。
+        // Ctrl+非字母的 C0 映射（xterm 对 [@\]^_ 等有定义）未实现，归 M3b 输入完善。
         const bool ctrl = zzHasModifier(event.modifiers, ZzKeyModifier::Ctrl);
         const bool alt = zzHasModifier(event.modifiers, ZzKeyModifier::Alt);
         const bool letter = (event.character >= U'a' && event.character <= U'z')
