@@ -15,7 +15,10 @@ testCjkWide / testAltScreen / testCursorVisibility），此处走真实 PTY + ba
 两层互补不重复。
 M3b 追加：vim 鼠标点击定位——合成 SGR 1006 点击经 demo InputTranslator ->
 sendMouse -> PTY -> vim，以 vim ruler 状态行文本断言（Contour 备用屏
-不上报光标，见步骤 14 注释）。"""
+不上报光标，见步骤 14 注释）。
+M4 追加：resize reflow 步骤 5b/5c/5d——200 字符长行在 100 列占 2 行，
+窄化 50 列重排为 4 行、回宽 100 列合并回 2 行，拼接整屏断言标记串
+在三种列宽下均完整可见（双后端）。"""
 import os
 import re
 import sys
@@ -137,6 +140,37 @@ def main():
     settle(child, stream)
     snap = snapshot(screen, "after-resize")
     check("20 100" in screen_text(screen), "5.SIGWINCH同步", f"(快照 {snap})")
+
+    # 5b. resize reflow（M4）：200 字符长行在 100 列占 2 行，50 列应重排为 4 行
+    marker = "zzreflow" + "x" * 192
+    child.sendline(f"printf '%s\\n' '{marker}'")
+    settle(child, stream)
+    snap = snapshot(screen, "reflow-before")
+    check(marker in "".join(line.rstrip() for line in screen.display),
+          "5b.reflow基线(100列)", f"(快照 {snap})")
+    # 每次 setwinsch 后 pyte 屏幕须与 Core 同尺寸再触发重绘：先 settle 排干
+    # bash 的 SIGWINCH 提示符重绘（pyte 仍是旧几何，内容随即被覆盖），
+    # screen.resize 对齐后由 stty 触发一次几何一致的全屏重绘（同步骤 5 的
+    # 既定模式）。否则变宽时 100 列重绘落进 50 列 pyte 会折行滚屏，把
+    # marker 顶出 pyte 可视区造成假性失败（native 后端实测钉住）。
+    child.setwinsize(20, 50)
+    time.sleep(0.3)
+    settle(child, stream)
+    screen.resize(20, 50)
+    child.sendline("stty size")  # 触发重绘确认尺寸同步
+    settle(child, stream)
+    snap = snapshot(screen, "reflow-narrow-50")
+    check(marker in "".join(line.rstrip() for line in screen.display),
+          "5c.reflow窄化重排(50列)", f"(快照 {snap})")
+    child.setwinsize(20, 100)
+    time.sleep(0.3)
+    settle(child, stream)
+    screen.resize(20, 100)
+    child.sendline("stty size")
+    settle(child, stream)
+    snap = snapshot(screen, "reflow-back-100")
+    check(marker in "".join(line.rstrip() for line in screen.display),
+          "5d.reflow变宽合并(回100列)", f"(快照 {snap})")
 
     # 6. CJK 混排：宽字符格位断言（pyte 与 Core 同按 UAX #11 解释宽度）
     child.sendline("printf 'AB中文C-zz\\n'")

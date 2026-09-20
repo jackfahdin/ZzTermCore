@@ -75,7 +75,7 @@ public:
      * @param cols 新列数（> 0）。
      * @param rows 新行数（> 0）。
      * @note 不做 reflow；列变化时的 soft-wrap reflow、cursor 映射由
-     *       ZzTerminal::resize 协调（M4 里程碑）。全屏标脏。
+     *       ZzNativeBackend::resize 协调（先历史后屏幕，M4 已落地）。全屏标脏。
      */
     void resize(int cols, int rows);
 

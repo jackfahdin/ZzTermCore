@@ -32,6 +32,13 @@ if(TARGET test_backend_interface)
         PRIVATE $<$<BOOL:${ZZTERM_WITH_CONTOUR}>:ZZTERM_WITH_CONTOUR=1>)
 endif()
 
+# test_reflow 直接调用内部纯函数 zzReflowLines（src/screen/Reflow.h，无
+# ZZTERM_API 导出）：shared 构建（hidden visibility）下须把实现文件一并
+# 编进测试可执行文件，否则链接不到符号。
+if(TARGET test_reflow)
+    target_sources(test_reflow PRIVATE "${CMAKE_SOURCE_DIR}/src/screen/Reflow.cpp")
+endif()
+
 if(TARGET vtparser)
     add_executable(test_contour_smoke unit/test_contour_smoke.cpp)
     target_link_libraries(test_contour_smoke PRIVATE vtparser) # Contour target 一律 PRIVATE

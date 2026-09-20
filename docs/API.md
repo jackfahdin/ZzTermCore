@@ -33,12 +33,13 @@ Core 平台无关：不依赖 Qt、Windows API、POSIX PTY、OpenGL、网络等�
 ### Terminal（语义调度）
 
 `ZzTerminal` 是双后端顶层外观（Facade，M1b 起）：构造签名
-`ZzTerminal(int cols, int rows, ZzBackendKind backend, std::size_t scrollbackMaxLines = 10000)`，
+`ZzTerminal(int cols, int rows, ZzBackendKind backend, std::size_t scrollbackMaxLines = 100000)`，
 backend 显式选择终端引擎——`ZzBackendKind::Native`（自研引擎，兼容性
 对照基准）或 `ZzBackendKind::Contour`（Contour vtbackend，需
 ZZTERM_WITH_CONTOUR=ON 构建；OFF 构建传 Contour 抛 `std::logic_error`）。
 parser/screen/scrollback 等引擎组件归各后端实现持有，`ZzTerminal`
-只经后端接口委托，公开 API 不暴露任何后端类型。
+只经后端接口委托，公开 API 不暴露任何后端类型。scrollbackMaxLines
+默认 10 万行（M4 起，perf 门控保障），0 表示不保留历史。
 
 - `feed` 返回 `ZzTermChanges` 变化摘要（屏幕/历史/活动缓冲区/标题/
   BEL/滚入行数），远端输入一律视为不可信：畸形/超长序列被安全丢弃
@@ -84,6 +85,14 @@ parser/screen/scrollback 等引擎组件归各后端实现持有，`ZzTerminal`
   （xterm 默认，构造初值）。仅 native 后端生效，Contour 无对应
   配置项、调用为空操作（适配层注释钉住的已知分歧）；设置对其后
   的 feed 生效，已落格内容不 retroactive 重排。
+- `resize(cols, rows)` 调整终端尺寸（M4 起支持真 reflow）：列变化
+  触发 soft-wrap reflow——屏幕区与 scrollback 历史一起重组，logical
+  line 合并后按新列宽重切（列变重组），宽字符不拆半，硬行截断/补空，
+  光标按逻辑行链跟随内容；行变化仅做网格增减，不触发 reflow
+  （行变不重组）。两后端语义对齐（Contour 经 allowReflowOnResize，
+  适配层显式钉住）。Alternate Screen 溢出行直接丢弃（备用屏无历史）。
+  resize 后 RenderView 与既有 `ZzLineView` 句柄全部失效，前端需重新
+  获取。尺寸未变或参数非法（非正）时返回 false 且为空操作。
 - `screen()` 与 `scrollback()` 为 Core 内部协作口（可变访问工作区/
   历史后端），仅 Native 后端可用、不带 noexcept，Contour 后端调用
   抛 `std::logic_error`。

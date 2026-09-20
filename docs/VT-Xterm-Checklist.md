@@ -105,19 +105,21 @@
 -   [ ] Dirty tracking
 -   [ ] Hard newline / Soft wrap
 -   [ ] Chunked scrollback / History trim
--   [ ] 100k-line test
+-   [ ] 100k-line test（M4 已交付 10 万行 append/lineAt/reflow/内存性能门控
+    test_perf_scrollback，本项待滚动流畅性端到端验证）
 -   [ ] 1M-line benchmark
 
 ## Resize / Reflow
 
--   [ ] Grow/Shrink rows
--   [ ] Grow/Shrink columns
--   [ ] Soft-wrap reflow
--   [ ] Hard-newline preservation
--   [ ] Wide grapheme boundary
--   [ ] Cursor mapping
--   [ ] Selection/Search mapping
--   [ ] Alternate-screen behavior
+-   [x] Grow/Shrink rows（行变不重组，M4）
+-   [x] Grow/Shrink columns（列变触发 reflow，M4 双后端）
+-   [x] Soft-wrap reflow（M4 双后端：native zzReflowLines + Contour
+    allowReflowOnResize）
+-   [x] Hard-newline preservation（硬行永不多行化，M4）
+-   [x] Wide grapheme boundary（宽字符不拆半，M4）
+-   [x] Cursor mapping（逻辑行链 + 链内偏移跟随，M4）
+-   [ ] Selection/Search mapping（M5）
+-   [x] Alternate-screen behavior（备用屏重组、溢出丢弃，M4）
 
 ## Input / IME
 

@@ -249,9 +249,9 @@ UTF-8。
 -   M2：alt screen、scroll
     region、input、IME、256/TrueColor，vim/nano/less 可用。
 -   M3：tmux、mouse、bracketed paste、OSC、DEC modes。
--   M4：10 万行 scrollback、selection/copy/search/highlight、reflow
-    第一版。
--   M5：Unicode edge cases、Fuzz、百万行实验、性能优化、macOS。
+-   M4：10 万行 scrollback、reflow
+    第一版（已完成，双后端；selection/copy/search/highlight 移入 M5）。
+-   M5：selection/copy/search/highlight、Unicode edge cases、Fuzz、百万行实验、性能优化、macOS。
 -   M6：API/ABI 收敛、静态/动态发布、兼容矩阵稳定、OpenHarmony
     适配验证准备。
 
@@ -891,8 +891,7 @@ Reflow 可以是昂贵操作，因此必须建立独立 Benchmark。
 注：`ZzTermRenderer` 指 ZzTermWidget 内部的渲染子组件（ZzFontMetrics /
 Glyph Cache 的所在地），不是第 3 节 target 清单里的独立模块。
 
-里程碑归属：Wrap Pending / DECAWM / 宽字符右边界 → M2；Resize Reflow 与
-Logical Position 模型 → M4；Font Zoom / DPI / Font Metrics / Fallback →
+里程碑归属：Wrap Pending / DECAWM / 宽字符右边界 → M2；Resize Reflow → M4（已落地，双后端）；Logical Position 模型 → 随 selection/search（M5）；Font Zoom / DPI / Font Metrics / Fallback →
 随 ZzTermWidget 迭代（M4 之后）。
 
 以上职责边界属于架构约束，后续不得为了实现方便将字体、DPI 或像素概念引入 ZzTermCore。
