@@ -30,12 +30,21 @@ struct Dual {
 };
 
 // 比对 (row, col) 一格：文本/前景/背景/属性/宽度。
+// 分歧钉住（b 类，M4 任务 5 resize reflow 对照实测）：空单元格宽度类别
+// 两后端表示约定不同——native 报 ZzCellWidth::Empty（值 0），Contour 经
+// zzWidth 对无文本格报 ZzCellWidth::Narrow（值 1）；文本/颜色/属性一致，
+// 纯属空格的宽度类别表示差异，非 reflow 语义分歧。故两侧文本均为空时
+// 放宽宽度比对；宽字符续格（WideContinuation，文本亦为空）仍强比对。
 void checkCellEqual(const ZzTerminal& a, const ZzTerminal& b, int row, int col, const char* what)
 {
     const ZzCellView ca = a.renderView().lineAt(row).cellAt(col);
     const ZzCellView cb = b.renderView().lineAt(row).cellAt(col);
+    const bool bothEmptyText = ca.text.empty() && cb.text.empty();
+    const bool widthEqual = ca.width == cb.width
+        || (bothEmptyText && ca.width != ZzCellWidth::WideContinuation
+            && cb.width != ZzCellWidth::WideContinuation);
     if (ca.text != cb.text || ca.foreground != cb.foreground || ca.background != cb.background
-        || ca.attributes != cb.attributes || ca.width != cb.width) {
+        || ca.attributes != cb.attributes || !widthEqual) {
         ++g_failures;
         std::fprintf(stderr, "FAIL cell(%d,%d) %s: native{text=%s,w=%d} vs contour{text=%s,w=%d}\n",
                      row, col, what, ca.text.c_str(), (int)ca.width, cb.text.c_str(), (int)cb.width);
@@ -336,6 +345,42 @@ void testFocusReportingCompat()
     ZZ_CHECK(nativeOut == contourOut);
 }
 
+// 18. resize reflow：长行历史随列宽重组，两后端屏幕逐格比对。
+void testResizeReflow()
+{
+    Dual d;
+    std::string longLine(200, 'x');
+    d.feedBoth(longLine + "\r\n");
+    for (int i = 0; i < 30; ++i)
+        d.feedBoth("filler\r\n");
+    d.native.resize(40, 24);
+    d.contour.resize(40, 24);
+    for (int r = 0; r < 24; ++r)
+        checkRowEqual(d.native, d.contour, r, 40, "reflow-40");
+    ZZ_CHECK(d.native.cursor().position == d.contour.cursor().position);
+    d.native.resize(80, 24);
+    d.contour.resize(80, 24);
+    for (int r = 0; r < 24; ++r)
+        checkRowEqual(d.native, d.contour, r, 80, "reflow-80");
+    ZZ_CHECK(d.native.cursor().position == d.contour.cursor().position);
+}
+
+// 19. CJK 长行 resize 后两后端逐格比对（宽字符边界规则对照）。
+void testResizeReflowCjk()
+{
+    Dual d;
+    std::string cjk;
+    for (int i = 0; i < 45; ++i)
+        cjk += "中文"; // 90 个宽字符共 180 列，80 列下折 3 行
+    d.feedBoth(cjk + "\r\n");
+    for (int i = 0; i < 30; ++i)
+        d.feedBoth("filler\r\n");
+    d.native.resize(37, 24); // 奇数列宽逼出宽字符边界钳制
+    d.contour.resize(37, 24);
+    for (int r = 0; r < 24; ++r)
+        checkRowEqual(d.native, d.contour, r, 37, "reflow-cjk-37");
+}
+
 } // namespace
 
 int main()
@@ -357,6 +402,8 @@ int main()
     testMouseSgrCompat();
     testBracketedPasteCompat();
     testFocusReportingCompat();
+    testResizeReflow();
+    testResizeReflowCjk();
     if (g_failures != 0)
         std::fprintf(stderr, "test_backend_compat: %d failure(s)\n", g_failures);
     return g_failures == 0 ? 0 : 1;
