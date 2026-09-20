@@ -209,6 +209,57 @@ void testAutoWrapMode()
     ZZ_CHECK(d.contour.renderView().lineAt(1).cellAt(0).text.empty());
 }
 
+// 12. 输入方向（M3a）：?1 application cursor 下 sendKey(Up) 两后端发出字节强对照。
+void testInputApplicationCursor()
+{
+    Dual d;
+    std::string nativeOut, contourOut;
+    d.native.setOutputHandler([&](std::string_view b) { nativeOut.append(b); });
+    d.contour.setOutputHandler([&](std::string_view b) { contourOut.append(b); });
+    d.feedBoth("\x1b[?1h");
+    ZzKeyEvent up;
+    up.key = ZzKeyEvent::Key::Up;
+    d.native.sendKey(up);
+    d.contour.sendKey(up);
+    ZZ_CHECK(nativeOut == "\x1bOA");
+    ZZ_CHECK(nativeOut == contourOut);
+    d.feedBoth("\x1b[?1l");
+    nativeOut.clear();
+    contourOut.clear();
+    d.native.sendKey(up);
+    d.contour.sendKey(up);
+    ZZ_CHECK(nativeOut == "\x1b[A");
+    ZZ_CHECK(nativeOut == contourOut);
+}
+
+// 13. CPR（CSI 6n）：双后端写相同文本后应答强对照（1 起始）。
+void testCursorPositionReport()
+{
+    Dual d;
+    std::string nativeOut, contourOut;
+    d.native.setOutputHandler([&](std::string_view b) { nativeOut.append(b); });
+    d.contour.setOutputHandler([&](std::string_view b) { contourOut.append(b); });
+    d.feedBoth("AB");
+    d.feedBoth("\x1b[6n");
+    ZZ_CHECK(nativeOut == "\x1b[1;3R");
+    ZZ_CHECK(nativeOut == contourOut);
+}
+
+// 14. DA1 应答。差异研判（b 类，实现相关的应答串，非转换层 bug）：
+// native 应答 VT102 级最小集（规格 4.3）；Contour 应答自有 DA 串（能力位不同，
+// 应用据此启用特性，抬级归后续里程碑）。分别断言各自应答形态，注释钉住。
+void testDeviceAttributes()
+{
+    Dual d;
+    std::string nativeOut, contourOut;
+    d.native.setOutputHandler([&](std::string_view b) { nativeOut.append(b); });
+    d.contour.setOutputHandler([&](std::string_view b) { contourOut.append(b); });
+    d.feedBoth("\x1b[c");
+    ZZ_CHECK(nativeOut == "\x1b[?1;2c");
+    ZZ_CHECK(!contourOut.empty());
+    ZZ_CHECK(contourOut.starts_with("\x1b[?"));
+}
+
 } // namespace
 
 int main()
@@ -224,6 +275,9 @@ int main()
     testResize();
     testCursorVisibility();
     testAutoWrapMode();
+    testInputApplicationCursor();
+    testCursorPositionReport();
+    testDeviceAttributes();
     if (g_failures != 0)
         std::fprintf(stderr, "test_backend_compat: %d failure(s)\n", g_failures);
     return g_failures == 0 ? 0 : 1;
