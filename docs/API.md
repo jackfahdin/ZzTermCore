@@ -89,7 +89,10 @@ Native 引擎已落地语义：
   语义，即 1048 保存光标加 1047 切屏，退出时恢复主屏内容、光标
   与滚动区）、DECAWM `?7`（自动换行）、DECTCEM `?25`（光标可见性）
   已接入 native；`isAlternateScreen()` 与 `cursor().visible` 对
-  native 上报真实值。其余 DEC 私有模式（鼠标、bracketed paste 等）
+  native 上报真实值。已知差异：native 进入 alt 后光标取 alt
+  缓冲区自存位置（首次进入即原点 (0,0)），xterm 则保持主屏光标
+  位置不动——真实应用进 alt 后均自行定位光标，此为规格 4.3 的
+  有意简化。其余 DEC 私有模式（鼠标、bracketed paste 等）
   安全忽略，属 M3。
 
 ### Parser（UTF-8 / VT / xterm）

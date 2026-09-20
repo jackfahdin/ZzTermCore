@@ -57,11 +57,13 @@
 
 -   [ ] DECCKM
 -   [ ] DECOM
--   [ ] DECAWM
--   [ ] Cursor visibility/style
--   [ ] Alternate Screen 47 / 1047
--   [ ] Save Cursor 1048
--   [ ] Alternate Screen 1049
+-   [x] DECAWM
+-   [x] Cursor visibility（DECTCEM ?25）
+-   [ ] Cursor style（DECSCUSR 未接线）
+-   [ ] Alternate Screen 47
+-   [x] Alternate Screen 1047
+-   [x] Save Cursor 1048
+-   [x] Alternate Screen 1049
 -   [ ] Focus Reporting 1004
 -   [ ] Bracketed Paste 2004
 
@@ -87,18 +89,18 @@
 ## Unicode
 
 -   [x] Split UTF-8 / Invalid UTF-8
--   [ ] CJK width
+-   [x] CJK width
 -   [ ] Combining marks
 -   [ ] Variation selectors
 -   [ ] Emoji / ZWJ
--   [ ] Wide continuation consistency
+-   [x] Wide continuation consistency
 -   [ ] Grapheme-aware copy/search
--   [ ] Unicode version recorded
+-   [x] Unicode version recorded
 
 ## Screen / History
 
--   [ ] Primary / Alternate Screen
--   [ ] Scroll margins / Tab stops
+-   [x] Primary / Alternate Screen
+-   [x] Scroll margins / Tab stops
 -   [ ] Insert/replace mode
 -   [ ] Dirty tracking
 -   [ ] Hard newline / Soft wrap
@@ -186,17 +188,17 @@
 -   [x] Hard Newline
 -   [x] Soft Wrap
 -   [x] Logical Line / Physical Row
--   [ ] DECAWM Enable
--   [ ] DECAWM Disable
+-   [x] DECAWM Enable
+-   [x] DECAWM Disable
 -   [x] Wrap Pending
 -   [x] Last Column Printable Character
 -   [x] CR while Wrap Pending
 -   [ ] LF while Wrap Pending
 -   [ ] BS while Wrap Pending
 -   [x] Cursor Movement while Wrap Pending
--   [ ] CJK Wide Character at Right Boundary
+-   [x] CJK Wide Character at Right Boundary
 -   [ ] Combining Character at Right Boundary
--   [ ] WideContinuation Consistency
+-   [x] WideContinuation Consistency
 -   [ ] Grow Columns Reflow
 -   [ ] Shrink Columns Reflow
 -   [ ] Grow Rows

@@ -25,7 +25,7 @@ M2 目标：补齐这两块，使 compat 测试 3 处 b 类分歧恢复逐格强
   - `?1047h/l`：buffer 切换（进入时清屏）；`?1048h/l`：仅保存/恢复光标；
   - `?7h/l`：DECAWM 自动换行（默认开）；
   - `?25h/l`：DECTCEM 光标可见性；
-- `ZzScreen` 新增光标可见性存储位，`cursor()` 上报真实值；
+- `?25` 复用 `ZzScreen` 既有 `setCursorStyle(shape, visible, blinking)` 原语（不新增存储位），`cursor()` 上报真实值；
 - compat 测试 3 处 b 类恢复逐格强对照 + 新增 DECAWM 强对照样例；
 - demo 实测 1049 进出（less/vim 类序列）与 CJK 对齐。
 
@@ -42,7 +42,7 @@ M2 目标：补齐这两块，使 compat 测试 3 处 b 类分歧恢复逐格强
 - `putChar` 的 pending-wrap 与 DECAWM 分支已写好（ZzNativeBackend.cpp:109-139），`?7` 接线后即生效；
 - `putChar` 已按 `zzCellWidthOf` 置 WideLead，续格补写留注释指明 M2 任务（ZzNativeBackend.cpp:123-124）；
 - `ZzScreen::putCell` 注释明确不做 wide/continuation 一致性修复（Screen.h:112 附近），该修复责任在 putChar 层；
-- `ZzCursorState.visible` 字段已存在（Types.h:80），Contour 侧已上报真实值，native 侧 `ZzScreen` 尚无存储位；
+- `ZzCursorState.visible` 字段已存在（Types.h:80），Contour 侧已上报真实值，native 侧复用 `ZzScreen` 既有 `setCursorStyle(shape, visible, blinking)` 原语存取（M0 起即有）；
 - facade 已有 `isAlternateScreen()`（ZzNativeBackend.cpp:77-80），无需新增；
 - Contour 侧宽度来自 libunicode（UAX #11 全套），native 不可复用（OFF 构建必须无 Contour 依赖）。
 
@@ -57,7 +57,7 @@ M2 目标：补齐这两块，使 compat 测试 3 处 b 类分歧恢复逐格强
   - 网络失败、数据格式漂移（字段数/区间方向异常）显式报错退出非零；
 - `zzCellWidthOf(char32_t)` 改为对区间表二分查找：`F`/`W` 返回 2；`A`（Ambiguous）由配置决定（默认 1，xterm 兼容）；其余（`N`/`Na`/`H` 及未列出码位）返回 1；C0/C1 控制区间与 combining 区间（`Mn`/`Me` 不在 EAW 数据内，M2 不查 General_Category）按 1 处理，注释钉住 M3 聚簇；
 - Ambiguous 配置口：facade 新增 C++ 成员方法 `ZzTerminal::setAmbiguousWidthMode(bool wide)`（facade 为纯 C++ 类，无 C 接口层），经 ZzTerminalBackend 新纯虚下发；native 存储标志并传入查表；Contour 无对应配置项，适配层空操作并在注释钉住为已知分歧，compat 不含 Ambiguous 维度对照；
-- 表完整性单测：区间升序不重叠、抽查已知码位（U+4E2D 中→W、U+FF21 Ａ→F、U+00B7 ·→A、U+0041 A→Na）、版本字符串非空。
+- 表完整性单测：区间升序不重叠、抽查已知码位（U+4E2D 中→W、U+FF21 Ａ→F、U+00B7 ·→A、U+0041 A→Na）。
 
 ### 4.2 putChar 宽字符流（native）
 
@@ -74,7 +74,7 @@ M2 目标：补齐这两块，使 compat 测试 3 处 b 类分歧恢复逐格强
 - `?1047h`：`setActiveBuffer(Alternate)` + 清 alt 全屏；`?1047l`：`setActiveBuffer(Primary)`；
 - `?1048h/l`：`saveCursor()/restoreCursor()`；
 - `?7h/l`：`setAutoWrapMode(true/false)`（默认 true，构造期初值已是开）；
-- `?25h/l`：`ZzScreen` 新增 `setCursorVisible(bool)` 存储位，`cursor()` 读该位填 `ZzCursorState.visible`；
+- `?25h/l`：复用 `ZzScreen` 既有 `setCursorStyle(shape, visible, blinking)` 原语翻转可见性位（形状/闪烁位不动），`cursor()` 读该位填 `ZzCursorState.visible`；
 - 进入 Alternate（1049h/1047h）时按 xterm 语义重置滚动区为全屏高度；回到 Primary 时滚动区恢复为切换前状态（切换时保存/恢复，与光标保存独立）；
 - 每次 buffer 切换置 screenDirty（noteScreenDirty）。
 

@@ -87,7 +87,7 @@ compatibility/regression tests。
 -   [ ] \[Contour\]\[Test\]\[PASS-Native\] ICH / DCH
 -   [ ] \[Contour\]\[Test\]\[PASS-Native\] IL / DL
 -   [ ] \[Contour\]\[Test\]\[PASS-Native\] SU / SD
--   [ ] \[Contour\]\[Test\] Scroll margins / Tab stops
+-   [ ] \[Contour\]\[Test\]\[PASS-Native\] Scroll margins / Tab stops
 -   [ ] \[Contour\]\[Test\] Insert/replace mode
 
 ## SGR / Color
@@ -110,11 +110,15 @@ compatibility/regression tests。
 
 -   [ ] \[Contour\]\[Test\] DECCKM
 -   [ ] \[Contour\]\[Test\] DECOM
--   [ ] \[Contour\]\[Test\] DECAWM
--   [ ] \[Contour\]\[Test\] Cursor visibility/style
--   [ ] \[Contour\]\[Test\] Alternate Screen 47 / 1047
--   [ ] \[Contour\]\[Test\] Save Cursor 1048
--   [ ] \[Contour\]\[Test\]\[PASS-PoC\] Alternate Screen 1049 基础行为
+-   [ ] \[Contour\]\[Test\]\[PASS-Native\] DECAWM
+-   [ ] \[Contour\]\[Test\]\[PASS-Native\] Cursor visibility（DECTCEM
+    ?25）
+-   [ ] \[Contour\]\[Test\] Cursor style（DECSCUSR）
+-   [ ] \[Contour\]\[Test\] Alternate Screen 47
+-   [ ] \[Contour\]\[Test\]\[PASS-Native\] Alternate Screen 1047
+-   [ ] \[Contour\]\[Test\]\[PASS-Native\] Save Cursor 1048
+-   [ ] \[Contour\]\[Test\]\[PASS-PoC\]\[PASS-Native\] Alternate Screen
+    1049 基础行为
 -   [ ] \[Contour\]\[Test\] Focus Reporting 1004
 -   [ ] \[Contour\]\[Test\] Bracketed Paste 2004
 
@@ -143,17 +147,20 @@ compatibility/regression tests。
 
 -   [ ] \[Contour\]\[Test\]\[PASS-Native\] Split UTF-8 / Invalid UTF-8
 -   [ ] \[Contour\]\[Test\]\[PASS-PoC\] CJK basic output
--   [ ] \[Contour\]\[Test\]\[PASS-PoC\] CJK wide-cell width
+-   [ ] \[Contour\]\[Test\]\[PASS-PoC\]\[PASS-Native\] CJK wide-cell
+    width
 -   [ ] \[Contour\]\[Test\] Combining marks
 -   [ ] \[Contour\]\[Test\] Variation selectors
 -   [ ] \[Contour\]\[Test\] Emoji / ZWJ
--   [ ] \[Contour\]\[Test\] Wide continuation consistency
+-   [ ] \[Contour\]\[Test\]\[PASS-Native\] Wide continuation
+    consistency
 -   [ ] \[Zz-Native\]\[Test\] Grapheme-aware copy/search/highlight
 -   [ ] \[Zz-Adapter\] Unicode/libunicode version recorded
 
 ## Screen / History
 
--   [ ] \[Contour\]\[Test\]\[PASS-PoC\] Primary / Alternate Screen
+-   [ ] \[Contour\]\[Test\]\[PASS-PoC\]\[PASS-Native\] Primary /
+    Alternate Screen
 -   [ ] \[Contour\]\[Test\]\[PASS-PoC\] Basic scrollback
 -   [ ] \[Contour\]\[Zz-Adapter\] Dirty tracking / screenUpdated mapping
 -   [ ] \[Contour\]\[Test\] Hard newline / Soft wrap
@@ -184,8 +191,8 @@ Wrap / Reflow 章为准。
 -   [ ] \[Contour\]\[Zz-Native\]\[Test\]\[PASS-Native\] Soft Wrap
 -   [ ] \[Contour\]\[Zz-Native\]\[Test\]\[PASS-Native\] Logical Line /
     Physical Row
--   [ ] \[Contour\]\[Zz-Native\]\[Test\] DECAWM Enable
--   [ ] \[Contour\]\[Zz-Native\]\[Test\] DECAWM Disable
+-   [ ] \[Contour\]\[Zz-Native\]\[Test\]\[PASS-Native\] DECAWM Enable
+-   [ ] \[Contour\]\[Zz-Native\]\[Test\]\[PASS-Native\] DECAWM Disable
 -   [ ] \[Contour\]\[Zz-Native\]\[Test\]\[PASS-Native\] Wrap Pending
 -   [ ] \[Contour\]\[Zz-Native\]\[Test\]\[PASS-Native\] Last Column
     Printable Character
@@ -195,11 +202,12 @@ Wrap / Reflow 章为准。
 -   [ ] \[Contour\]\[Zz-Native\]\[Test\] BS while Wrap Pending
 -   [ ] \[Contour\]\[Zz-Native\]\[Test\]\[PASS-Native\] Cursor Movement
     while Wrap Pending
--   [ ] \[Contour\]\[Zz-Native\]\[Test\] CJK Wide Character at Right
-    Boundary
+-   [ ] \[Contour\]\[Zz-Native\]\[Test\]\[PASS-Native\] CJK Wide
+    Character at Right Boundary
 -   [ ] \[Contour\]\[Zz-Native\]\[Test\] Combining Character at Right
     Boundary
--   [ ] \[Contour\]\[Zz-Native\]\[Test\] WideContinuation Consistency
+-   [ ] \[Contour\]\[Zz-Native\]\[Test\]\[PASS-Native\]
+    WideContinuation Consistency
 -   [ ] \[Contour\]\[Zz-Native\]\[Test\] Grow Columns Reflow
 -   [ ] \[Contour\]\[Zz-Native\]\[Test\] Shrink Columns Reflow
 -   [ ] \[Contour\]\[Zz-Native\]\[Test\] Grow Rows
