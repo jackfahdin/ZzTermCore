@@ -192,8 +192,9 @@ public:
     void resetScrollRegion() noexcept;
 
     /**
-     * @brief 当前滚动区 [top, bottom]（0 起始，含端点）。
-     * @return 滚动区行范围；ZzCellRange 的 startCol/endCol 复用为上/下沿。
+     * @brief 当前滚动区行范围（0 起始）。
+     * @return 滚动区行范围；复用 ZzCellRange 的半开区间约定：startCol 为
+     *         上沿（含），endCol 为下沿 + 1（不含）。
      */
     [[nodiscard]] ZzCellRange scrollRegionRows() const noexcept;
 
