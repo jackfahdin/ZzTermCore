@@ -46,6 +46,11 @@ void ZzTerminal::setOutputHandler(std::function<void(std::string_view)> handler)
     impl_->backend->setOutputHandler(std::move(handler));
 }
 
+void ZzTerminal::setAmbiguousWidthMode(bool wide) noexcept
+{
+    impl_->backend->setAmbiguousWidthMode(wide);
+}
+
 ZzScreen& ZzTerminal::screen()
 {
     auto* native = dynamic_cast<ZzNativeBackend*>(impl_->backend.get());

@@ -56,7 +56,7 @@ M2 目标：补齐这两块，使 compat 测试 3 处 b 类分歧恢复逐格强
   - 生成文件头部记录 Unicode 版本、数据来源 URL、生成日期（§8 可追踪性）；
   - 网络失败、数据格式漂移（字段数/区间方向异常）显式报错退出非零；
 - `zzCellWidthOf(char32_t)` 改为对区间表二分查找：`F`/`W` 返回 2；`A`（Ambiguous）由配置决定（默认 1，xterm 兼容）；其余（`N`/`Na`/`H` 及未列出码位）返回 1；C0/C1 控制区间与 combining 区间（`Mn`/`Me` 不在 EAW 数据内，M2 不查 General_Category）按 1 处理，注释钉住 M3 聚簇；
-- Ambiguous 配置口：facade 新增 `zzSetAmbiguousWidthMode(ZzTerminal&, bool wide)`（C 接口与 C++ 方法各一，沿用现有 facade 双形态惯例），native 后端存储标志并传入查表；Contour 侧查适配层是否暴露同名配置，有则映射，无则在适配层注释钉住为已知分歧并写入 compat 样例注释；
+- Ambiguous 配置口：facade 新增 C++ 成员方法 `ZzTerminal::setAmbiguousWidthMode(bool wide)`（facade 为纯 C++ 类，无 C 接口层），经 ZzTerminalBackend 新纯虚下发；native 存储标志并传入查表；Contour 无对应配置项，适配层空操作并在注释钉住为已知分歧，compat 不含 Ambiguous 维度对照；
 - 表完整性单测：区间升序不重叠、抽查已知码位（U+4E2D 中→W、U+FF21 Ａ→F、U+00B7 ·→A、U+0041 A→Na）、版本字符串非空。
 
 ### 4.2 putChar 宽字符流（native）

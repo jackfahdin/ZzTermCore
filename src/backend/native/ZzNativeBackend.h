@@ -26,6 +26,7 @@ public:
     [[nodiscard]] const std::string& title() const noexcept override;
     void clearDirty() noexcept override;
     void setOutputHandler(std::function<void(std::string_view)> handler) override;
+    void setAmbiguousWidthMode(bool wide) noexcept override;
 
     // ---- facade 的 screen()/scrollback() 委托用（Native 限定访问） ----
     [[nodiscard]] ZzScreen& screen() noexcept { return screen_; }
@@ -64,4 +65,5 @@ public:
     ZzColor penFg_ = ZzColor::Default();  ///< 当前画笔前景色。
     ZzColor penBg_ = ZzColor::Default();  ///< 当前画笔背景色。
     ZzTermChanges* activeChanges_ = nullptr; ///< feed 期间的变化聚合目标。
+    bool ambiguousWide_ = false; ///< Ambiguous 按 2 列（CJK 模式）。
 };

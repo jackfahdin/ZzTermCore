@@ -86,6 +86,11 @@ void ZzNativeBackend::setOutputHandler(std::function<void(std::string_view)>)
     // M3 输入编码后启用（DA 响应、光标上报等回传）。
 }
 
+void ZzNativeBackend::setAmbiguousWidthMode(bool wide) noexcept
+{
+    ambiguousWide_ = wide;
+}
+
 void ZzNativeBackend::noteScreenDirty() noexcept
 {
     if (activeChanges_)
@@ -127,7 +132,7 @@ void ZzNativeBackend::putChar(char32_t cp)
     const ZzSize sz = screen_.size();
     const ZzCellRange region = screen_.scrollRegionRows(); // [top, bottom+1)
     ZzPosition cur = screen_.cursor().position;
-    const int width = zzCellWidthOf(cp); // Ambiguous 配置口任务 4 接入第二参
+    const int width = zzCellWidthOf(cp, ambiguousWide_);
 
     // xterm pending-wrap：上一字符写在最后一列时，先换行再落格。
     if (screen_.wrapPending()) {

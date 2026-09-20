@@ -165,6 +165,15 @@ public:
      */
     void setOutputHandler(std::function<void(std::string_view)> handler);
 
+    /**
+     * @brief 设置 Ambiguous 宽度模式（UAX #11 A 类别码位列宽）。
+     * @param wide true 按 2 列（CJK 环境）；false 按 1 列（xterm 默认，构造初值）。
+     * @note 仅 native 后端生效；Contour 后端无对应配置项，调用为空操作
+     *       （适配层注释钉住的已知分歧）。设置对其后的 feed 生效，
+     *       已落格内容不 retroactive 重排。
+     */
+    void setAmbiguousWidthMode(bool wide) noexcept;
+
     // ---- Core 内部访问（供 parser/terminal 模块协作，不属于 Renderer API） ----
 
     /**
