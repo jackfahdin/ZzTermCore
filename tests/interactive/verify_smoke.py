@@ -246,11 +246,17 @@ def main():
     check("M3A_INPUT_OK" in screen_text(screen), "12.输入链路-sendText回显", f"(快照 {snap})")
 
     # 13. 方向键经 sendKey + DECCKM——bash readline 启用 application cursor（?1h），
-    # Up 编码为 SS3 OA 才能召回历史；断言召回的命令上屏。
+    # Up 编码为 SS3 OA 才能召回历史。断言召回命令出现在当前提示符行（屏幕
+    # 最后一个非空行），而非整屏——否则即使 Up 未生效也会命中步骤 12 的
+    # 回显残留行造成假性通过（任务审查钉住）。注意不能用 clear 清屏：
+    # clear 自身进入历史成为最新条目，Up 会召回 clear 而非目标命令。
     child.send("\x1b[A")  # Up：经 InputTranslator -> sendKey(Up)
     settle(child, stream)
     snap = snapshot(screen, "input-up-recall")
-    check("echo M3A_INPUT_OK" in screen_text(screen), "13.输入链路-Up召回历史", f"(快照 {snap})")
+    nonempty = [ln for ln in screen_text(screen).splitlines() if ln.strip()]
+    prompt_line = nonempty[-1] if nonempty else ""
+    check("echo M3A_INPUT_OK" in prompt_line, "13.输入链路-Up召回历史",
+          f"提示符行 {prompt_line!r} (快照 {snap})")
     child.send(chr(3))  # Ctrl+C 放弃该行（0x03 经 sendText 透传控制字节）
     settle(child, stream)
     # Ctrl+C 使 $? = 130，裸 exit 会以 130 退出；跑一条成功命令清零，保持
