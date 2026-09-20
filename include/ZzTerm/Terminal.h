@@ -162,8 +162,9 @@ public:
 
     /**
      * @brief 设置 output 通道（send 编码字节、终端回传均经此发出）。
-     * @param handler 输出回调；native 的终端回传（DA 响应、光标上报等）
-     *        随 M3a 后续任务接入，当前仅 send 编码字节经此发出。
+     * @param handler 输出回调；未设置时字节静默丢弃。
+     * @note 两后端均有效：native 的 DA1/DSR/CPR 回传与 send 编码字节
+     *       统一经此通道发出（M3a 起）。
      */
     void setOutputHandler(std::function<void(std::string_view)> handler);
 

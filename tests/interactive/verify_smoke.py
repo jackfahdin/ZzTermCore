@@ -7,6 +7,9 @@
 退出码：0 全部通过；1 有失败断言；2 脚本自身异常。
 
 M2 追加：CJK 混排格位、1049 备用屏裸序列进出、DECTCEM ?25 端到端断言。
+M3a 追加：输入链路端到端——sendText 回显、sendKey 方向键（DECCKM 下 SS3）
+召回 bash 历史；vim 步骤同时断言退出后主屏恢复。stdin 不再透传 PTY，
+而是经 demo InputTranslator -> Core sendText/sendKey -> output 通道。
 Core 层同语义另有双后端逐格强对照（tests/unit/test_backend_compat.cpp 的
 testCjkWide / testAltScreen / testCursorVisibility），此处走真实 PTY + bash，
 两层互补不重复。"""
@@ -220,6 +223,9 @@ def main():
     content = open(vim_path).read() if ok_file else ""
     check(ok_file and "zz-vim-content" in content, "10.vim写入并退出",
           f"文件内容 {content!r} (快照 {snap})")
+    # M3a：vim 经 1049 备用屏进出，退出后主屏标记应恢复可见（原屏恢复证据）。
+    check("zz-main-mark-1049" in screen_text(screen), "10.vim退出主屏恢复(1049)",
+          f"(快照 {snap})")
 
     # 11. Ctrl+C：中断 sleep，提示符恢复
     child.sendline("sleep 100")
@@ -232,14 +238,34 @@ def main():
     snap = snapshot(screen, "ctrl-c")
     check("zz-after-ctrlc" in screen_text(screen), "11.Ctrl+C中断恢复", f"(快照 {snap})")
 
-    # 12. exit：demo 应以子进程退出码 0 退出
+    # 12. 输入链路（M3a）：按键经 Core sendText -> PTY -> bash 回显。
+    # stdin 字节不再透传，而是经 demo InputTranslator -> sendText/sendKey -> output 通道。
+    child.send("echo M3A_INPUT_OK\r")
+    settle(child, stream)
+    snap = snapshot(screen, "input-sendtext-echo")
+    check("M3A_INPUT_OK" in screen_text(screen), "12.输入链路-sendText回显", f"(快照 {snap})")
+
+    # 13. 方向键经 sendKey + DECCKM——bash readline 启用 application cursor（?1h），
+    # Up 编码为 SS3 OA 才能召回历史；断言召回的命令上屏。
+    child.send("\x1b[A")  # Up：经 InputTranslator -> sendKey(Up)
+    settle(child, stream)
+    snap = snapshot(screen, "input-up-recall")
+    check("echo M3A_INPUT_OK" in screen_text(screen), "13.输入链路-Up召回历史", f"(快照 {snap})")
+    child.send(chr(3))  # Ctrl+C 放弃该行（0x03 经 sendText 透传控制字节）
+    settle(child, stream)
+    # Ctrl+C 使 $? = 130，裸 exit 会以 130 退出；跑一条成功命令清零，保持
+    # 末步"exit 干净退出（exitstatus == 0）"语义与既有一致。
+    child.sendline("true")
+    settle(child, stream)
+
+    # 14. exit：demo 应以子进程退出码 0 退出
     child.sendline("exit")
     try:
         child.expect(pexpect.EOF, timeout=10)
     except pexpect.TIMEOUT:
         pass
     child.close()
-    check(child.exitstatus == 0, "12.exit干净退出", f"exitstatus={child.exitstatus}")
+    check(child.exitstatus == 0, "14.exit干净退出", f"exitstatus={child.exitstatus}")
 
     rawlog.close()
     print(f"\n原始字节日志: {OUT}/raw.log")

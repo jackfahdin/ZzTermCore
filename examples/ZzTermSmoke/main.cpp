@@ -3,12 +3,15 @@
 // 子进程退出后以子进程退出码退出。
 //
 // 结构：PTY 输出 -> ZzTerminal -> RenderView 全屏重绘到 stdout（ANSI SGR）；
-//       stdin 字节透传 -> PTY；SIGWINCH 自管道同步 PTY 与 Terminal 尺寸。
+//       stdin 经 Core 输入链路（sendText/sendKey）-> output 通道 -> PTY；
+//       SIGWINCH 自管道同步 PTY 与 Terminal 尺寸。
 // 非 tty 场景（CTest 管道）：termios guard 不生效、尺寸回退 80x24、
 // stdin EOF 后停止监听，仍可完整跑通（脚本化冒烟依赖此行为）。
 #include <cerrno>
+#include <cctype>
 #include <csignal>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <optional>
 #include <span>
@@ -63,6 +66,111 @@ public:
 private:
     struct termios saved_ {};
     bool active_ = false;
+};
+
+/// 输入翻译器（demo 本地）：stdin 字节流 → sendText / sendKey。
+/// 功能键按 xterm 编码识别（CSI/SS3），其余字节（含 UTF-8 多字节）走 sendText。
+/// 不完整转义序列在缓冲中等待后续字节；无法识别的序列丢弃。
+class InputTranslator {
+public:
+    explicit InputTranslator(ZzTerminal& term) : term_(term) {}
+
+    void feed(std::string_view data)
+    {
+        buf_ += data;
+        std::size_t i = 0;
+        while (i < buf_.size()) {
+            if (buf_[i] == '\x1B') {
+                const std::size_t eaten = tryEscape(std::string_view(buf_).substr(i));
+                if (eaten == 0)
+                    break; // 序列不完整：等更多字节
+                i += eaten;
+                continue;
+            }
+            // 普通文本段：累积到下一个 ESC 为止一次性 sendText
+            const std::size_t next = buf_.find('\x1B', i);
+            const std::size_t end = next == std::string::npos ? buf_.size() : next;
+            term_.sendText(std::string_view(buf_).substr(i, end - i));
+            i = end;
+        }
+        buf_.erase(0, i);
+    }
+
+private:
+    void sendKey(ZzKeyEvent::Key k)
+    {
+        ZzKeyEvent ev;
+        ev.key = k;
+        term_.sendKey(ev);
+    }
+
+    // 返回消费字节数；0 = 序列不完整需等待。
+    std::size_t tryEscape(std::string_view s)
+    {
+        if (s.size() < 2)
+            return 0;
+        if (s[1] == 'O') { // SS3：方向/Home/End/F1-F4
+            if (s.size() < 3)
+                return 0;
+            switch (s[2]) {
+            case 'A': sendKey(ZzKeyEvent::Key::Up); return 3;
+            case 'B': sendKey(ZzKeyEvent::Key::Down); return 3;
+            case 'C': sendKey(ZzKeyEvent::Key::Right); return 3;
+            case 'D': sendKey(ZzKeyEvent::Key::Left); return 3;
+            case 'H': sendKey(ZzKeyEvent::Key::Home); return 3;
+            case 'F': sendKey(ZzKeyEvent::Key::End); return 3;
+            case 'P': sendKey(ZzKeyEvent::Key::F1); return 3;
+            case 'Q': sendKey(ZzKeyEvent::Key::F2); return 3;
+            case 'R': sendKey(ZzKeyEvent::Key::F3); return 3;
+            case 'S': sendKey(ZzKeyEvent::Key::F4); return 3;
+            default: return 2; // 未知 SS3：丢弃 ESC O
+            }
+        }
+        if (s[1] != '[') {
+            sendKey(ZzKeyEvent::Key::Escape);
+            return 1; // 裸 ESC
+        }
+        // CSI：ESC [ 参数 final
+        std::size_t j = 2;
+        while (j < s.size()
+               && (std::isdigit(static_cast<unsigned char>(s[j])) || s[j] == ';'))
+            ++j;
+        if (j >= s.size())
+            return 0; // 不完整
+        const char fin = s[j];
+        switch (fin) {
+        case 'A': sendKey(ZzKeyEvent::Key::Up); return j + 1;
+        case 'B': sendKey(ZzKeyEvent::Key::Down); return j + 1;
+        case 'C': sendKey(ZzKeyEvent::Key::Right); return j + 1;
+        case 'D': sendKey(ZzKeyEvent::Key::Left); return j + 1;
+        case 'H': sendKey(ZzKeyEvent::Key::Home); return j + 1;
+        case 'F': sendKey(ZzKeyEvent::Key::End); return j + 1;
+        case '~': {
+            const std::string param(s.substr(2, j - 2));
+            const int n = param.empty() ? 0 : std::atoi(param.c_str());
+            switch (n) {
+            case 2:  sendKey(ZzKeyEvent::Key::Insert); break;
+            case 3:  sendKey(ZzKeyEvent::Key::Delete); break;
+            case 5:  sendKey(ZzKeyEvent::Key::PageUp); break;
+            case 6:  sendKey(ZzKeyEvent::Key::PageDown); break;
+            case 15: sendKey(ZzKeyEvent::Key::F5); break;
+            case 17: sendKey(ZzKeyEvent::Key::F6); break;
+            case 18: sendKey(ZzKeyEvent::Key::F7); break;
+            case 19: sendKey(ZzKeyEvent::Key::F8); break;
+            case 20: sendKey(ZzKeyEvent::Key::F9); break;
+            case 21: sendKey(ZzKeyEvent::Key::F10); break;
+            case 23: sendKey(ZzKeyEvent::Key::F11); break;
+            case 24: sendKey(ZzKeyEvent::Key::F12); break;
+            default: break; // 未知 CSI ~：丢弃
+            }
+            return j + 1;
+        }
+        default: return j + 1; // 未知 CSI：丢弃
+        }
+    }
+
+    ZzTerminal& term_;
+    std::string  buf_;
 };
 
 /// 查询当前终端尺寸；失败回退 80x24（含 stdin/stdout 为管道的 CTest 场景）。
@@ -217,6 +325,8 @@ int run(ZzBackendKind backend, const std::vector<std::string>& command)
             reinterpret_cast<const std::byte*>(bytes.data()), bytes.size()));
     });
 
+    InputTranslator translator(term);
+
     // O_NONBLOCK 两端都要：读端供主循环排空（否则排空循环在管道读空后阻塞，
     // demo 在首个 SIGWINCH 后永久挂起）；写端防止信号处理器在管道写满时阻塞。
     if (::pipe2(g_winchPipe, O_NONBLOCK | O_CLOEXEC) != 0) {
@@ -246,14 +356,14 @@ int run(ZzBackendKind backend, const std::vector<std::string>& command)
             break; // poll 永久错误：走退出路径
         }
 
-        // stdin -> PTY 字节透传
+        // stdin -> InputTranslator -> Core 输入链路 -> output 通道 -> PTY
         if (fds[1].revents & POLLIN) {
             const ssize_t n = ::read(STDIN_FILENO, ioBuf, sizeof(ioBuf));
             if (n > 0) {
-                (void)pty->writeAll(std::span<const std::byte>(
-                    ioBuf, static_cast<std::size_t>(n)));
+                translator.feed(std::string_view(
+                    reinterpret_cast<const char*>(ioBuf), static_cast<std::size_t>(n)));
             } else if (n == 0 || (n < 0 && errno != EINTR && errno != EAGAIN)) {
-                watchStdin = false;
+                watchStdin = false; // stdin EOF（管道场景）后停止监听
             }
         }
         if (fds[1].revents & (POLLHUP | POLLERR)) {
