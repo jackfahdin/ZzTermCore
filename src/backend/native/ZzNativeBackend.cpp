@@ -81,9 +81,25 @@ bool ZzNativeBackend::isAlternateScreen() const noexcept
 const std::string& ZzNativeBackend::title() const noexcept { return title_; }
 void ZzNativeBackend::clearDirty() noexcept { screen_.clearDirty(); }
 
-void ZzNativeBackend::setOutputHandler(std::function<void(std::string_view)>)
+void ZzNativeBackend::setOutputHandler(std::function<void(std::string_view)> handler)
 {
-    // M3 输入编码后启用（DA 响应、光标上报等回传）。
+    outputHandler_ = std::move(handler);
+}
+
+void ZzNativeBackend::emit(std::string_view bytes)
+{
+    if (outputHandler_ && !bytes.empty())
+        outputHandler_(bytes);
+}
+
+void ZzNativeBackend::sendText(std::string_view utf8)
+{
+    emit(encoder_.encodeText(utf8));
+}
+
+void ZzNativeBackend::sendKey(const ZzKeyEvent& event)
+{
+    emit(encoder_.encodeKey(event));
 }
 
 void ZzNativeBackend::setAmbiguousWidthMode(bool wide) noexcept
@@ -278,6 +294,13 @@ void ZzNativeBackend::dispatchEsc(std::string_view intermediates, char final)
         break;
     case 'H': // HTS：当前列设 Tab Stop
         screen_.setTabStop(cur.col);
+        break;
+    case '=': // DECKPAM：application keypad（encoder 暂无 numpad 键消费方，
+              // 状态同步为未来 keypad 编码保持正确）
+        encoder_.setApplicationKeypad(true);
+        break;
+    case '>': // DECPNM：numeric keypad
+        encoder_.setApplicationKeypad(false);
         break;
     default:
         break; // 其余 ESC 序列安全忽略

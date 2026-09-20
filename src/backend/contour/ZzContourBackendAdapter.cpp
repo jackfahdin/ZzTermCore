@@ -78,6 +78,16 @@ public:
         // Contour 未暴露 ambiguous 宽度配置：空操作（已知分歧，规格 4.1 钉住；
         // compat 测试不含 Ambiguous 维度对照）。
     }
+    void sendText(std::string_view utf8) override
+    {
+        backend_->sendText(utf8);
+        backend_->flushReplies();
+    }
+    void sendKey(const ZzKeyEvent& event) override
+    {
+        backend_->sendKeyEvent(event);
+        backend_->flushReplies(); // send 同步生成的编码字节立即上行
+    }
 
 private:
     // ZzContourEvents 实现：锁内回调（title/bell/altBuffer）只写 adapter 自有状态

@@ -43,8 +43,26 @@ parser/screen/scrollback 等引擎组件归各后端实现持有，`ZzTerminal`
 - `feed` 返回 `ZzTermChanges` 变化摘要（屏幕/历史/活动缓冲区/标题/
   BEL/滚入行数），远端输入一律视为不可信：畸形/超长序列被安全丢弃
   并恢复，feed 不抛异常。
-- `setOutputHandler` 设置终端回传字节通道（DA 响应、光标上报等）；
-  Contour 后端有效，native 暂不回传。
+- `setOutputHandler` 设置统一 output 通道：前端输入编码字节
+  （sendText/sendKey）与终端回传字节（DA 响应、DSR/CPR 应答等）均经
+  此单一通道发出；未设置 handler 时字节静默丢弃。两后端均有效
+  （M3a 起，native 回传已接入）。
+- `sendText(std::string_view)` 发送普通文本输入（Unicode 输入、
+  IME commit text；入参为已确认合法 UTF-8，Core 不重复校验）；
+  `sendKey(const ZzKeyEvent&)` 发送按键语义事件（功能键、组合键；
+  普通字符优先 sendText）。两者编码字节统一经 output 通道发出。
+- 输入编码与终端模式联动：application cursor（DECCKM ?1）下
+  方向键/Home/End 编码为 SS3（ESC O x），否则为 CSI（ESC [ x）；
+  application keypad（ESC=/ESC>）模式位已同步到 native 编码器，
+  小键盘键编码待 numpad 键类型引入后生效。模式由 feed
+  接收的 DEC 序列驱动，前端无需自管同步。Contour 后端经类型映射
+  委托其自家输入路径（ZzInputEncoder 为 native 内部组件，不属
+  公开契约）。
+- 终端回传（M3a，两后端均支持）：DA1（CSI c 设备属性查询）native
+  应答 VT102 级最小集；DSR 5n（状态查询）应答就绪；CPR 6n（光标
+  位置查询）上报当前光标行列。回传字节同样经 output 通道发出，
+  且不影响 dirty 标记。DA 应答串为实现相关差异（Contour 应答其
+  自家特征串），属已钉住的 b 类分歧，前端不得依赖具体应答内容。
 - `setAmbiguousWidthMode(bool)` 设置 Ambiguous 宽度模式（UAX #11
   A 类别码位列宽）：true 按 2 列（CJK 环境）、false 按 1 列
   （xterm 默认，构造初值）。仅 native 后端生效，Contour 无对应
@@ -136,8 +154,14 @@ Cold mmap-file 扩展。Screen 不知道历史后端类型。
 
 ### Input Encoder
 
-以 `ZzKeyEvent`、`ZzMouseEvent`、Paste、Focus 等语义事件进入
-`ZzInputEncoder`，UI 不直接拼 escape sequence。
+以 `ZzKeyEvent`、`ZzMouseEvent`、Paste、Focus 等语义事件进入输入
+链路，UI 不直接拼 escape sequence。M3a 落地的输入方向公开面为
+facade 的 `sendText` / `sendKey`（见 Terminal 节）；`ZzInputEncoder`
+为 native 后端内部组件（`ZzTerm/Input.h` 定义事件类型），Contour
+后端经类型映射（`ZzContourConvert.h`）委托其自家输入路径，两后端
+编码逐字节一致（compat 用例 12 钉住）。当前覆盖方向键/Home/End/
+Insert/Delete/PageUp/PageDown/F1-F12、Enter/Tab/Backspace/Escape
+及修饰键组合；鼠标、paste、focus 上报属后续里程碑。
 
 > 随实现补充。
 
@@ -151,7 +175,9 @@ Cold mmap-file 扩展。Screen 不知道历史后端类型。
   `resize` 即 TIOCSWINSZ；`tryWait` 非阻塞收集退出码（信号杀死为
   128 + 信号号）。析构 SIGHUP（必要时 SIGKILL）子进程并回收僵尸。
 - 调试工具 `ZzTermSmoke`（`examples/ZzTermSmoke`）：PTY -> ZzTerminal ->
-  stdout 全屏重绘的控制台冒烟 Demo，子进程退出即以其退出码退出。
+  stdout 全屏重绘的控制台冒烟 Demo；stdin 经 demo 本地 InputTranslator
+  走 sendText/sendKey 输入链路（不再字节透传），子进程退出即以其
+  退出码退出。
 
 ### RenderView
 

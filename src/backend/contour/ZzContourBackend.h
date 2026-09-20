@@ -3,6 +3,7 @@
 #include "ZzContourEvents.h"
 
 #include <ZzTerm/Cell.h>
+#include <ZzTerm/Input.h>
 
 #include <cstddef>
 #include <cstdint>
@@ -71,6 +72,13 @@ public:
     [[nodiscard]] bool lineWrapped(int row) const;
     /// \brief 把缓冲中的终端回传字节（DA 响应等）经 onWriteToTransport 发出。
     void flushReplies();
+
+    /// \brief 透传按键事件到 contour Terminal（编码字节经 output 钩子上行）。
+    /// Character 键走 sendCharEvent；未覆盖键忽略。
+    void sendKeyEvent(const ZzKeyEvent& event);
+    /// \brief 普通文本输入。encodeText 恒等语义，经 contour sendRawInput 原样上行
+    ///（KAM 开启时按 contour 语义阻断，与 sendKeyEvent 路径一致，注释钉住）。
+    void sendText(std::string_view utf8);
 
     /// \brief 取当前屏拷贝式快照（非 const：内部需刷新 RenderBuffer 取光标）。
     ZzContourSnapshot snapshot();

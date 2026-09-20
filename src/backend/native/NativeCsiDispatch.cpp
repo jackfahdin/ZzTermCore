@@ -1,13 +1,14 @@
 #include <algorithm>
+#include <string>
 
 #include "ZzNativeBackend.h"
 
 // CSI 语义（ZzNativeBackend 方法，分文件实现以控制单文件规模）。
 // 约定：参数省略（kOmitted）或 <= 0 一律回退默认值；数值钳到网格范围。
 // DEC 私有序列（privateMarker == '?'）走 dispatchDecPrivate：M2 已交付
-// 备用屏幕（1049/1047/1048）、DECAWM（?7）、DECTCEM（?25）；其余 DEC
-// 私有模式（mouse/bracketed paste 等）与 intermediate 序列安全忽略，属
-// M3（里程碑划分见 Architecture.md 第 19 节）。
+// 备用屏幕（1049/1047/1048）、DECAWM（?7）、DECTCEM（?25），M3a 交付
+// DECCKM（?1，同步输入编码器）；其余 DEC 私有模式（mouse/bracketed paste
+// 等）与 intermediate 序列安全忽略，属 M3（里程碑划分见 Architecture.md 第 19 节）。
 
 namespace {
 
@@ -141,6 +142,21 @@ void ZzNativeBackend::dispatchCsi(const ZzParamSequence& seq)
     case 'T': // SD
         screen_.scrollDown(paramOr(seq, 0, 1), eraseFill());
         break;
+    case 'c': // DA1：省略/0 参数应答 VT102 级最小集（xterm 兼容）；回传不标脏
+        if (paramOr(seq, 0, 0) == 0)
+            emit("\x1B[?1;2c");
+        return;
+    case 'n': { // DSR：5=就绪；6=CPR（真实光标位置，1 起始）；其余安全忽略
+        const int p = paramOr(seq, 0, 0);
+        if (p == 5) {
+            emit("\x1B[0n");
+        } else if (p == 6) {
+            const std::string cpr = "\x1B[" + std::to_string(cur.row + 1) + ";"
+                                  + std::to_string(cur.col + 1) + "R";
+            emit(cpr);
+        }
+        return;
+    }
     case 'm':
         sgr(seq); // 任务 6 实现
         break;
@@ -160,6 +176,9 @@ void ZzNativeBackend::dispatchDecPrivate(const ZzParamSequence& seq)
         if (p == ZzParamSequence::kOmitted || p <= 0)
             continue;
         switch (static_cast<int>(p)) {
+        case 1: // DECCKM：application cursor keys（同步到输入编码器）
+            encoder_.setApplicationCursorKeys(set);
+            break;
         case 7: // DECAWM 自动换行（默认开）
             screen_.setAutoWrapMode(set);
             break;

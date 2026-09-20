@@ -1,7 +1,8 @@
 #pragma once
 
-// vtbackend → ZzTerm 公开类型的转换共享头（inline）：ZzContourBackend（snapshot）
+// vtbackend ↔ ZzTerm 公开类型的转换共享头（inline）：ZzContourBackend（snapshot）
 // 与 ZzContourRenderView（零拷贝 thunk）共用同一份映射逻辑，避免两端漂移。
+// 输出方向（vtbackend → ZzTerm）在上半部；输入方向（ZzTerm → vtbackend，M3a）在末尾。
 // 仅限 contour 库内部使用（C++23）；不暴露给 ZzTermCore 主库。
 
 #include <ZzTerm/Cell.h>
@@ -80,5 +81,66 @@ inline void zzAppendUtf8(std::string& out, char32_t cp)
         out += static_cast<char>(0x80 | ((cp >> 12) & 0x3F));
         out += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
         out += static_cast<char>(0x80 | (cp & 0x3F));
+    }
+}
+
+// ---- ZzTerm → vtbackend（输入方向，M3a）----
+
+#include <vtbackend/input/InputGenerator.hpp>
+
+#include <ZzTerm/Input.h>
+
+#include <optional>
+
+/// \brief ZzKeyModifier → vtbackend::Modifiers（Shift/Alt/Ctrl/Super 一一对应）。
+inline vtbackend::Modifiers zzModifiers(ZzKeyModifier mods)
+{
+    vtbackend::Modifiers out;
+    if (zzHasModifier(mods, ZzKeyModifier::Shift))
+        out.enable(vtbackend::Modifier::Shift);
+    if (zzHasModifier(mods, ZzKeyModifier::Alt))
+        out.enable(vtbackend::Modifier::Alt);
+    if (zzHasModifier(mods, ZzKeyModifier::Ctrl))
+        out.enable(vtbackend::Modifier::Control);
+    if (zzHasModifier(mods, ZzKeyModifier::Super))
+        out.enable(vtbackend::Modifier::Super);
+    return out;
+}
+
+/// \brief ZzKeyEvent::Key → vtbackend::Key；Character 与未覆盖键返回 nullopt
+///（Character 由调用方走 sendCharEvent 路径）。
+inline std::optional<vtbackend::Key> zzKey(ZzKeyEvent::Key key)
+{
+    using ZK = ZzKeyEvent::Key;
+    using CK = vtbackend::Key;
+    switch (key) {
+    case ZK::Enter:     return CK::Enter;
+    case ZK::Tab:       return CK::Tab;
+    case ZK::Backspace: return CK::Backspace;
+    case ZK::Escape:    return CK::Escape;
+    case ZK::Up:        return CK::UpArrow;
+    case ZK::Down:      return CK::DownArrow;
+    case ZK::Left:      return CK::LeftArrow;
+    case ZK::Right:     return CK::RightArrow;
+    case ZK::Home:      return CK::Home;
+    case ZK::End:       return CK::End;
+    case ZK::Insert:    return CK::Insert;
+    case ZK::Delete:    return CK::Delete;
+    case ZK::PageUp:    return CK::PageUp;
+    case ZK::PageDown:  return CK::PageDown;
+    case ZK::F1:  return CK::F1;
+    case ZK::F2:  return CK::F2;
+    case ZK::F3:  return CK::F3;
+    case ZK::F4:  return CK::F4;
+    case ZK::F5:  return CK::F5;
+    case ZK::F6:  return CK::F6;
+    case ZK::F7:  return CK::F7;
+    case ZK::F8:  return CK::F8;
+    case ZK::F9:  return CK::F9;
+    case ZK::F10: return CK::F10;
+    case ZK::F11: return CK::F11;
+    case ZK::F12: return CK::F12;
+    case ZK::Character:
+    default:            return std::nullopt;
     }
 }

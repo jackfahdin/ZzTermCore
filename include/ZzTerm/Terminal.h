@@ -9,6 +9,7 @@
 #include <string_view>
 
 #include "ZzTerm/Export.h"
+#include "ZzTerm/Input.h"
 #include "ZzTerm/RenderView.h"
 #include "ZzTerm/Screen.h"
 #include "ZzTerm/Scrollback.h"
@@ -160,8 +161,10 @@ public:
     void clearDirty() noexcept;
 
     /**
-     * @brief 设置终端回传字节的输出通道（DA 响应、光标上报等）。
-     * @param handler 输出回调；Contour 后端有效，native 暂不回传。
+     * @brief 设置 output 通道（send 编码字节、终端回传均经此发出）。
+     * @param handler 输出回调；未设置时字节静默丢弃。
+     * @note 两后端均有效：native 的 DA1/DSR/CPR 回传与 send 编码字节
+     *       统一经此通道发出（M3a 起）。
      */
     void setOutputHandler(std::function<void(std::string_view)> handler);
 
@@ -173,6 +176,22 @@ public:
      *       已落格内容不 retroactive 重排。
      */
     void setAmbiguousWidthMode(bool wide) noexcept;
+
+    /**
+     * @brief 发送普通文本输入（Unicode 输入、IME commit text）。
+     * @param utf8 已确认的合法 UTF-8 文本（前端契约，Core 不重复校验）。
+     * @note 编码字节经 setOutputHandler 的 output 通道发出；
+     *       未设置 handler 时字节静默丢弃。
+     */
+    void sendText(std::string_view utf8);
+
+    /**
+     * @brief 发送按键事件（功能键、组合键；普通字符优先 sendText）。
+     * @param event 键盘语义事件（见 ZzTerm/Input.h）。
+     * @note 编码依据后端当前终端模式（application cursor/keypad 等），
+     *       与 feed 接收的 DEC 模式序列联动；未设置 handler 时静默丢弃。
+     */
+    void sendKey(const ZzKeyEvent& event);
 
     // ---- Core 内部访问（供 parser/terminal 模块协作，不属于 Renderer API） ----
 

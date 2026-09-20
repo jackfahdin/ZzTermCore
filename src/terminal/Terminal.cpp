@@ -51,6 +51,16 @@ void ZzTerminal::setAmbiguousWidthMode(bool wide) noexcept
     impl_->backend->setAmbiguousWidthMode(wide);
 }
 
+void ZzTerminal::sendText(std::string_view utf8)
+{
+    impl_->backend->sendText(utf8);
+}
+
+void ZzTerminal::sendKey(const ZzKeyEvent& event)
+{
+    impl_->backend->sendKey(event);
+}
+
 ZzScreen& ZzTerminal::screen()
 {
     auto* native = dynamic_cast<ZzNativeBackend*>(impl_->backend.get());

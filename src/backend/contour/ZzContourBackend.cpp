@@ -174,6 +174,32 @@ void ZzContourBackend::flushReplies()
     impl_->terminal->flushInput();
 }
 
+void ZzContourBackend::sendKeyEvent(const ZzKeyEvent& event)
+{
+    // xterm 默认不上报 Release（与 native encoder 行为对齐）；Repeat 按 Press。
+    if (event.action == ZzKeyEvent::Action::Release)
+        return;
+    const auto now = std::chrono::steady_clock::now();
+    const vtbackend::KeyboardModifiers mods { zzModifiers(event.modifiers) };
+    if (event.key == ZzKeyEvent::Key::Character) {
+        if (event.character != 0)
+            impl_->terminal->sendCharEvent(event.character, vtbackend::KeyIdentity{}, mods,
+                                           vtbackend::KeyboardEventType::Press, now);
+        return;
+    }
+    const std::optional<vtbackend::Key> key = zzKey(event.key);
+    if (!key)
+        return; // 未覆盖键：忽略（ZzContourConvert.h 注释钉住）
+    impl_->terminal->sendKeyEvent(*key, mods, vtbackend::KeyboardEventType::Press, now);
+}
+
+void ZzContourBackend::sendText(std::string_view utf8)
+{
+    // encodeText 恒等：sendRawInput 原样写入 input generator 并 flush，
+    // 字节经 PTY bridge → onWriteToTransport 上行（与回传同一出口）。
+    impl_->terminal->sendRawInput(utf8);
+}
+
 std::optional<std::pair<int, int>> ZzContourBackend::cursorPosition()
 {
     impl_->terminal->refreshRenderBuffer();

@@ -12,6 +12,7 @@
 #include <string>
 #include <string_view>
 
+#include "ZzTerm/Input.h"
 #include "ZzTerm/RenderView.h"
 #include "ZzTerm/Screen.h"
 #include "ZzTerm/Terminal.h" // ZzTermChanges
@@ -31,8 +32,12 @@ public:
     [[nodiscard]] virtual bool isAlternateScreen() const noexcept = 0;
     [[nodiscard]] virtual const std::string& title() const noexcept = 0;
     virtual void clearDirty() noexcept = 0;
-    /// \brief 设置终端回传字节（DA 响应、光标上报等）的输出通道；native 暂为空实现。
+    /// \brief 设置 output 通道：终端回传字节（DA 响应、光标上报等）与 send 编码字节均经此发出。
     virtual void setOutputHandler(std::function<void(std::string_view)> handler) = 0;
     /// Ambiguous 宽度模式（true=CJK 按 2 列）；Contour 无对应配置，空操作。
     virtual void setAmbiguousWidthMode(bool wide) noexcept = 0;
+    /// 编码并发出普通文本输入（IME commit text）；经 output 通道。
+    virtual void sendText(std::string_view utf8) = 0;
+    /// 编码并发出按键事件；编码依据后端当前终端模式（application cursor 等）。
+    virtual void sendKey(const ZzKeyEvent& event) = 0;
 };
