@@ -183,6 +183,9 @@ M5a 已落地统一物理行数据源 ZzIPhysicalLineSource（历史区 + 屏幕
 按 logical line/chunk 扫描的地基。M5b 已落地 zzSearchLines 单扫描
 （不拼巨大字符串）：逐逻辑行子串匹配 + 位置回映，facade 四 API
 （search/clearSearch/searchMatchCount/searchMatch）双后端可用。
+M6 已落地数据源借用口（lineAt(row, out)）与缓冲复用，行为零变化；搜索
+实测 568ms（-O0，2026-09-21；m5b 的 503ms 基线早于 byteToCellEnd 表
+不可比），logicalLineCount 经 facade 惰性缓存消除重复全扫描。
 
 ## 14. 性能目标
 

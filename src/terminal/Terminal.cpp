@@ -38,6 +38,16 @@ public:
     ZzSelection selection;
     ZzSearchState searchState;
     std::uint64_t lastDropped = 0; // lineSource().droppedLineCount() 的上次观测值
+    std::int64_t cachedLogicalCount = -1; // 逻辑行计数缓存（-1 = 脏；M6 债 2）
+
+    // 逻辑行计数（惰性重算：脏时 O(R) 扫描一次并缓存；feed/resize 置脏后
+    // 任意多次 API 调用共享一次扫描）。
+    [[nodiscard]] std::int64_t logicalCount()
+    {
+        if (cachedLogicalCount < 0)
+            cachedLogicalCount = zzLogicalLineCount(backend->lineSource());
+        return cachedLogicalCount;
+    }
 
     // feed/resize 后维护选区与搜索锚点（规格 M5a 5.1 / M5b 5.4：
     // Alternate 切换清空；丢弃按物理计数平移，近似语义）
@@ -52,6 +62,7 @@ public:
             searchState.onLinesDropped(dropped - lastDropped);
         }
         lastDropped = dropped;
+        cachedLogicalCount = -1; // 内容已变：计数缓存置脏
     }
 };
 
@@ -73,7 +84,7 @@ bool ZzTerminal::resize(int cols, int rows)
         // 隐含前提：后端 resize 永不置 activeBufferChanged；若未来违反，
         // 语义仍安全（走 noteSelectionAfterFeed 的清空分支）。
         impl_->noteSelectionAfterFeed(ZzTermChanges{}); // resize 也可能丢弃（reflow 裁剪）
-        const std::int64_t count = zzLogicalLineCount(impl_->backend->lineSource());
+        const std::int64_t count = impl_->logicalCount();
         impl_->selection.clampTo(count);
         impl_->searchState.clampTo(count);
     }
@@ -125,6 +136,8 @@ ZzScreen& ZzTerminal::screen()
     auto* native = dynamic_cast<ZzNativeBackend*>(impl_->backend.get());
     if (!native)
         throw std::logic_error("ZzTerminal::screen() 仅 Native 后端可用");
+    // 可变逃生舱保守置脏——调用方可能经可变引用改内容绕过 feed/resize 切面
+    impl_->cachedLogicalCount = -1;
     return native->screen();
 }
 
@@ -133,12 +146,14 @@ ZzScrollback& ZzTerminal::scrollback()
     auto* native = dynamic_cast<ZzNativeBackend*>(impl_->backend.get());
     if (!native)
         throw std::logic_error("ZzTerminal::scrollback() 仅 Native 后端可用");
+    // 可变逃生舱保守置脏——调用方可能经可变引用改内容绕过 feed/resize 切面
+    impl_->cachedLogicalCount = -1;
     return native->scrollback();
 }
 
 void ZzTerminal::setSelection(ZzLogicalPos anchor, ZzLogicalPos extent)
 {
-    const std::int64_t count = zzLogicalLineCount(impl_->backend->lineSource());
+    const std::int64_t count = impl_->logicalCount();
     if (count == 0) {
         impl_->selection.clear();
         return;
@@ -154,7 +169,7 @@ void ZzTerminal::setSelection(ZzLogicalPos anchor, ZzLogicalPos extent)
 
 void ZzTerminal::extendSelection(ZzLogicalPos extent)
 {
-    const std::int64_t count = zzLogicalLineCount(impl_->backend->lineSource());
+    const std::int64_t count = impl_->logicalCount();
     if (count == 0) {
         impl_->selection.clear();
         return;

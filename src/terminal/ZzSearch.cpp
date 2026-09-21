@@ -31,13 +31,19 @@ struct LineTextMap {
     std::vector<std::int32_t> byteToCellEnd; // text.size() 项：字节位置 → 所在单元末格之后一格
 };
 
-// 组建一条逻辑行的纯文本与位置回映表（规则同 ZzSelectionText 提取：
+// 组建一条逻辑行的纯文本与位置回映表到 m（规则同 ZzSelectionText 提取：
 // 宽字符整字续格跳过、cluster 整串、空单元格输出空格、行尾空白修剪）。
-LineTextMap buildLineText(const ZzIPhysicalLineSource& src,
-                          std::size_t firstRow, std::size_t rowCount, bool needFolded)
+// m 由调用方持有跨行复用：进入时四表同步清空（vector clear 保容量，
+// 分配从"每行 3-4 次"降为"全程常数次"，M6 债 1）。
+void buildLineText(const ZzIPhysicalLineSource& src,
+                   std::size_t firstRow, std::size_t rowCount, bool needFolded,
+                   LineTextMap& m)
 {
     const int cols = src.cols();
-    LineTextMap m;
+    m.text.clear();
+    m.folded.clear();
+    m.byteToCell.clear();
+    m.byteToCellEnd.clear();
     std::int32_t cell = 0;
     auto emit = [&](std::string_view bytes, std::int32_t cellCount) {
         for (char c : bytes) {
@@ -49,8 +55,9 @@ LineTextMap buildLineText(const ZzIPhysicalLineSource& src,
         }
         cell += cellCount;
     };
+    ZzLine line;
     for (std::size_t r = 0; r < rowCount; ++r) {
-        const ZzLine line = src.lineAt(firstRow + r);
+        src.lineAt(firstRow + r, line);
         for (int c = 0; c < cols; ++c) {
             const ZzCell& zc = line.cellAt(c);
             switch (zc.width()) {
@@ -86,7 +93,6 @@ LineTextMap buildLineText(const ZzIPhysicalLineSource& src,
             m.folded.pop_back();
     }
     m.byteToCell.resize(m.text.size() + 1);
-    return m;
 }
 
 } // namespace
@@ -107,11 +113,12 @@ std::vector<ZzLogicalRange> zzSearchLines(const ZzIPhysicalLineSource& src,
     const std::size_t total = src.historyLineCount() + static_cast<std::size_t>(src.screenRowCount());
     std::int64_t logicalLine = 0;
     std::size_t row = 0;
+    LineTextMap m;
     while (row < total) {
         std::size_t count = 1;
         while (row + count < total && src.lineWrapped(row + count - 1))
             ++count;
-        LineTextMap m = buildLineText(src, row, count, !options.caseSensitive);
+        buildLineText(src, row, count, !options.caseSensitive, m);
         const std::string& hay = options.caseSensitive ? m.text : m.folded;
         std::size_t pos = 0;
         while ((pos = hay.find(needle, pos)) != std::string::npos) {

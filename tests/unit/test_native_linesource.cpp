@@ -47,11 +47,15 @@ static void testUnifiedRowMapping()
     ZZ_TEST_EXPECT(src.screenRowCount() == 3);
     ZZ_TEST_EXPECT(src.cols() == 10);
     // 统一坐标：0/1 为历史（0 最旧），2 起为屏幕（空白行）
-    ZZ_TEST_EXPECT(src.lineAt(0).cellAt(0).codePoint() == U'a');
-    ZZ_TEST_EXPECT(src.lineAt(1).cellAt(0).codePoint() == U'b');
-    ZZ_TEST_EXPECT(src.lineAt(1).wrapped());
+    ZzLine line;
+    src.lineAt(0, line);
+    ZZ_TEST_EXPECT(line.cellAt(0).codePoint() == U'a');
+    src.lineAt(1, line);
+    ZZ_TEST_EXPECT(line.cellAt(0).codePoint() == U'b');
+    ZZ_TEST_EXPECT(line.wrapped());
     ZZ_TEST_EXPECT(src.lineWrapped(1) && !src.lineWrapped(0));
-    ZZ_TEST_EXPECT(src.lineAt(2).cellAt(0).isEmpty()); // 屏幕空白行
+    src.lineAt(2, line);
+    ZZ_TEST_EXPECT(line.cellAt(0).isEmpty()); // 屏幕空白行
 }
 
 static void testDroppedCountPassthrough()
@@ -65,7 +69,9 @@ static void testDroppedCountPassthrough()
     scrollback->append(std::move(batch));
     ZZ_TEST_EXPECT(src.historyLineCount() == 2);
     ZZ_TEST_EXPECT(src.droppedLineCount() == 3);
-    ZZ_TEST_EXPECT(src.lineAt(0).cellAt(0).codePoint() == U'd'); // 最旧留存
+    ZzLine line;
+    src.lineAt(0, line);
+    ZZ_TEST_EXPECT(line.cellAt(0).codePoint() == U'd'); // 最旧留存
 }
 
 static void testAlternateScreenHidesHistory()

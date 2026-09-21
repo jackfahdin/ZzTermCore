@@ -14,7 +14,7 @@ public:
     [[nodiscard]] std::size_t historyLineCount() const override;
     [[nodiscard]] int screenRowCount() const override;
     [[nodiscard]] int cols() const override;
-    [[nodiscard]] ZzLine lineAt(std::size_t unifiedRow) const override;
+    void lineAt(std::size_t unifiedRow, ZzLine& out) const override;
     [[nodiscard]] bool lineWrapped(std::size_t unifiedRow) const override;
     [[nodiscard]] std::uint64_t droppedLineCount() const override;
 

@@ -27,8 +27,10 @@ std::string extractLogicalLine(const ZzIPhysicalLineSource& src,
     const int cols = src.cols();
     std::vector<ZzLine> snapshots;
     snapshots.reserve(span.second);
-    for (std::size_t i = 0; i < span.second; ++i)
-        snapshots.push_back(src.lineAt(span.first + i));
+    for (std::size_t i = 0; i < span.second; ++i) {
+        snapshots.emplace_back();
+        src.lineAt(span.first + i, snapshots.back());
+    }
 
     const std::int64_t lineLen = static_cast<std::int64_t>(cols) * static_cast<std::int64_t>(span.second);
     std::int64_t begin = std::clamp<std::int64_t>(colStart, 0, lineLen);

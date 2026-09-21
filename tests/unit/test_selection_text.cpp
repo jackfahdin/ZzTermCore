@@ -48,7 +48,7 @@ public:
     std::size_t historyLineCount() const override { return static_cast<std::size_t>(historyRows_); }
     int screenRowCount() const override { return static_cast<int>(rows_.size()) - historyRows_; }
     int cols() const override { return cols_; }
-    ZzLine lineAt(std::size_t unifiedRow) const override { return rows_.at(unifiedRow); }
+    void lineAt(std::size_t unifiedRow, ZzLine& out) const override { out = rows_.at(unifiedRow); }
     bool lineWrapped(std::size_t unifiedRow) const override { return rows_.at(unifiedRow).wrapped(); }
     std::uint64_t droppedLineCount() const override { return 0; }
 

@@ -1,4 +1,4 @@
-// 搜索性能门控（M5b）：10 万行历史单次子串搜索耗时门控，JSON 落盘 cwd。
+// 搜索性能门控（M6 基线）：10 万行历史单次子串搜索耗时门控，JSON 落盘 cwd。
 // 门控宽松（防回归绊线，非精确基准）；CI 机器慢 2-3 倍仍应通过。
 #include <ZzTerm/Terminal.h>
 
@@ -43,16 +43,18 @@ int main()
     // 10 万行脚本每行一命中：末行换行符后光标落在第 100001 条空逻辑行，
     // 24 行屏 + 10 万容量下 10 万条含 payload 的行全部留存。
     ZZ_TEST_EXPECT(matches == 100000);
-    // 门控标定：本机（i7-14700，-O0）基线约 505ms（见
-    // tests/perf/records/2026-09-21-m5b-search.json）；1600ms 约 3 倍
-    // 余量，保证 CI runner 慢 2-3 倍仍不误报，劣化约 3 倍即触发（M4 惯例）。
-    ZZ_TEST_EXPECT(ms < 1600);
+    // 门控标定（M6 基线）：本机（i7-14700，-O0）M6 优化后实测 568ms
+    // （2026-09-21，见 tests/perf/records/2026-09-21-m6-perf.json；T2 A/B
+    // 实测 662ms → 568ms）。m5b 基线 503ms 早于终审 I1 引入的
+    // byteToCellEnd 表，不可直接对比。1800ms = 568×3 向上取整百，
+    // 保证 CI runner 慢 2-3 倍仍不误报，劣化约 3 倍即触发（M4 惯例）。
+    ZZ_TEST_EXPECT(ms < 1800);
     std::printf("perf: search 100k lines %lldms, %zu matches\n", static_cast<long long>(ms), matches);
 
     std::ofstream js("zzterm-perf-search.json");
     js << "{\n"
        << "  \"date\": \"2026-09-21\",\n"
-       << "  \"milestone\": \"m5b-search\",\n"
+       << "  \"milestone\": \"m6-perf\",\n"
        << "  \"note\": \"-O0 debug, 100k lines x 30 cols, substring search\",\n"
        << "  \"searchMs\": " << ms << ",\n"
        << "  \"matches\": " << matches << "\n"
