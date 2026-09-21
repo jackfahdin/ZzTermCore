@@ -164,3 +164,9 @@ if(TARGET ZzTermSmoke)
         endif()
     endif()
 endif()
+
+# M7a：Fuzz harness 与 smoke，仅 ZZTERM_FUZZ=ON（linux-clang-fuzz preset）时收录；
+# OFF 路径本目录完全不参与编译（第一原则）。
+if(ZZTERM_FUZZ)
+    add_subdirectory(fuzz)
+endif()
