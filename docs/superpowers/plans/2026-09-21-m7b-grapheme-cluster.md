@@ -104,7 +104,7 @@ void zzGraphemeBreaks(std::u32string_view cps, std::vector<bool>& out);
 ```
 
 实现纪律：
-- **单一求值核**：内部 `bool zzIsGraphemeBoundary(const ZzGraphemeProps* seq, std::size_t n, std::size_t pos)` 判定 seq 内 pos 处是否断开；按 GB 规则顺序求值——GB3（CR×LF）、GB4/GB5（Control|CR|LF 两侧必断）、GB6-GB8（Hangul L/V/T/LV/LVT）、GB9（×Extend/×ZWJ）、GB9a（×SpacingMark）、GB9b（Prepend×）、GB9c（左扫 Consonant [Linker Extend]* Linker [Extend]* 模式 × Consonant）、GB11（左扫 ExtPic Extend* ZWJ × ExtPic）、GB12/13（RI 对：边界前连续 RI 计数为奇则续）、GB999（断）；以上皆不命中则断。左扫只在窗口内进行（GB9c/GB11 的左上下文需求由窗口全文满足）；
+- **单一求值核**：内部 `bool zzIsGraphemeBoundary(const ZzGraphemeProps* seq, std::size_t n, std::size_t pos)` 判定 seq 内 pos 处是否断开；按 GB 规则顺序求值——GB3（CR×LF）、GB4/GB5（Control|CR|LF 两侧必断）、GB6-GB8（Hangul L/V/T/LV/LVT）、GB9（×Extend/×ZWJ）、GB9a（×SpacingMark）、GB9b（Prepend×）、GB9c（左扫 Consonant [Linker Extend]* Linker [Extend]* 模式 × Consonant；rev 45：字母表为 InCB=Extend ∪ InCB=Linker，ZWJ 经 InCB=Extend 进入，InCB=Extend ⊊ GCB=Extend 真子集故须显式入表——T1 修复波对齐）、GB11（左扫 ExtPic Extend* ZWJ × ExtPic）、GB12/13（RI 对：边界前连续 RI 计数为奇则续）、GB999（断）；以上皆不命中则断。左扫只在窗口内进行（GB9c/GB11 的左上下文需求由窗口全文满足）；
 - zzGraphemeBreaks：对 i ∈ [1, n-1] 逐边界调求值核（O(n·k)，golden 场景 n 小，无性能要求）；
 - zzGraphemeContinues：栈上小缓冲拼接 prevCluster + next（cluster 很短，上限可断言 64），调求值核判 prevCluster.size() 处边界，取反返回；
 - .cpp 顶部 include "unicode/GraphemeBreak.h" 与 "ZzTerm/detail/GraphemeBreakData.inc"（数据结构注释：区间按 lo 升序互不重叠，供二分查找）。

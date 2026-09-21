@@ -7,13 +7,14 @@
 数据源（Unicode 16.0.0）：
 - GraphemeBreakProperty.txt：全部 GCB 类（未列出码位默认 Other 不入表）
 - emoji-data.txt：仅 Extended_Pictographic 区间
-- DerivedCoreProperties.txt：仅 InCB; Linker 与 InCB; Consonant 区间
-  （InCB; Extend 已由 GCB=Extend 表达，不收）
+- DerivedCoreProperties.txt：InCB; Linker、InCB; Consonant 与 InCB; Extend
+  区间全收（InCB=Extend ⊊ GCB=Extend 真子集——大量 GCB=Extend 码位
+  InCB=None，如 U+0301，不能由 GCB 表达，故显式入表）
 - GraphemeBreakTest.txt：官方 golden，原样落盘 tests/data/
 
 三份属性区间取边界并集做统一区间打包：每条区间携带
 gcb（4 位枚举值，对应 ZzGcb）+ flags（bit0=ExtPic，bit1-2=InCB
-0=None/1=Linker/2=Consonant），与 src/unicode/GraphemeBreak.h 的
+0=None/1=Linker/2=Consonant/3=Extend），与 src/unicode/GraphemeBreak.h 的
 ZzGcbInterval 布局一致。
 """
 import datetime
@@ -39,8 +40,8 @@ GCB_ENUM = [
 ]
 GCB_INDEX = {name: i for i, name in enumerate(GCB_ENUM)}
 
-# InCB：0=None 1=Linker 2=Consonant（与 enum class ZzIncb 一致）。
-INCB_INDEX = {"Linker": 1, "Consonant": 2}
+# InCB：0=None 1=Linker 2=Consonant 3=Extend（与 enum class ZzIncb 一致）。
+INCB_INDEX = {"Linker": 1, "Consonant": 2, "Extend": 3}
 
 
 def fail(msg: str) -> int:
@@ -95,7 +96,7 @@ def parse_emoji(text: str):
 
 
 def parse_incb(text: str):
-    """DerivedCoreProperties.txt → [(lo, hi, incb_index)]，仅 Linker/Consonant。"""
+    """DerivedCoreProperties.txt → [(lo, hi, incb_index)]，Linker/Consonant/Extend 全收。"""
     out = []
     for lineno, raw in enumerate(text.splitlines(), 1):
         line = raw.split("#", 1)[0].strip()
@@ -107,8 +108,8 @@ def parse_incb(text: str):
         if len(fields) != 3:
             raise ValueError(f"DerivedCoreProperties 第 {lineno} 行格式不符：{raw!r}")
         kind = fields[2]
-        if kind not in INCB_INDEX:  # InCB; Extend 已由 GCB=Extend 表达，不收
-            continue
+        if kind not in INCB_INDEX:
+            raise ValueError(f"DerivedCoreProperties 第 {lineno} 行未知 InCB 类：{raw!r}")
         lo, hi = parse_range(fields[0])
         out.append((lo, hi, INCB_INDEX[kind]))
     return out
@@ -192,7 +193,7 @@ def main() -> int:
         f"//         {URL_TEST}",
         f"// Unicode 版本：{UNICODE_VERSION}  生成日期：{date}",
         "// gcb 列为 ZzGcb 枚举值（Other=0 且无附加属性的码位不入表）；",
-        "// flags 位布局：bit0=Extended_Pictographic，bit1-2=InCB（0=None/1=Linker/2=Consonant）。",
+        "// flags 位布局：bit0=Extended_Pictographic，bit1-2=InCB（0=None/1=Linker/2=Consonant/3=Extend）。",
         "// 区间按 lo 升序、互不重叠，供 zzGraphemePropsOf 二分查找。",
         f"inline constexpr std::array<ZzGcbInterval, {len(unified)}> kZzGcbIntervals {{{{",
     ]
@@ -202,7 +203,7 @@ def main() -> int:
             flags_desc.append("ExtPic")
         incb_v = (f >> 1) & 0x3
         if incb_v:
-            flags_desc.append("Linker" if incb_v == 1 else "Consonant")
+            flags_desc.append({1: "Linker", 2: "Consonant", 3: "InCB_Extend"}[incb_v])
         desc = " ".join(flags_desc) if flags_desc else "-"
         out.append(
             f"    ZzGcbInterval{{0x{lo:04X}u, 0x{hi:04X}u, {g}u, {f}u}},"

@@ -31,8 +31,10 @@ enum class ZzGcb : std::uint8_t {
     ZWJ
 };
 
-// InCB（Indic_Conjunct_Break）类别；InCB Extend 已由 ZzGcb::Extend 表达。
-enum class ZzIncb : std::uint8_t { None, Linker, Consonant };
+// InCB（Indic_Conjunct_Break）类别。InCB=Extend ⊊ GCB=Extend 真子集
+// （16.0.0 实测：GCB=Extend 中仅 U+200C 的 InCB=None，而 U+200D 的
+// InCB=Extend 但 GCB=ZWJ），故显式入表，不能由 ZzGcb::Extend 表达。
+enum class ZzIncb : std::uint8_t { None, Linker, Consonant, Extend };
 
 // 单码点的聚簇断行相关属性打包。
 struct ZzGraphemeProps {
@@ -42,7 +44,7 @@ struct ZzGraphemeProps {
 };
 
 // 生成表区间条目（include/ZzTerm/detail/GraphemeBreakData.inc 的行格式）：
-// flags 位布局 bit0=Extended_Pictographic，bit1-2=InCB（0/1/2 对应 ZzIncb）。
+// flags 位布局 bit0=Extended_Pictographic，bit1-2=InCB（0/1/2/3 对应 ZzIncb）。
 struct ZzGcbInterval {
     std::uint32_t lo;
     std::uint32_t hi;
@@ -59,4 +61,6 @@ void zzGraphemeBreaks(std::u32string_view cps, std::vector<bool>& out);
 
 // 续接判定（putChar 回望用）：prevCluster 为前格 cluster 码点串（非空），
 // next 为新码点；true = 续接并入前格（无边界），false = 断开新格。
+// 硬上限：prevCluster 为空或长度 ≥ 64 时返回 false（安全侧断开；
+// 超长 ZWJ 链本就该断，release 下不依赖 assert）。
 [[nodiscard]] bool zzGraphemeContinues(std::u32string_view prevCluster, char32_t next) noexcept;

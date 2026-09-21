@@ -5,7 +5,7 @@
 //         https://www.unicode.org/Public/16.0.0/ucd/auxiliary/GraphemeBreakTest.txt
 // Unicode 版本：16.0.0  生成日期：2026-09-21
 // gcb 列为 ZzGcb 枚举值（Other=0 且无附加属性的码位不入表）；
-// flags 位布局：bit0=Extended_Pictographic，bit1-2=InCB（0=None/1=Linker/2=Consonant）。
+// flags 位布局：bit0=Extended_Pictographic，bit1-2=InCB（0=None/1=Linker/2=Consonant/3=Extend）。
 // 区间按 lo 升序、互不重叠，供 zzGraphemePropsOf 二分查找。
 inline constexpr std::array<ZzGcbInterval, 1481> kZzGcbIntervals {{
     ZzGcbInterval{0x0000u, 0x0009u, 3u, 0u}, // Control -
@@ -17,294 +17,294 @@ inline constexpr std::array<ZzGcbInterval, 1481> kZzGcbIntervals {{
     ZzGcbInterval{0x00A9u, 0x00A9u, 0u, 1u}, // Other ExtPic
     ZzGcbInterval{0x00ADu, 0x00ADu, 3u, 0u}, // Control -
     ZzGcbInterval{0x00AEu, 0x00AEu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x0300u, 0x036Fu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0483u, 0x0489u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0591u, 0x05BDu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x05BFu, 0x05BFu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x05C1u, 0x05C2u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x05C4u, 0x05C5u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x05C7u, 0x05C7u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0300u, 0x036Fu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0483u, 0x0489u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0591u, 0x05BDu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x05BFu, 0x05BFu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x05C1u, 0x05C2u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x05C4u, 0x05C5u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x05C7u, 0x05C7u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0600u, 0x0605u, 5u, 0u}, // Prepend -
-    ZzGcbInterval{0x0610u, 0x061Au, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0610u, 0x061Au, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x061Cu, 0x061Cu, 3u, 0u}, // Control -
-    ZzGcbInterval{0x064Bu, 0x065Fu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0670u, 0x0670u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x06D6u, 0x06DCu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x064Bu, 0x065Fu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0670u, 0x0670u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x06D6u, 0x06DCu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x06DDu, 0x06DDu, 5u, 0u}, // Prepend -
-    ZzGcbInterval{0x06DFu, 0x06E4u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x06E7u, 0x06E8u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x06EAu, 0x06EDu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x06DFu, 0x06E4u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x06E7u, 0x06E8u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x06EAu, 0x06EDu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x070Fu, 0x070Fu, 5u, 0u}, // Prepend -
-    ZzGcbInterval{0x0711u, 0x0711u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0730u, 0x074Au, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x07A6u, 0x07B0u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x07EBu, 0x07F3u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x07FDu, 0x07FDu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0816u, 0x0819u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x081Bu, 0x0823u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0825u, 0x0827u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0829u, 0x082Du, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0859u, 0x085Bu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0711u, 0x0711u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0730u, 0x074Au, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x07A6u, 0x07B0u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x07EBu, 0x07F3u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x07FDu, 0x07FDu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0816u, 0x0819u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x081Bu, 0x0823u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0825u, 0x0827u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0829u, 0x082Du, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0859u, 0x085Bu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0890u, 0x0891u, 5u, 0u}, // Prepend -
-    ZzGcbInterval{0x0897u, 0x089Fu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x08CAu, 0x08E1u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0897u, 0x089Fu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x08CAu, 0x08E1u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x08E2u, 0x08E2u, 5u, 0u}, // Prepend -
-    ZzGcbInterval{0x08E3u, 0x0902u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x08E3u, 0x0902u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0903u, 0x0903u, 6u, 0u}, // SpacingMark -
     ZzGcbInterval{0x0915u, 0x0939u, 0u, 4u}, // Other Consonant
-    ZzGcbInterval{0x093Au, 0x093Au, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x093Au, 0x093Au, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x093Bu, 0x093Bu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x093Cu, 0x093Cu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x093Cu, 0x093Cu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x093Eu, 0x0940u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x0941u, 0x0948u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0941u, 0x0948u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0949u, 0x094Cu, 6u, 0u}, // SpacingMark -
     ZzGcbInterval{0x094Du, 0x094Du, 4u, 2u}, // Extend Linker
     ZzGcbInterval{0x094Eu, 0x094Fu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x0951u, 0x0957u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0951u, 0x0957u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0958u, 0x095Fu, 0u, 4u}, // Other Consonant
-    ZzGcbInterval{0x0962u, 0x0963u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0962u, 0x0963u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0978u, 0x097Fu, 0u, 4u}, // Other Consonant
-    ZzGcbInterval{0x0981u, 0x0981u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0981u, 0x0981u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0982u, 0x0983u, 6u, 0u}, // SpacingMark -
     ZzGcbInterval{0x0995u, 0x09A8u, 0u, 4u}, // Other Consonant
     ZzGcbInterval{0x09AAu, 0x09B0u, 0u, 4u}, // Other Consonant
     ZzGcbInterval{0x09B2u, 0x09B2u, 0u, 4u}, // Other Consonant
     ZzGcbInterval{0x09B6u, 0x09B9u, 0u, 4u}, // Other Consonant
-    ZzGcbInterval{0x09BCu, 0x09BCu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x09BEu, 0x09BEu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x09BCu, 0x09BCu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x09BEu, 0x09BEu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x09BFu, 0x09C0u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x09C1u, 0x09C4u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x09C1u, 0x09C4u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x09C7u, 0x09C8u, 6u, 0u}, // SpacingMark -
     ZzGcbInterval{0x09CBu, 0x09CCu, 6u, 0u}, // SpacingMark -
     ZzGcbInterval{0x09CDu, 0x09CDu, 4u, 2u}, // Extend Linker
-    ZzGcbInterval{0x09D7u, 0x09D7u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x09D7u, 0x09D7u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x09DCu, 0x09DDu, 0u, 4u}, // Other Consonant
     ZzGcbInterval{0x09DFu, 0x09DFu, 0u, 4u}, // Other Consonant
-    ZzGcbInterval{0x09E2u, 0x09E3u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x09E2u, 0x09E3u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x09F0u, 0x09F1u, 0u, 4u}, // Other Consonant
-    ZzGcbInterval{0x09FEu, 0x09FEu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0A01u, 0x0A02u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x09FEu, 0x09FEu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0A01u, 0x0A02u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0A03u, 0x0A03u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x0A3Cu, 0x0A3Cu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0A3Cu, 0x0A3Cu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0A3Eu, 0x0A40u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x0A41u, 0x0A42u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0A47u, 0x0A48u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0A4Bu, 0x0A4Du, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0A51u, 0x0A51u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0A70u, 0x0A71u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0A75u, 0x0A75u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0A81u, 0x0A82u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0A41u, 0x0A42u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0A47u, 0x0A48u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0A4Bu, 0x0A4Du, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0A51u, 0x0A51u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0A70u, 0x0A71u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0A75u, 0x0A75u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0A81u, 0x0A82u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0A83u, 0x0A83u, 6u, 0u}, // SpacingMark -
     ZzGcbInterval{0x0A95u, 0x0AA8u, 0u, 4u}, // Other Consonant
     ZzGcbInterval{0x0AAAu, 0x0AB0u, 0u, 4u}, // Other Consonant
     ZzGcbInterval{0x0AB2u, 0x0AB3u, 0u, 4u}, // Other Consonant
     ZzGcbInterval{0x0AB5u, 0x0AB9u, 0u, 4u}, // Other Consonant
-    ZzGcbInterval{0x0ABCu, 0x0ABCu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0ABCu, 0x0ABCu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0ABEu, 0x0AC0u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x0AC1u, 0x0AC5u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0AC7u, 0x0AC8u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0AC1u, 0x0AC5u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0AC7u, 0x0AC8u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0AC9u, 0x0AC9u, 6u, 0u}, // SpacingMark -
     ZzGcbInterval{0x0ACBu, 0x0ACCu, 6u, 0u}, // SpacingMark -
     ZzGcbInterval{0x0ACDu, 0x0ACDu, 4u, 2u}, // Extend Linker
-    ZzGcbInterval{0x0AE2u, 0x0AE3u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0AE2u, 0x0AE3u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0AF9u, 0x0AF9u, 0u, 4u}, // Other Consonant
-    ZzGcbInterval{0x0AFAu, 0x0AFFu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0B01u, 0x0B01u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0AFAu, 0x0AFFu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0B01u, 0x0B01u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0B02u, 0x0B03u, 6u, 0u}, // SpacingMark -
     ZzGcbInterval{0x0B15u, 0x0B28u, 0u, 4u}, // Other Consonant
     ZzGcbInterval{0x0B2Au, 0x0B30u, 0u, 4u}, // Other Consonant
     ZzGcbInterval{0x0B32u, 0x0B33u, 0u, 4u}, // Other Consonant
     ZzGcbInterval{0x0B35u, 0x0B39u, 0u, 4u}, // Other Consonant
-    ZzGcbInterval{0x0B3Cu, 0x0B3Cu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0B3Eu, 0x0B3Fu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0B3Cu, 0x0B3Cu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0B3Eu, 0x0B3Fu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0B40u, 0x0B40u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x0B41u, 0x0B44u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0B41u, 0x0B44u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0B47u, 0x0B48u, 6u, 0u}, // SpacingMark -
     ZzGcbInterval{0x0B4Bu, 0x0B4Cu, 6u, 0u}, // SpacingMark -
     ZzGcbInterval{0x0B4Du, 0x0B4Du, 4u, 2u}, // Extend Linker
-    ZzGcbInterval{0x0B55u, 0x0B57u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0B55u, 0x0B57u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0B5Cu, 0x0B5Du, 0u, 4u}, // Other Consonant
     ZzGcbInterval{0x0B5Fu, 0x0B5Fu, 0u, 4u}, // Other Consonant
-    ZzGcbInterval{0x0B62u, 0x0B63u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0B62u, 0x0B63u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0B71u, 0x0B71u, 0u, 4u}, // Other Consonant
-    ZzGcbInterval{0x0B82u, 0x0B82u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0BBEu, 0x0BBEu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0B82u, 0x0B82u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0BBEu, 0x0BBEu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0BBFu, 0x0BBFu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x0BC0u, 0x0BC0u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0BC0u, 0x0BC0u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0BC1u, 0x0BC2u, 6u, 0u}, // SpacingMark -
     ZzGcbInterval{0x0BC6u, 0x0BC8u, 6u, 0u}, // SpacingMark -
     ZzGcbInterval{0x0BCAu, 0x0BCCu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x0BCDu, 0x0BCDu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0BD7u, 0x0BD7u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0C00u, 0x0C00u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0BCDu, 0x0BCDu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0BD7u, 0x0BD7u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0C00u, 0x0C00u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0C01u, 0x0C03u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x0C04u, 0x0C04u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0C04u, 0x0C04u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0C15u, 0x0C28u, 0u, 4u}, // Other Consonant
     ZzGcbInterval{0x0C2Au, 0x0C39u, 0u, 4u}, // Other Consonant
-    ZzGcbInterval{0x0C3Cu, 0x0C3Cu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0C3Eu, 0x0C40u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0C3Cu, 0x0C3Cu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0C3Eu, 0x0C40u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0C41u, 0x0C44u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x0C46u, 0x0C48u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0C4Au, 0x0C4Cu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0C46u, 0x0C48u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0C4Au, 0x0C4Cu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0C4Du, 0x0C4Du, 4u, 2u}, // Extend Linker
-    ZzGcbInterval{0x0C55u, 0x0C56u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0C55u, 0x0C56u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0C58u, 0x0C5Au, 0u, 4u}, // Other Consonant
-    ZzGcbInterval{0x0C62u, 0x0C63u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0C81u, 0x0C81u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0C62u, 0x0C63u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0C81u, 0x0C81u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0C82u, 0x0C83u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x0CBCu, 0x0CBCu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0CBCu, 0x0CBCu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0CBEu, 0x0CBEu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x0CBFu, 0x0CC0u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0CBFu, 0x0CC0u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0CC1u, 0x0CC1u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x0CC2u, 0x0CC2u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0CC2u, 0x0CC2u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0CC3u, 0x0CC4u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x0CC6u, 0x0CC8u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0CCAu, 0x0CCDu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0CD5u, 0x0CD6u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0CE2u, 0x0CE3u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0CC6u, 0x0CC8u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0CCAu, 0x0CCDu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0CD5u, 0x0CD6u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0CE2u, 0x0CE3u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0CF3u, 0x0CF3u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x0D00u, 0x0D01u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0D00u, 0x0D01u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0D02u, 0x0D03u, 6u, 0u}, // SpacingMark -
     ZzGcbInterval{0x0D15u, 0x0D3Au, 0u, 4u}, // Other Consonant
-    ZzGcbInterval{0x0D3Bu, 0x0D3Cu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0D3Eu, 0x0D3Eu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0D3Bu, 0x0D3Cu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0D3Eu, 0x0D3Eu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0D3Fu, 0x0D40u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x0D41u, 0x0D44u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0D41u, 0x0D44u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0D46u, 0x0D48u, 6u, 0u}, // SpacingMark -
     ZzGcbInterval{0x0D4Au, 0x0D4Cu, 6u, 0u}, // SpacingMark -
     ZzGcbInterval{0x0D4Du, 0x0D4Du, 4u, 2u}, // Extend Linker
     ZzGcbInterval{0x0D4Eu, 0x0D4Eu, 5u, 0u}, // Prepend -
-    ZzGcbInterval{0x0D57u, 0x0D57u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0D62u, 0x0D63u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0D81u, 0x0D81u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0D57u, 0x0D57u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0D62u, 0x0D63u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0D81u, 0x0D81u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0D82u, 0x0D83u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x0DCAu, 0x0DCAu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0DCFu, 0x0DCFu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0DCAu, 0x0DCAu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0DCFu, 0x0DCFu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0DD0u, 0x0DD1u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x0DD2u, 0x0DD4u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0DD6u, 0x0DD6u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0DD2u, 0x0DD4u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0DD6u, 0x0DD6u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0DD8u, 0x0DDEu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x0DDFu, 0x0DDFu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0DDFu, 0x0DDFu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0DF2u, 0x0DF3u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x0E31u, 0x0E31u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0E31u, 0x0E31u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0E33u, 0x0E33u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x0E34u, 0x0E3Au, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0E47u, 0x0E4Eu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0EB1u, 0x0EB1u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0E34u, 0x0E3Au, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0E47u, 0x0E4Eu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0EB1u, 0x0EB1u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0EB3u, 0x0EB3u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x0EB4u, 0x0EBCu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0EC8u, 0x0ECEu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0F18u, 0x0F19u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0F35u, 0x0F35u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0F37u, 0x0F37u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0F39u, 0x0F39u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0EB4u, 0x0EBCu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0EC8u, 0x0ECEu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0F18u, 0x0F19u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0F35u, 0x0F35u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0F37u, 0x0F37u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0F39u, 0x0F39u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0F3Eu, 0x0F3Fu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x0F71u, 0x0F7Eu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0F71u, 0x0F7Eu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0F7Fu, 0x0F7Fu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x0F80u, 0x0F84u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0F86u, 0x0F87u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0F8Du, 0x0F97u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0F99u, 0x0FBCu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x0FC6u, 0x0FC6u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x102Du, 0x1030u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x0F80u, 0x0F84u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0F86u, 0x0F87u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0F8Du, 0x0F97u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0F99u, 0x0FBCu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x0FC6u, 0x0FC6u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x102Du, 0x1030u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1031u, 0x1031u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x1032u, 0x1037u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1039u, 0x103Au, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x1032u, 0x1037u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1039u, 0x103Au, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x103Bu, 0x103Cu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x103Du, 0x103Eu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x103Du, 0x103Eu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1056u, 0x1057u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x1058u, 0x1059u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x105Eu, 0x1060u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1071u, 0x1074u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1082u, 0x1082u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x1058u, 0x1059u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x105Eu, 0x1060u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1071u, 0x1074u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1082u, 0x1082u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1084u, 0x1084u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x1085u, 0x1086u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x108Du, 0x108Du, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x109Du, 0x109Du, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x1085u, 0x1086u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x108Du, 0x108Du, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x109Du, 0x109Du, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1100u, 0x115Fu, 7u, 0u}, // L -
     ZzGcbInterval{0x1160u, 0x11A7u, 8u, 0u}, // V -
     ZzGcbInterval{0x11A8u, 0x11FFu, 9u, 0u}, // T -
-    ZzGcbInterval{0x135Du, 0x135Fu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1712u, 0x1715u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1732u, 0x1734u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1752u, 0x1753u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1772u, 0x1773u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x17B4u, 0x17B5u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x135Du, 0x135Fu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1712u, 0x1715u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1732u, 0x1734u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1752u, 0x1753u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1772u, 0x1773u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x17B4u, 0x17B5u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x17B6u, 0x17B6u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x17B7u, 0x17BDu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x17B7u, 0x17BDu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x17BEu, 0x17C5u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x17C6u, 0x17C6u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x17C6u, 0x17C6u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x17C7u, 0x17C8u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x17C9u, 0x17D3u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x17DDu, 0x17DDu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x180Bu, 0x180Du, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x17C9u, 0x17D3u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x17DDu, 0x17DDu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x180Bu, 0x180Du, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x180Eu, 0x180Eu, 3u, 0u}, // Control -
-    ZzGcbInterval{0x180Fu, 0x180Fu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1885u, 0x1886u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x18A9u, 0x18A9u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1920u, 0x1922u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x180Fu, 0x180Fu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1885u, 0x1886u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x18A9u, 0x18A9u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1920u, 0x1922u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1923u, 0x1926u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x1927u, 0x1928u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x1927u, 0x1928u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1929u, 0x192Bu, 6u, 0u}, // SpacingMark -
     ZzGcbInterval{0x1930u, 0x1931u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x1932u, 0x1932u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x1932u, 0x1932u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1933u, 0x1938u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x1939u, 0x193Bu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1A17u, 0x1A18u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x1939u, 0x193Bu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1A17u, 0x1A18u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1A19u, 0x1A1Au, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x1A1Bu, 0x1A1Bu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x1A1Bu, 0x1A1Bu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1A55u, 0x1A55u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x1A56u, 0x1A56u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x1A56u, 0x1A56u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1A57u, 0x1A57u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x1A58u, 0x1A5Eu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1A60u, 0x1A60u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1A62u, 0x1A62u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1A65u, 0x1A6Cu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x1A58u, 0x1A5Eu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1A60u, 0x1A60u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1A62u, 0x1A62u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1A65u, 0x1A6Cu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1A6Du, 0x1A72u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x1A73u, 0x1A7Cu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1A7Fu, 0x1A7Fu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1AB0u, 0x1ACEu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1B00u, 0x1B03u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x1A73u, 0x1A7Cu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1A7Fu, 0x1A7Fu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1AB0u, 0x1ACEu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1B00u, 0x1B03u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1B04u, 0x1B04u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x1B34u, 0x1B3Du, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x1B34u, 0x1B3Du, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1B3Eu, 0x1B41u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x1B42u, 0x1B44u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1B6Bu, 0x1B73u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1B80u, 0x1B81u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x1B42u, 0x1B44u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1B6Bu, 0x1B73u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1B80u, 0x1B81u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1B82u, 0x1B82u, 6u, 0u}, // SpacingMark -
     ZzGcbInterval{0x1BA1u, 0x1BA1u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x1BA2u, 0x1BA5u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x1BA2u, 0x1BA5u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1BA6u, 0x1BA7u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x1BA8u, 0x1BADu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1BE6u, 0x1BE6u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x1BA8u, 0x1BADu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1BE6u, 0x1BE6u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1BE7u, 0x1BE7u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x1BE8u, 0x1BE9u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x1BE8u, 0x1BE9u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1BEAu, 0x1BECu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x1BEDu, 0x1BEDu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x1BEDu, 0x1BEDu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1BEEu, 0x1BEEu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x1BEFu, 0x1BF3u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x1BEFu, 0x1BF3u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1C24u, 0x1C2Bu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x1C2Cu, 0x1C33u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x1C2Cu, 0x1C33u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1C34u, 0x1C35u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x1C36u, 0x1C37u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1CD0u, 0x1CD2u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1CD4u, 0x1CE0u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x1C36u, 0x1C37u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1CD0u, 0x1CD2u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1CD4u, 0x1CE0u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1CE1u, 0x1CE1u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x1CE2u, 0x1CE8u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1CEDu, 0x1CEDu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1CF4u, 0x1CF4u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x1CE2u, 0x1CE8u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1CEDu, 0x1CEDu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1CF4u, 0x1CF4u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1CF7u, 0x1CF7u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x1CF8u, 0x1CF9u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1DC0u, 0x1DFFu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x1CF8u, 0x1CF9u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1DC0u, 0x1DFFu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x200Bu, 0x200Bu, 3u, 0u}, // Control -
     ZzGcbInterval{0x200Cu, 0x200Cu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x200Du, 0x200Du, 13u, 0u}, // ZWJ -
+    ZzGcbInterval{0x200Du, 0x200Du, 13u, 6u}, // ZWJ InCB_Extend
     ZzGcbInterval{0x200Eu, 0x200Fu, 3u, 0u}, // Control -
     ZzGcbInterval{0x2028u, 0x202Eu, 3u, 0u}, // Control -
     ZzGcbInterval{0x203Cu, 0x203Cu, 0u, 1u}, // Other ExtPic
     ZzGcbInterval{0x2049u, 0x2049u, 0u, 1u}, // Other ExtPic
     ZzGcbInterval{0x2060u, 0x206Fu, 3u, 0u}, // Control -
-    ZzGcbInterval{0x20D0u, 0x20F0u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x20D0u, 0x20F0u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x2122u, 0x2122u, 0u, 1u}, // Other ExtPic
     ZzGcbInterval{0x2139u, 0x2139u, 0u, 1u}, // Other ExtPic
     ZzGcbInterval{0x2194u, 0x2199u, 0u, 1u}, // Other ExtPic
@@ -347,72 +347,72 @@ inline constexpr std::array<ZzGcbInterval, 1481> kZzGcbIntervals {{
     ZzGcbInterval{0x2B1Bu, 0x2B1Cu, 0u, 1u}, // Other ExtPic
     ZzGcbInterval{0x2B50u, 0x2B50u, 0u, 1u}, // Other ExtPic
     ZzGcbInterval{0x2B55u, 0x2B55u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x2CEFu, 0x2CF1u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x2D7Fu, 0x2D7Fu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x2DE0u, 0x2DFFu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x302Au, 0x302Fu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x2CEFu, 0x2CF1u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x2D7Fu, 0x2D7Fu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x2DE0u, 0x2DFFu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x302Au, 0x302Fu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x3030u, 0x3030u, 0u, 1u}, // Other ExtPic
     ZzGcbInterval{0x303Du, 0x303Du, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x3099u, 0x309Au, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x3099u, 0x309Au, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x3297u, 0x3297u, 0u, 1u}, // Other ExtPic
     ZzGcbInterval{0x3299u, 0x3299u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0xA66Fu, 0xA672u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0xA674u, 0xA67Du, 4u, 0u}, // Extend -
-    ZzGcbInterval{0xA69Eu, 0xA69Fu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0xA6F0u, 0xA6F1u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0xA802u, 0xA802u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0xA806u, 0xA806u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0xA80Bu, 0xA80Bu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0xA66Fu, 0xA672u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0xA674u, 0xA67Du, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0xA69Eu, 0xA69Fu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0xA6F0u, 0xA6F1u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0xA802u, 0xA802u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0xA806u, 0xA806u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0xA80Bu, 0xA80Bu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0xA823u, 0xA824u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0xA825u, 0xA826u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0xA825u, 0xA826u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0xA827u, 0xA827u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0xA82Cu, 0xA82Cu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0xA82Cu, 0xA82Cu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0xA880u, 0xA881u, 6u, 0u}, // SpacingMark -
     ZzGcbInterval{0xA8B4u, 0xA8C3u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0xA8C4u, 0xA8C5u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0xA8E0u, 0xA8F1u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0xA8FFu, 0xA8FFu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0xA926u, 0xA92Du, 4u, 0u}, // Extend -
-    ZzGcbInterval{0xA947u, 0xA951u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0xA8C4u, 0xA8C5u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0xA8E0u, 0xA8F1u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0xA8FFu, 0xA8FFu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0xA926u, 0xA92Du, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0xA947u, 0xA951u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0xA952u, 0xA952u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0xA953u, 0xA953u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0xA953u, 0xA953u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0xA960u, 0xA97Cu, 7u, 0u}, // L -
-    ZzGcbInterval{0xA980u, 0xA982u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0xA980u, 0xA982u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0xA983u, 0xA983u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0xA9B3u, 0xA9B3u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0xA9B3u, 0xA9B3u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0xA9B4u, 0xA9B5u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0xA9B6u, 0xA9B9u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0xA9B6u, 0xA9B9u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0xA9BAu, 0xA9BBu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0xA9BCu, 0xA9BDu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0xA9BCu, 0xA9BDu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0xA9BEu, 0xA9BFu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0xA9C0u, 0xA9C0u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0xA9E5u, 0xA9E5u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0xAA29u, 0xAA2Eu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0xA9C0u, 0xA9C0u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0xA9E5u, 0xA9E5u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0xAA29u, 0xAA2Eu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0xAA2Fu, 0xAA30u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0xAA31u, 0xAA32u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0xAA31u, 0xAA32u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0xAA33u, 0xAA34u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0xAA35u, 0xAA36u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0xAA43u, 0xAA43u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0xAA4Cu, 0xAA4Cu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0xAA35u, 0xAA36u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0xAA43u, 0xAA43u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0xAA4Cu, 0xAA4Cu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0xAA4Du, 0xAA4Du, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0xAA7Cu, 0xAA7Cu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0xAAB0u, 0xAAB0u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0xAAB2u, 0xAAB4u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0xAAB7u, 0xAAB8u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0xAABEu, 0xAABFu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0xAAC1u, 0xAAC1u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0xAA7Cu, 0xAA7Cu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0xAAB0u, 0xAAB0u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0xAAB2u, 0xAAB4u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0xAAB7u, 0xAAB8u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0xAABEu, 0xAABFu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0xAAC1u, 0xAAC1u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0xAAEBu, 0xAAEBu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0xAAECu, 0xAAEDu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0xAAECu, 0xAAEDu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0xAAEEu, 0xAAEFu, 6u, 0u}, // SpacingMark -
     ZzGcbInterval{0xAAF5u, 0xAAF5u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0xAAF6u, 0xAAF6u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0xAAF6u, 0xAAF6u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0xABE3u, 0xABE4u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0xABE5u, 0xABE5u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0xABE5u, 0xABE5u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0xABE6u, 0xABE7u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0xABE8u, 0xABE8u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0xABE8u, 0xABE8u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0xABE9u, 0xABEAu, 6u, 0u}, // SpacingMark -
     ZzGcbInterval{0xABECu, 0xABECu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0xABEDu, 0xABEDu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0xABEDu, 0xABEDu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0xAC00u, 0xAC00u, 10u, 0u}, // LV -
     ZzGcbInterval{0xAC01u, 0xAC1Bu, 11u, 0u}, // LVT -
     ZzGcbInterval{0xAC1Cu, 0xAC1Cu, 10u, 0u}, // LV -
@@ -1213,247 +1213,247 @@ inline constexpr std::array<ZzGcbInterval, 1481> kZzGcbIntervals {{
     ZzGcbInterval{0xD789u, 0xD7A3u, 11u, 0u}, // LVT -
     ZzGcbInterval{0xD7B0u, 0xD7C6u, 8u, 0u}, // V -
     ZzGcbInterval{0xD7CBu, 0xD7FBu, 9u, 0u}, // T -
-    ZzGcbInterval{0xFB1Eu, 0xFB1Eu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0xFE00u, 0xFE0Fu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0xFE20u, 0xFE2Fu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0xFB1Eu, 0xFB1Eu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0xFE00u, 0xFE0Fu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0xFE20u, 0xFE2Fu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0xFEFFu, 0xFEFFu, 3u, 0u}, // Control -
-    ZzGcbInterval{0xFF9Eu, 0xFF9Fu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0xFF9Eu, 0xFF9Fu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0xFFF0u, 0xFFFBu, 3u, 0u}, // Control -
-    ZzGcbInterval{0x101FDu, 0x101FDu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x102E0u, 0x102E0u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x10376u, 0x1037Au, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x10A01u, 0x10A03u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x10A05u, 0x10A06u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x10A0Cu, 0x10A0Fu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x10A38u, 0x10A3Au, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x10A3Fu, 0x10A3Fu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x10AE5u, 0x10AE6u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x10D24u, 0x10D27u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x10D69u, 0x10D6Du, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x10EABu, 0x10EACu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x10EFCu, 0x10EFFu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x10F46u, 0x10F50u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x10F82u, 0x10F85u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x101FDu, 0x101FDu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x102E0u, 0x102E0u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x10376u, 0x1037Au, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x10A01u, 0x10A03u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x10A05u, 0x10A06u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x10A0Cu, 0x10A0Fu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x10A38u, 0x10A3Au, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x10A3Fu, 0x10A3Fu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x10AE5u, 0x10AE6u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x10D24u, 0x10D27u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x10D69u, 0x10D6Du, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x10EABu, 0x10EACu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x10EFCu, 0x10EFFu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x10F46u, 0x10F50u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x10F82u, 0x10F85u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x11000u, 0x11000u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x11001u, 0x11001u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x11001u, 0x11001u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x11002u, 0x11002u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x11038u, 0x11046u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x11070u, 0x11070u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x11073u, 0x11074u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1107Fu, 0x11081u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x11038u, 0x11046u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x11070u, 0x11070u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x11073u, 0x11074u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1107Fu, 0x11081u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x11082u, 0x11082u, 6u, 0u}, // SpacingMark -
     ZzGcbInterval{0x110B0u, 0x110B2u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x110B3u, 0x110B6u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x110B3u, 0x110B6u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x110B7u, 0x110B8u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x110B9u, 0x110BAu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x110B9u, 0x110BAu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x110BDu, 0x110BDu, 5u, 0u}, // Prepend -
-    ZzGcbInterval{0x110C2u, 0x110C2u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x110C2u, 0x110C2u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x110CDu, 0x110CDu, 5u, 0u}, // Prepend -
-    ZzGcbInterval{0x11100u, 0x11102u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x11127u, 0x1112Bu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x11100u, 0x11102u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x11127u, 0x1112Bu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1112Cu, 0x1112Cu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x1112Du, 0x11134u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x1112Du, 0x11134u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x11145u, 0x11146u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x11173u, 0x11173u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x11180u, 0x11181u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x11173u, 0x11173u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x11180u, 0x11181u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x11182u, 0x11182u, 6u, 0u}, // SpacingMark -
     ZzGcbInterval{0x111B3u, 0x111B5u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x111B6u, 0x111BEu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x111B6u, 0x111BEu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x111BFu, 0x111BFu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x111C0u, 0x111C0u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x111C0u, 0x111C0u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x111C2u, 0x111C3u, 5u, 0u}, // Prepend -
-    ZzGcbInterval{0x111C9u, 0x111CCu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x111C9u, 0x111CCu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x111CEu, 0x111CEu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x111CFu, 0x111CFu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x111CFu, 0x111CFu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1122Cu, 0x1122Eu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x1122Fu, 0x11231u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x1122Fu, 0x11231u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x11232u, 0x11233u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x11234u, 0x11237u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1123Eu, 0x1123Eu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x11241u, 0x11241u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x112DFu, 0x112DFu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x11234u, 0x11237u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1123Eu, 0x1123Eu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x11241u, 0x11241u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x112DFu, 0x112DFu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x112E0u, 0x112E2u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x112E3u, 0x112EAu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x11300u, 0x11301u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x112E3u, 0x112EAu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x11300u, 0x11301u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x11302u, 0x11303u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x1133Bu, 0x1133Cu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1133Eu, 0x1133Eu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x1133Bu, 0x1133Cu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1133Eu, 0x1133Eu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1133Fu, 0x1133Fu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x11340u, 0x11340u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x11340u, 0x11340u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x11341u, 0x11344u, 6u, 0u}, // SpacingMark -
     ZzGcbInterval{0x11347u, 0x11348u, 6u, 0u}, // SpacingMark -
     ZzGcbInterval{0x1134Bu, 0x1134Cu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x1134Du, 0x1134Du, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x11357u, 0x11357u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x1134Du, 0x1134Du, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x11357u, 0x11357u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x11362u, 0x11363u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x11366u, 0x1136Cu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x11370u, 0x11374u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x113B8u, 0x113B8u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x11366u, 0x1136Cu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x11370u, 0x11374u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x113B8u, 0x113B8u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x113B9u, 0x113BAu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x113BBu, 0x113C0u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x113C2u, 0x113C2u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x113C5u, 0x113C5u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x113C7u, 0x113C9u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x113BBu, 0x113C0u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x113C2u, 0x113C2u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x113C5u, 0x113C5u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x113C7u, 0x113C9u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x113CAu, 0x113CAu, 6u, 0u}, // SpacingMark -
     ZzGcbInterval{0x113CCu, 0x113CDu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x113CEu, 0x113D0u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x113CEu, 0x113D0u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x113D1u, 0x113D1u, 5u, 0u}, // Prepend -
-    ZzGcbInterval{0x113D2u, 0x113D2u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x113E1u, 0x113E2u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x113D2u, 0x113D2u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x113E1u, 0x113E2u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x11435u, 0x11437u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x11438u, 0x1143Fu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x11438u, 0x1143Fu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x11440u, 0x11441u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x11442u, 0x11444u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x11442u, 0x11444u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x11445u, 0x11445u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x11446u, 0x11446u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1145Eu, 0x1145Eu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x114B0u, 0x114B0u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x11446u, 0x11446u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1145Eu, 0x1145Eu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x114B0u, 0x114B0u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x114B1u, 0x114B2u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x114B3u, 0x114B8u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x114B3u, 0x114B8u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x114B9u, 0x114B9u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x114BAu, 0x114BAu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x114BAu, 0x114BAu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x114BBu, 0x114BCu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x114BDu, 0x114BDu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x114BDu, 0x114BDu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x114BEu, 0x114BEu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x114BFu, 0x114C0u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x114BFu, 0x114C0u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x114C1u, 0x114C1u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x114C2u, 0x114C3u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x115AFu, 0x115AFu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x114C2u, 0x114C3u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x115AFu, 0x115AFu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x115B0u, 0x115B1u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x115B2u, 0x115B5u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x115B2u, 0x115B5u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x115B8u, 0x115BBu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x115BCu, 0x115BDu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x115BCu, 0x115BDu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x115BEu, 0x115BEu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x115BFu, 0x115C0u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x115DCu, 0x115DDu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x115BFu, 0x115C0u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x115DCu, 0x115DDu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x11630u, 0x11632u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x11633u, 0x1163Au, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x11633u, 0x1163Au, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1163Bu, 0x1163Cu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x1163Du, 0x1163Du, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x1163Du, 0x1163Du, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1163Eu, 0x1163Eu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x1163Fu, 0x11640u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x116ABu, 0x116ABu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x1163Fu, 0x11640u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x116ABu, 0x116ABu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x116ACu, 0x116ACu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x116ADu, 0x116ADu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x116ADu, 0x116ADu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x116AEu, 0x116AFu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x116B0u, 0x116B7u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1171Du, 0x1171Du, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x116B0u, 0x116B7u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1171Du, 0x1171Du, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1171Eu, 0x1171Eu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x1171Fu, 0x1171Fu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x11722u, 0x11725u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x1171Fu, 0x1171Fu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x11722u, 0x11725u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x11726u, 0x11726u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x11727u, 0x1172Bu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x11727u, 0x1172Bu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1182Cu, 0x1182Eu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x1182Fu, 0x11837u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x1182Fu, 0x11837u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x11838u, 0x11838u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x11839u, 0x1183Au, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x11930u, 0x11930u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x11839u, 0x1183Au, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x11930u, 0x11930u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x11931u, 0x11935u, 6u, 0u}, // SpacingMark -
     ZzGcbInterval{0x11937u, 0x11938u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x1193Bu, 0x1193Eu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x1193Bu, 0x1193Eu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1193Fu, 0x1193Fu, 5u, 0u}, // Prepend -
     ZzGcbInterval{0x11940u, 0x11940u, 6u, 0u}, // SpacingMark -
     ZzGcbInterval{0x11941u, 0x11941u, 5u, 0u}, // Prepend -
     ZzGcbInterval{0x11942u, 0x11942u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x11943u, 0x11943u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x11943u, 0x11943u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x119D1u, 0x119D3u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x119D4u, 0x119D7u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x119DAu, 0x119DBu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x119D4u, 0x119D7u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x119DAu, 0x119DBu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x119DCu, 0x119DFu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x119E0u, 0x119E0u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x119E0u, 0x119E0u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x119E4u, 0x119E4u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x11A01u, 0x11A0Au, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x11A33u, 0x11A38u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x11A01u, 0x11A0Au, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x11A33u, 0x11A38u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x11A39u, 0x11A39u, 6u, 0u}, // SpacingMark -
     ZzGcbInterval{0x11A3Au, 0x11A3Au, 5u, 0u}, // Prepend -
-    ZzGcbInterval{0x11A3Bu, 0x11A3Eu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x11A47u, 0x11A47u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x11A51u, 0x11A56u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x11A3Bu, 0x11A3Eu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x11A47u, 0x11A47u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x11A51u, 0x11A56u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x11A57u, 0x11A58u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x11A59u, 0x11A5Bu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x11A59u, 0x11A5Bu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x11A84u, 0x11A89u, 5u, 0u}, // Prepend -
-    ZzGcbInterval{0x11A8Au, 0x11A96u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x11A8Au, 0x11A96u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x11A97u, 0x11A97u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x11A98u, 0x11A99u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x11A98u, 0x11A99u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x11C2Fu, 0x11C2Fu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x11C30u, 0x11C36u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x11C38u, 0x11C3Du, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x11C30u, 0x11C36u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x11C38u, 0x11C3Du, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x11C3Eu, 0x11C3Eu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x11C3Fu, 0x11C3Fu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x11C92u, 0x11CA7u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x11C3Fu, 0x11C3Fu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x11C92u, 0x11CA7u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x11CA9u, 0x11CA9u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x11CAAu, 0x11CB0u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x11CAAu, 0x11CB0u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x11CB1u, 0x11CB1u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x11CB2u, 0x11CB3u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x11CB2u, 0x11CB3u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x11CB4u, 0x11CB4u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x11CB5u, 0x11CB6u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x11D31u, 0x11D36u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x11D3Au, 0x11D3Au, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x11D3Cu, 0x11D3Du, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x11D3Fu, 0x11D45u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x11CB5u, 0x11CB6u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x11D31u, 0x11D36u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x11D3Au, 0x11D3Au, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x11D3Cu, 0x11D3Du, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x11D3Fu, 0x11D45u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x11D46u, 0x11D46u, 5u, 0u}, // Prepend -
-    ZzGcbInterval{0x11D47u, 0x11D47u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x11D47u, 0x11D47u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x11D8Au, 0x11D8Eu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x11D90u, 0x11D91u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x11D90u, 0x11D91u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x11D93u, 0x11D94u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x11D95u, 0x11D95u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x11D95u, 0x11D95u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x11D96u, 0x11D96u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x11D97u, 0x11D97u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x11EF3u, 0x11EF4u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x11D97u, 0x11D97u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x11EF3u, 0x11EF4u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x11EF5u, 0x11EF6u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x11F00u, 0x11F01u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x11F00u, 0x11F01u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x11F02u, 0x11F02u, 5u, 0u}, // Prepend -
     ZzGcbInterval{0x11F03u, 0x11F03u, 6u, 0u}, // SpacingMark -
     ZzGcbInterval{0x11F34u, 0x11F35u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x11F36u, 0x11F3Au, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x11F36u, 0x11F3Au, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x11F3Eu, 0x11F3Fu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x11F40u, 0x11F42u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x11F5Au, 0x11F5Au, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x11F40u, 0x11F42u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x11F5Au, 0x11F5Au, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x13430u, 0x1343Fu, 3u, 0u}, // Control -
-    ZzGcbInterval{0x13440u, 0x13440u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x13447u, 0x13455u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1611Eu, 0x16129u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x13440u, 0x13440u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x13447u, 0x13455u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1611Eu, 0x16129u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1612Au, 0x1612Cu, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x1612Du, 0x1612Fu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x16AF0u, 0x16AF4u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x16B30u, 0x16B36u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x1612Du, 0x1612Fu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x16AF0u, 0x16AF4u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x16B30u, 0x16B36u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x16D63u, 0x16D63u, 8u, 0u}, // V -
     ZzGcbInterval{0x16D67u, 0x16D6Au, 8u, 0u}, // V -
-    ZzGcbInterval{0x16F4Fu, 0x16F4Fu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x16F4Fu, 0x16F4Fu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x16F51u, 0x16F87u, 6u, 0u}, // SpacingMark -
-    ZzGcbInterval{0x16F8Fu, 0x16F92u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x16FE4u, 0x16FE4u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x16FF0u, 0x16FF1u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1BC9Du, 0x1BC9Eu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x16F8Fu, 0x16F92u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x16FE4u, 0x16FE4u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x16FF0u, 0x16FF1u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1BC9Du, 0x1BC9Eu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1BCA0u, 0x1BCA3u, 3u, 0u}, // Control -
-    ZzGcbInterval{0x1CF00u, 0x1CF2Du, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1CF30u, 0x1CF46u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1D165u, 0x1D169u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1D16Du, 0x1D172u, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x1CF00u, 0x1CF2Du, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1CF30u, 0x1CF46u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1D165u, 0x1D169u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1D16Du, 0x1D172u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1D173u, 0x1D17Au, 3u, 0u}, // Control -
-    ZzGcbInterval{0x1D17Bu, 0x1D182u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1D185u, 0x1D18Bu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1D1AAu, 0x1D1ADu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1D242u, 0x1D244u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1DA00u, 0x1DA36u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1DA3Bu, 0x1DA6Cu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1DA75u, 0x1DA75u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1DA84u, 0x1DA84u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1DA9Bu, 0x1DA9Fu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1DAA1u, 0x1DAAFu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1E000u, 0x1E006u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1E008u, 0x1E018u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1E01Bu, 0x1E021u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1E023u, 0x1E024u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1E026u, 0x1E02Au, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1E08Fu, 0x1E08Fu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1E130u, 0x1E136u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1E2AEu, 0x1E2AEu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1E2ECu, 0x1E2EFu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1E4ECu, 0x1E4EFu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1E5EEu, 0x1E5EFu, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1E8D0u, 0x1E8D6u, 4u, 0u}, // Extend -
-    ZzGcbInterval{0x1E944u, 0x1E94Au, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x1D17Bu, 0x1D182u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1D185u, 0x1D18Bu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1D1AAu, 0x1D1ADu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1D242u, 0x1D244u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1DA00u, 0x1DA36u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1DA3Bu, 0x1DA6Cu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1DA75u, 0x1DA75u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1DA84u, 0x1DA84u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1DA9Bu, 0x1DA9Fu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1DAA1u, 0x1DAAFu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1E000u, 0x1E006u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1E008u, 0x1E018u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1E01Bu, 0x1E021u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1E023u, 0x1E024u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1E026u, 0x1E02Au, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1E08Fu, 0x1E08Fu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1E130u, 0x1E136u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1E2AEu, 0x1E2AEu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1E2ECu, 0x1E2EFu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1E4ECu, 0x1E4EFu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1E5EEu, 0x1E5EFu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1E8D0u, 0x1E8D6u, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1E944u, 0x1E94Au, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1F000u, 0x1F0FFu, 0u, 1u}, // Other ExtPic
     ZzGcbInterval{0x1F10Du, 0x1F10Fu, 0u, 1u}, // Other ExtPic
     ZzGcbInterval{0x1F12Fu, 0x1F12Fu, 0u, 1u}, // Other ExtPic
@@ -1469,7 +1469,7 @@ inline constexpr std::array<ZzGcbInterval, 1481> kZzGcbIntervals {{
     ZzGcbInterval{0x1F232u, 0x1F23Au, 0u, 1u}, // Other ExtPic
     ZzGcbInterval{0x1F23Cu, 0x1F23Fu, 0u, 1u}, // Other ExtPic
     ZzGcbInterval{0x1F249u, 0x1F3FAu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F3FBu, 0x1F3FFu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0x1F3FBu, 0x1F3FFu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1F400u, 0x1F53Du, 0u, 1u}, // Other ExtPic
     ZzGcbInterval{0x1F546u, 0x1F64Fu, 0u, 1u}, // Other ExtPic
     ZzGcbInterval{0x1F680u, 0x1F6FFu, 0u, 1u}, // Other ExtPic
@@ -1485,8 +1485,8 @@ inline constexpr std::array<ZzGcbInterval, 1481> kZzGcbIntervals {{
     ZzGcbInterval{0x1F947u, 0x1FAFFu, 0u, 1u}, // Other ExtPic
     ZzGcbInterval{0x1FC00u, 0x1FFFDu, 0u, 1u}, // Other ExtPic
     ZzGcbInterval{0xE0000u, 0xE001Fu, 3u, 0u}, // Control -
-    ZzGcbInterval{0xE0020u, 0xE007Fu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0xE0020u, 0xE007Fu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0xE0080u, 0xE00FFu, 3u, 0u}, // Control -
-    ZzGcbInterval{0xE0100u, 0xE01EFu, 4u, 0u}, // Extend -
+    ZzGcbInterval{0xE0100u, 0xE01EFu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0xE01F0u, 0xE0FFFu, 3u, 0u}, // Control -
 }};

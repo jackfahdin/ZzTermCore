@@ -49,23 +49,21 @@ namespace {
     // GB9b：Prepend ×。
     if (left.gcb == ZzGcb::Prepend)
         return false;
-    // GB9c：Consonant [Linker Extend ZWJ]* Linker [Extend ZWJ]* × Consonant。
-    // （规则中的 Extend 指 InCB Extend，即 GCB=Extend 且非 Linker。
-    //   i 为排他右边界，逐段向左消费。）
+    // GB9c（rev 45）：Consonant [Linker Extend]* Linker [Extend]* × Consonant，
+    // 字母表为 InCB=Extend ∪ InCB=Linker（ZWJ 经 InCB=Extend 进入；
+    // InCB=Extend ⊊ GCB=Extend 真子集，如 U+200C 的 InCB=None，须用 InCB 判定）。
+    // i 为排他右边界，逐段向左消费。
     if (right.incb == ZzIncb::Consonant) {
         std::size_t i = pos;
-        // 紧邻的 [Extend ZWJ]*（Extend 不含 Linker）。
-        while (i > 0
-               && ((seq[i - 1].gcb == ZzGcb::Extend && seq[i - 1].incb != ZzIncb::Linker)
-                   || seq[i - 1].gcb == ZzGcb::ZWJ))
+        // 紧邻的 [InCB=Extend]*。
+        while (i > 0 && seq[i - 1].incb == ZzIncb::Extend)
             --i;
         // 必须命中一个 Linker。
         if (i > 0 && seq[i - 1].incb == ZzIncb::Linker) {
             --i;
-            // [Linker Extend ZWJ]*。
+            // [InCB=Linker InCB=Extend]*。
             while (i > 0
-                   && (seq[i - 1].incb == ZzIncb::Linker || seq[i - 1].gcb == ZzGcb::Extend
-                       || seq[i - 1].gcb == ZzGcb::ZWJ))
+                   && (seq[i - 1].incb == ZzIncb::Linker || seq[i - 1].incb == ZzIncb::Extend))
                 --i;
             if (i > 0 && seq[i - 1].incb == ZzIncb::Consonant)
                 return false;
@@ -140,7 +138,10 @@ bool zzGraphemeContinues(std::u32string_view prevCluster, char32_t next) noexcep
 {
     // cluster 很短，上限断言 64：栈上小缓冲拼接 prevCluster + next。
     constexpr std::size_t kMaxCluster = 64;
-    assert(!prevCluster.empty());
+    // 硬上限（release 下 assert 归零，不能依赖）：空或超长 cluster 直接判
+    // 断开（安全侧；恶意超长 ZWJ 链本就该断）。
+    if (prevCluster.empty() || prevCluster.size() >= kMaxCluster)
+        return false;
     assert(prevCluster.size() < kMaxCluster);
 
     std::array<ZzGraphemeProps, kMaxCluster> seq{};

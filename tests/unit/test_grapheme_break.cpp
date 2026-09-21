@@ -26,6 +26,30 @@ int g_failures = 0;
         }                                                                                           \
     } while (0)
 
+// 就地十六进制手解析（官方数据必为合法 hex；畸形 token 返回 false 跳过，
+// 不抛异常崩测试）。
+bool parseHex(const std::string& tok, char32_t& out)
+{
+    if (tok.empty() || tok.size() > 6)
+        return false;
+    std::uint32_t v = 0;
+    for (const char c : tok) {
+        v <<= 4;
+        if (c >= '0' && c <= '9')
+            v |= static_cast<std::uint32_t>(c - '0');
+        else if (c >= 'A' && c <= 'F')
+            v |= static_cast<std::uint32_t>(c - 'A' + 10);
+        else if (c >= 'a' && c <= 'f')
+            v |= static_cast<std::uint32_t>(c - 'a' + 10);
+        else
+            return false;
+    }
+    if (v > 0x10FFFFu)
+        return false;
+    out = static_cast<char32_t>(v);
+    return true;
+}
+
 // 解析一行 golden：÷ 断、× 续，码点十六进制。返回 false 表示空行/注释行。
 bool parseGoldenLine(const std::string& line, std::u32string& cps, std::vector<bool>& expected)
 {
@@ -43,7 +67,13 @@ bool parseGoldenLine(const std::string& line, std::u32string& cps, std::vector<b
         } else if (tok == "\xC3\x97") {   // × U+00D7：续
             expected.push_back(false);
         } else {
-            cps.push_back(static_cast<char32_t>(std::stoul(tok, nullptr, 16)));
+            char32_t cp = 0;
+            if (!parseHex(tok, cp)) {
+                std::fprintf(stderr, "golden 畸形 token：%s\n", tok.c_str());
+                ++g_failures;
+                return false;
+            }
+            cps.push_back(cp);
         }
     }
     return sawMarker;
@@ -108,6 +138,14 @@ void testPropsOf()
     ZZ_CHECK(virama.incb == ZzIncb::Linker && virama.gcb == ZzGcb::Extend);
     const ZzGraphemeProps ka = zzGraphemePropsOf(0x0915);
     ZZ_CHECK(ka.incb == ZzIncb::Consonant);
+    // InCB=Extend ⊊ GCB=Extend 判别（16.0.0 实测）：U+200C 是唯一
+    // GCB=Extend 但 InCB=None 的码位；U+200D 反之（GCB=ZWJ 但 InCB=Extend）。
+    const ZzGraphemeProps zwnj = zzGraphemePropsOf(0x200C);
+    ZZ_CHECK(zwnj.gcb == ZzGcb::Extend && zwnj.incb == ZzIncb::None);
+    const ZzGraphemeProps zwj = zzGraphemePropsOf(0x200D);
+    ZZ_CHECK(zwj.gcb == ZzGcb::ZWJ && zwj.incb == ZzIncb::Extend);
+    // U+0301 是 InCB=Extend（16.0.0 DCP 实测 0300..036F 整段在列）。
+    ZZ_CHECK(zzGraphemePropsOf(0x0301).incb == ZzIncb::Extend);
 }
 
 // zzGraphemeContinues 直接用例（单一求值核的窗口求值路径）。
@@ -124,6 +162,14 @@ void testContinues()
     ZZ_CHECK(!zzGraphemeContinues(std::u32string_view{ U"\U0001F1FA\U0001F1F8", 2 }, 0x1F1FA));
     // Consonant Linker × Consonant → 续（GB9c）。
     ZZ_CHECK(zzGraphemeContinues(std::u32string_view{ U"\x0915\x094D", 2 }, 0x0937));
+    // GB9c 判别例：U+200C 的 InCB=None（虽 GCB=Extend）打断 Linker 链 → 断。
+    ZZ_CHECK(!zzGraphemeContinues(std::u32string_view{ U"\x0915\x200C\x094D", 3 }, 0x0937));
+    // U+0301 是 InCB=Extend，不断链 → 续（rev 45 字母表 InCB=Extend∪Linker）。
+    ZZ_CHECK(zzGraphemeContinues(std::u32string_view{ U"\x0915\x0301\x094D", 3 }, 0x0937));
+    // ZWJ 经 InCB=Extend 进入 GB9c 字母表 → 续。
+    ZZ_CHECK(zzGraphemeContinues(std::u32string_view{ U"\x0915\x094D\x200D", 3 }, 0x0924));
+    // 硬上限：prevCluster ≥ 64 → 断（release 下不依赖 assert）。
+    ZZ_CHECK(!zzGraphemeContinues(std::u32string(64, U'a'), 0x0301));
 }
 
 } // namespace
