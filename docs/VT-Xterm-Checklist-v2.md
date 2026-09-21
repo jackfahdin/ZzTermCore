@@ -151,7 +151,8 @@ compatibility/regression tests。
     width
 -   [x] \[Contour\]\[Test\] Combining marks（M7b test_cluster_compat）
 -   [x] \[Contour\]\[Test\] Variation selectors（M7b：VS16 位移 / VS15 / 尾列抑制）
--   [x] \[Contour\]\[Test\] Emoji / ZWJ（M7b：GB11 / 区旗 / keycap / 肤色）-   [ ] \[Contour\]\[Test\]\[PASS-Native\] Wide continuation
+-   [x] \[Contour\]\[Test\] Emoji / ZWJ（M7b：GB11 / 区旗 / keycap / 肤色）
+-   [ ] \[Contour\]\[Test\]\[PASS-Native\] Wide continuation
     consistency
 -   [x] \[Zz-Native\]\[Test\] Grapheme-aware copy/search/highlight（M7b 手工实证：聚簇复制与搜索命中）
 -   [ ] \[Zz-Adapter\] Unicode/libunicode version recorded
