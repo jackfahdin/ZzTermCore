@@ -1108,11 +1108,11 @@ static void testHistorySnapshot()
     // 造 3 条硬行历史 + 屏幕可见行：每行 "r0\r\n" 等
     backend.feed("r0\r\nr1\r\nr2\r\nr3");
     ZzContourLineSource src(backend);
-    ZZ_TEST_EXPECT(src.historyLineCount() >= 3);
+    ZZ_TEST_EXPECT(src.historyLineCount() == 2);      // 4 行内容 2 行屏 → 2 行历史
     ZZ_TEST_EXPECT(lineText(src.lineAt(0), 2) == "r0"); // 0 = 最旧
     ZZ_TEST_EXPECT(!src.lineWrapped(0));                // 硬行
     ZZ_TEST_EXPECT(src.screenRowCount() == 2);
-    ZZ_TEST_EXPECT(lineText(src.lineAt(src.historyLineCount()), 2) == "r3");
+    ZZ_TEST_EXPECT(lineText(src.lineAt(src.historyLineCount()), 2) == "r2"); // 屏幕首行
 }
 
 static void testSoftWrapChainWrappedFlag()
@@ -1453,7 +1453,7 @@ static void testSelectAcrossSoftWrap()
 static void testSelectHistoryAndScreenSeam()
 {
     ZzTerminal term(10, 2, ZzBackendKind::Native, 100);
-    feed(term, "aaaa\r\nbbbb\r\ncccc"); // 2 行屏：aaaa/bbbb 滚入历史
+    feed(term, "aaaa\r\nbbbb\r\ncccc"); // 2 行屏：aaaa 滚入历史，屏幕 bbbb/cccc
     // 统一空间：历史 2 行 + 屏幕 2 行；选第 0 条逻辑行
     term.setSelection(ZzLogicalPos{0, 0}, ZzLogicalPos{0, 4});
     ZZ_TEST_EXPECT(term.selectedText() == "aaaa");
@@ -1803,11 +1803,13 @@ static void testSoftWrapSelection()
 }
 
 // 4. 跨接缝逻辑行（历史末行软续到屏幕首行）：收口 M4 观察项①。
+//    10x3 屏：首条逻辑行 16 格占两条物理行，脚本共 4 物理行 → 历史恰留
+//    链首行（abcdefghij），链尾（klmnop）在屏幕首行，接缝断在链中间。
 //    若两后端在接缝拼接上分歧，按 b 类分别断言并注释钉住。
 static void testSeamLogicalLine()
 {
     Dual d; // 10x3
-    d.feedBoth("abcdefghijklmnop\r\nzz"); // 首条逻辑行 16 格滚出部分入历史
+    d.feedBoth("abcdefghijklmnop\r\nzz\r\nww"); // 4 物理行，历史 1 行 = 链首
     checkSelectedTextEqual(d, {0, 0}, {0, 16}, "seam stitched logical line");
 }
 
