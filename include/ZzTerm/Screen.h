@@ -133,7 +133,8 @@ public:
      * 配合 Cell::setCluster 使用：聚簇续接等场景把新 cluster 串注册进
      * 行侧表后，以索引更新目标格。遵循 putCell/setLineWrapped 的靶向
      * mutator 先例——只开侧表注册一条通道，不开通用可变行口。
-     * @param row 物理行号（0 <= row < size().rows，越界忽略并返回 0）。
+     * @param row 物理行号（0 <= row < size().rows，越界忽略并返回 0——
+     *        0 是合法侧表索引，越界返回值不得用于 setCluster）。
      * @param utf8 cluster 的 UTF-8 编码（必须非空）。
      * @return 侧表索引（ZzLine::clusterText 可取回文本）。
      */
