@@ -56,7 +56,7 @@ M4/M5 的 benchmark 与终审台账量化出三笔性能债，本里程碑定向
 
 - LineTextMap 提出逻辑行循环，由 zzSearchLines 持有；每行处理前 clear（text/folded/byteToCell/byteToCellEnd 四表同步清，vector clear 保容量）；
 - folded 仍仅不敏感模式填充；哨兵与行尾修剪逻辑逐行不变（T2 修复的语义保持）；
-- 预期：分配从"每行 3-4 次"降为"全程常数次"；与 5.1 借用口叠加达成 <250ms 目标。
+- 预期：分配从"每行 3-4 次"降为"全程常数次"；与 5.1 借用口叠加达成 <250ms 目标。**T2 裁定（2026-09-21）**：<250ms 未达，接受实测 568ms 为新基线——①m5b 的 503ms 基线早于 M5b 终审 I1 修复（byteToCellEnd 第三张表），直接对比无效；②同机同会话 A/B 实测 662 → 568ms（-14%，分配消除的真实收益）；③剩余成本为固有逐格扫描 + UTF-8 编码 + 三表 emit，进一步压缩需 emit 批量化/算法级重构，记入里程碑外后续；
 
 ### 5.3 债 2：logicalLineCount 缓存（src/terminal/Terminal.cpp）
 
