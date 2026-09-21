@@ -54,7 +54,7 @@ int main()
     std::ofstream js("zzterm-perf-search.json");
     js << "{\n"
        << "  \"date\": \"2026-09-21\",\n"
-       << "  \"milestone\": \"m5b-search\",\n"
+       << "  \"milestone\": \"m6-perf\",\n"
        << "  \"note\": \"-O0 debug, 100k lines x 30 cols, substring search\",\n"
        << "  \"searchMs\": " << ms << ",\n"
        << "  \"matches\": " << matches << "\n"

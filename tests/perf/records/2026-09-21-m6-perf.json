@@ -1,7 +1,7 @@
 {
   "date": "2026-09-21",
-  "milestone": "m5b-search",
+  "milestone": "m6-perf",
   "note": "-O0 debug, 100k lines x 30 cols, substring search",
-  "searchMs": 567,
+  "searchMs": 569,
   "matches": 100000
 }
