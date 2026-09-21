@@ -47,6 +47,10 @@ endif()
 if(TARGET test_selection_text)
     target_sources(test_selection_text PRIVATE "${CMAKE_SOURCE_DIR}/src/terminal/ZzSelectionText.cpp")
 endif()
+if(TARGET test_native_linesource)
+    target_sources(test_native_linesource PRIVATE
+        "${CMAKE_SOURCE_DIR}/src/backend/native/ZzNativeLineSource.cpp")
+endif()
 
 if(TARGET vtparser)
     add_executable(test_contour_smoke unit/test_contour_smoke.cpp)
