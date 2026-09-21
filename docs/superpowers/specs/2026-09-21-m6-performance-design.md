@@ -13,7 +13,7 @@ M4/M5 的 benchmark 与终审台账量化出三笔性能债，本里程碑定向
 ## 2. 三笔债的量化证据（决策依据）
 
 1. **搜索分配**：zzSearchLines 每条逻辑行新建 LineTextMap（text + byteToCell + byteToCellEnd，不敏感模式另有 folded），每物理行另有 lineAt 值快照的 cells vector 重分配；10 万行搜索实测 503ms（-O0，tests/perf/records/2026-09-21-m5b-search.json），T2 审查与 M5b 终审均标记此因；
-2. **重复计数**：facade 的 setSelection/extendSelection/search/resize clamp 各自调用 zzLogicalLineCount（O(R) 全扫描），extendSelection 在鼠标拖动场景为高频路径（M5a 终审 Minor M3）；
+2. **重复计数**：facade 的 setSelection/extendSelection/resize clamp 三处各自调用 zzLogicalLineCount（O(R) 全扫描），extendSelection 在鼠标拖动场景为高频路径（M5a 终审 Minor M3）；
 3. **快照拷贝**：ZzIPhysicalLineSource::lineAt 按值返回 ZzLine——native 侧本可复用调用方缓冲（scrollback/screen 返回 const 引用，拷贝仅为满足值语义），contour 侧 SoA 转换也可复用调用方缓冲避免反复分配；搜索与提取两条热路径都按行支付。
 
 ## 3. 范围
@@ -22,7 +22,7 @@ M4/M5 的 benchmark 与终审台账量化出三笔性能债，本里程碑定向
 
 - 债 1：zzSearchLines 的 LineTextMap 由调用方持有、逐行 clear 复用容量；
 - 债 3：ZzIPhysicalLineSource 值返回 lineAt 替换为借用口 lineAt(row, ZzLine& out)，两后端与全部调用方同任务迁移；
-- 债 2：facade Impl 缓存 logicalLineCount（-1=脏，惰性重算），四个计数消费点改走缓存；
+- 债 2：facade Impl 缓存 logicalLineCount（-1=脏，惰性重算），三个计数消费点改走缓存（search 不经计数，zzSearchLines 自行扫描）；
 - benchmark：test_perf_search 门控按新实测收紧（×3 向上取整惯例），新 JSON 基线入库；test_perf_scrollback 原门控验证不劣化；
 - 全回归（ON/OFF/shared/doxygen）与文档更新（见 5.6/5.7）。
 
