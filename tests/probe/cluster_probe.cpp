@@ -38,6 +38,18 @@ std::vector<std::string_view> splitCodePoints(std::string_view bytes)
     return out;
 }
 
+void printColor(const ZzColor& c)
+{
+    switch (c.kind()) {
+    case ZzColor::Kind::Default: std::printf("D"); break;
+    case ZzColor::Kind::Indexed: std::printf("I%u", static_cast<unsigned>(c.index())); break;
+    case ZzColor::Kind::Rgb:
+        std::printf("RGB%02X%02X%02X", static_cast<unsigned>(c.red()),
+                    static_cast<unsigned>(c.green()), static_cast<unsigned>(c.blue()));
+        break;
+    }
+}
+
 void dumpTerminal(const ZzTerminal& t, const char* mode)
 {
     std::printf("  [%s] cursor=(%d,%d)\n", mode, t.cursor().position.row, t.cursor().position.col);
@@ -52,7 +64,13 @@ void dumpTerminal(const ZzTerminal& t, const char* mode)
                 std::printf("    row %d:", row);
                 any = true;
             }
-            std::printf("  c%d[w%d]", col, static_cast<int>(cell.width));
+            std::printf("  c%d[w%d", col, static_cast<int>(cell.width));
+            // 画笔归属观察：属性位原始值 + 前景色（SGR 探针关键）。
+            if (cell.attributes.raw() != 0 || !cell.foreground.isDefault()) {
+                std::printf("|a%04X|", static_cast<unsigned>(cell.attributes.raw()));
+                printColor(cell.foreground);
+            }
+            std::printf("]");
             if (!cell.text.empty()) {
                 std::printf("=");
                 for (const unsigned char b : cell.text)
@@ -140,5 +158,20 @@ int main()
         script += "\xE2\x98\x9D\xEF\xB8\x8F"; // U+261D U+FE0F
         probe("B4 79a+U+261D+U+FE0F 尾列变宽", script);
     }
+
+    // SGR 画笔属性语义补探（T2 修复波 Major 1：计划显式委托 T2 实测的决策点）。
+    // SGR1：红画笔落基字符 a，换绿画笔后喂组合符——续接格取基格原画笔还是新画笔。
+    probe("SGR1 红a+换绿+U+0301", "\x1b[31ma\x1b[32m\xCC\x81");
+    // SGR2：SGR + B3 形态——红 a/☝，换绿喂 VS16（原位变宽），换黄喂 bc，
+    // 记录被右移格与插入续格的画笔归属。
+    probe("SGR2 红a☝+绿VS16+黄bc", "\x1b[31ma\xE2\x98\x9D\x1b[32m\xEF\xB8\x8F\x1b[33mbc");
+    // SGR3：SGR + emoji ZWJ——红 👨，换绿喂 ZWJ+👩，记录整格属性。
+    probe("SGR3 红👨+绿ZWJ👩", "\x1b[31m\xF0\x9F\x91\xA8\x1b[32m\xE2\x80\x8D\xF0\x9F\x91\xA9");
+
+    // 组合盲区补探四例（T2 修复波 Nit 1 授权，只探不判）。
+    probe("N1 RI+组合符 U+1F1FA+U+0301", "\xF0\x9F\x87\xBA\xCC\x81");
+    probe("N2 宽基+VS16 中+U+FE0F", "\xE4\xB8\xAD\xEF\xB8\x8F");
+    probe("N3 裸 keycap 1+U+20E3", "1\xE2\x83\xA3");
+    probe("N4 ExtPic+肤色 👍🏽", "\xF0\x9F\x91\x8D\xF0\x9F\x8F\xBD");
     return 0;
 }
