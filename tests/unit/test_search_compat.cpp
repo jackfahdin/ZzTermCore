@@ -120,6 +120,24 @@ static void testReflowKeepsMatches()
     ZZ_CHECK(allMatches(d.native) == allMatches(d.contour)); // resize 后互比
 }
 
+// 8. 聚簇命中（M7c T4 固化）：完整聚簇串（a+U+0301 两码点、👨‍👩 整串）
+//    与单组合符（U+0301 命中聚簇格）三种模式，match 计数与列表双后端一致。
+static void testClusterSearch()
+{
+    Dual d;
+    d.feedBoth("a\xCC\x81XY");
+    checkSearchEqual(d, "a\xCC\x81", ZzSearchOptions{}, "combining cluster whole");
+    checkSearchEqual(d, "\xCC\x81", ZzSearchOptions{}, "single combining mark");
+}
+
+static void testEmojiZwjSearch()
+{
+    Dual d;
+    d.feedBoth("x\xF0\x9F\x91\xA8\xE2\x80\x8D\xF0\x9F\x91\xA9y");
+    checkSearchEqual(d, "\xF0\x9F\x91\xA8\xE2\x80\x8D\xF0\x9F\x91\xA9", ZzSearchOptions{},
+                     "emoji zwj cluster");
+}
+
 int main()
 {
     testScreenSearch();
@@ -129,6 +147,8 @@ int main()
     testCaseInsensitiveSearch();
     testNoMatch();
     testReflowKeepsMatches();
+    testClusterSearch();
+    testEmojiZwjSearch();
     if (g_failures == 0)
         std::printf("test_search_compat: all passed\n");
     return g_failures == 0 ? 0 : 1;

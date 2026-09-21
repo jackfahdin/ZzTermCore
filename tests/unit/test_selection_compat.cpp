@@ -103,6 +103,23 @@ static void testReflowKeepsSelectionText()
     ZZ_CHECK(d.native.selectedText() == d.contour.selectedText());
 }
 
+// 7. 聚簇复制（M7c T4 固化）：a+U+0301 聚簇格选区提取——组合符不丢，
+//    双后端逐字节一致（M7b 手工实证的固化物证）。
+static void testClusterSelection()
+{
+    Dual d;
+    d.feedBoth("a\xCC\x81XY");
+    checkSelectedTextEqual(d, {0, 0}, {0, 3}, "combining cluster");
+}
+
+// 8. emoji ZWJ 聚簇复制：整串（含 ZWJ）完整提取，双后端逐字节一致。
+static void testEmojiZwjSelection()
+{
+    Dual d;
+    d.feedBoth("\xF0\x9F\x91\xA8\xE2\x80\x8D\xF0\x9F\x91\xA9z");
+    checkSelectedTextEqual(d, {0, 0}, {0, 3}, "emoji zwj cluster");
+}
+
 int main()
 {
     testScreenSelection();
@@ -111,6 +128,8 @@ int main()
     testSeamLogicalLine();
     testWideCharSelection();
     testReflowKeepsSelectionText();
+    testClusterSelection();
+    testEmojiZwjSelection();
     if (g_failures == 0)
         std::printf("test_selection_compat: all passed\n");
     return g_failures == 0 ? 0 : 1;
