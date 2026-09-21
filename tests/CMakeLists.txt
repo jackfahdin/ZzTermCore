@@ -56,6 +56,11 @@ endif()
 if(TARGET test_search_state)
     target_sources(test_search_state PRIVATE "${CMAKE_SOURCE_DIR}/src/terminal/ZzSearchState.cpp")
 endif()
+if(TARGET test_search)
+    target_sources(test_search PRIVATE
+        "${CMAKE_SOURCE_DIR}/src/terminal/ZzSearch.cpp"
+        "${CMAKE_SOURCE_DIR}/src/terminal/ZzSelectionText.cpp")
+endif()
 
 if(TARGET vtparser)
     add_executable(test_contour_smoke unit/test_contour_smoke.cpp)
