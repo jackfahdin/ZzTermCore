@@ -73,6 +73,12 @@ if(TARGET test_grapheme_break)
     target_sources(test_grapheme_break PRIVATE "${CMAKE_SOURCE_DIR}/src/unicode/GraphemeBreak.cpp")
 endif()
 
+# M7b：聚簇 parity 探针（开发期工具，不注册 ctest），仅 Contour 后端启用时构建。
+if(TARGET ZzTermContourBackend)
+    add_executable(cluster_probe probe/cluster_probe.cpp)
+    target_link_libraries(cluster_probe PRIVATE ZzTermCore) # Contour target 一律 PRIVATE
+endif()
+
 if(TARGET vtparser)
     add_executable(test_contour_smoke unit/test_contour_smoke.cpp)
     target_link_libraries(test_contour_smoke PRIVATE vtparser) # Contour target 一律 PRIVATE
