@@ -6,16 +6,18 @@
 
 数据源（Unicode 16.0.0）：
 - GraphemeBreakProperty.txt：全部 GCB 类（未列出码位默认 Other 不入表）
-- emoji-data.txt：仅 Extended_Pictographic 区间
+- emoji-data.txt：Extended_Pictographic 与 Emoji 区间（Emoji 属性为
+  VS16 变宽资格标志——M7c T3 实测：数字/#/*/©/‼ + VS16 均判宽而 a+VS16
+  保窄，判别属性是 Emoji 而非 Emoji_Presentation——数字系 EP=No）
 - DerivedCoreProperties.txt：InCB; Linker、InCB; Consonant 与 InCB; Extend
-  区间全收（InCB=Extend ⊊ GCB=Extend 真子集——大量 GCB=Extend 码位
-  InCB=None，如 U+0301，不能由 GCB 表达，故显式入表）
+  区间全收（InCB=Extend ⊊ GCB=Extend 真子集——GCB=Extend 而 InCB=None
+  的码位 16.0.0 实测仅 U+200C，不能由 GCB 表达，故显式入表）
 - GraphemeBreakTest.txt：官方 golden，原样落盘 tests/data/
 
 三份属性区间取边界并集做统一区间打包：每条区间携带
 gcb（4 位枚举值，对应 ZzGcb）+ flags（bit0=ExtPic，bit1-2=InCB
-0=None/1=Linker/2=Consonant/3=Extend），与 src/unicode/GraphemeBreak.h 的
-ZzGcbInterval 布局一致。
+0=None/1=Linker/2=Consonant/3=Extend，bit3=Emoji），与
+src/unicode/GraphemeBreak.h 的 ZzGcbInterval 布局一致。
 """
 import datetime
 import os
@@ -79,8 +81,8 @@ def parse_gcb(text: str):
     return out
 
 
-def parse_emoji(text: str):
-    """emoji-data.txt → [(lo, hi)]，仅 Extended_Pictographic。"""
+def parse_emoji(text: str, prop: str):
+    """emoji-data.txt → [(lo, hi)]，仅收 prop 属性（Extended_Pictographic / Emoji）。"""
     out = []
     for lineno, raw in enumerate(text.splitlines(), 1):
         line = raw.split("#", 1)[0].strip()
@@ -89,7 +91,7 @@ def parse_emoji(text: str):
         fields = [f.strip() for f in line.split(";")]
         if len(fields) != 2:
             raise ValueError(f"emoji-data 第 {lineno} 行格式不符：{raw!r}")
-        if fields[1] != "Extended_Pictographic":
+        if fields[1] != prop:
             continue
         out.append(parse_range(fields[0]))
     return out
@@ -146,20 +148,21 @@ def main() -> int:
 
     try:
         gcb = sorted(parse_gcb(texts[URL_GCB]))
-        extpic = sorted(parse_emoji(texts[URL_EMOJI]))
+        extpic = sorted(parse_emoji(texts[URL_EMOJI], "Extended_Pictographic"))
+        emoji = sorted(parse_emoji(texts[URL_EMOJI], "Emoji"))
         incb = sorted(parse_incb(texts[URL_DCP]))
     except ValueError as exc:
         return fail(str(exc))
 
     # 源内区间互不重叠校验（同 gen_unicode_width.py:55-58 惯例）。
-    for name, ivs in (("GCB", gcb), ("ExtPic", extpic), ("InCB", incb)):
+    for name, ivs in (("GCB", gcb), ("ExtPic", extpic), ("Emoji", emoji), ("InCB", incb)):
         for prev, cur in zip(ivs, ivs[1:]):
             if cur[0] <= prev[1]:
                 return fail(f"{name} 源区间重叠：{prev} vs {cur}")
 
-    # 统一边界合并：三份区间取边界并集，逐统一区间采样打包属性。
+    # 统一边界合并：四份区间取边界并集，逐统一区间采样打包属性。
     bounds = set()
-    for ivs in (gcb, extpic, incb):
+    for ivs in (gcb, extpic, emoji, incb):
         for lo, hi, *_ in ivs:
             bounds.add(lo)
             bounds.add(hi + 1)
@@ -173,6 +176,8 @@ def main() -> int:
         if lookup(extpic, lo, False):
             f |= 0x1
         f |= lookup(incb, lo, 0) << 1
+        if lookup(emoji, lo, False):
+            f |= 0x8
         if g == 0 and f == 0:           # Other 且无附加属性：不入表
             continue
         if unified and unified[-1][2] == g and unified[-1][3] == f \
@@ -193,7 +198,7 @@ def main() -> int:
         f"//         {URL_TEST}",
         f"// Unicode 版本：{UNICODE_VERSION}  生成日期：{date}",
         "// gcb 列为 ZzGcb 枚举值（Other=0 且无附加属性的码位不入表）；",
-        "// flags 位布局：bit0=Extended_Pictographic，bit1-2=InCB（0=None/1=Linker/2=Consonant/3=Extend）。",
+        "// flags 位布局：bit0=Extended_Pictographic，bit1-2=InCB（0=None/1=Linker/2=Consonant/3=Extend），bit3=Emoji。",
         "// 区间按 lo 升序、互不重叠，供 zzGraphemePropsOf 二分查找。",
         f"inline constexpr std::array<ZzGcbInterval, {len(unified)}> kZzGcbIntervals {{{{",
     ]
@@ -204,6 +209,8 @@ def main() -> int:
         incb_v = (f >> 1) & 0x3
         if incb_v:
             flags_desc.append({1: "Linker", 2: "Consonant", 3: "InCB_Extend"}[incb_v])
+        if f & 0x8:
+            flags_desc.append("Emoji")
         desc = " ".join(flags_desc) if flags_desc else "-"
         out.append(
             f"    ZzGcbInterval{{0x{lo:04X}u, 0x{hi:04X}u, {g}u, {f}u}},"

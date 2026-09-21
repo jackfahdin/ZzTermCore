@@ -209,5 +209,23 @@ int main()
         s += "\xCC\x81";
         probe("A4 DECAWM关+80a+U+0301", s);
     }
+
+    // M7c T3：VS16 非 ExtPic 基字符补探六例（先探后判；V6 为规则形态判别例）。
+    // V1 数字+VS16（0-9 十枚合并一例逐格打印）。
+    probe("V1 数字0-9+VS16", "0\xEF\xB8\x8F"
+                             "1\xEF\xB8\x8F"
+                             "2\xEF\xB8\x8F"
+                             "3\xEF\xB8\x8F"
+                             "4\xEF\xB8\x8F"
+                             "5\xEF\xB8\x8F"
+                             "6\xEF\xB8\x8F"
+                             "7\xEF\xB8\x8F"
+                             "8\xEF\xB8\x8F"
+                             "9\xEF\xB8\x8F");
+    probe("V2 #+VS16", "#\xEF\xB8\x8F");
+    probe("V3 *+VS16", "*\xEF\xB8\x8F");
+    probe("V4 U+00A9+VS16", "\xC2\xA9\xEF\xB8\x8F");
+    probe("V5 U+203C+VS16", "\xE2\x80\xBC\xEF\xB8\x8F");
+    probe("V6 a+VS16 判别例", "a\xEF\xB8\x8F");
     return 0;
 }

@@ -41,10 +41,12 @@ struct ZzGraphemeProps {
     ZzGcb gcb;
     bool extPic;   // Extended_Pictographic
     ZzIncb incb;
+    bool emoji;    // Emoji 属性（VS16 变宽资格，M7c T3 实测判别——见生成表头注释）
 };
 
 // 生成表区间条目（include/ZzTerm/detail/GraphemeBreakData.inc 的行格式）：
-// flags 位布局 bit0=Extended_Pictographic，bit1-2=InCB（0/1/2/3 对应 ZzIncb）。
+// flags 位布局 bit0=Extended_Pictographic，bit1-2=InCB（0/1/2/3 对应 ZzIncb），
+// bit3=Emoji 属性。
 struct ZzGcbInterval {
     std::uint32_t lo;
     std::uint32_t hi;
