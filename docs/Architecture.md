@@ -178,6 +178,10 @@ Search 不得把全部历史拼成巨大字符串；按 logical line/chunk
 扫描，未来可加增量索引。Copy 正确处理 soft wrap、hard newline、trailing
 blanks、wide cell、grapheme。
 
+M5a 已落地统一物理行数据源 ZzIPhysicalLineSource（历史区 + 屏幕区统一
+行视图，跨历史/屏幕接缝拼接逻辑行，选区提取即建于其上）——这正是 M5b
+按 logical line/chunk 扫描的地基。
+
 ## 14. 性能目标
 
 常规目标：10 万行 scrollback 流畅滚动和可用搜索；大量输出期间 UI
@@ -252,6 +256,8 @@ UTF-8。
 -   M4：10 万行 scrollback、reflow
     第一版（已完成，双后端；selection/copy/search/highlight 移入 M5）。
 -   M5：selection/copy/search/highlight、Unicode edge cases、Fuzz、百万行实验、性能优化、macOS。
+    M5a（selection/copy）已完成：ZzLogicalPos 统一空间坐标、facade 六条选区
+    API、双后端 selectedText 逐字节 compat；M5b（search/highlight）待建。
 -   M6：API/ABI 收敛、静态/动态发布、兼容矩阵稳定、OpenHarmony
     适配验证准备。
 
@@ -501,8 +507,9 @@ ConPTY Resize
 -   Soft Wrap 可以重新排版；
 -   Wide Grapheme 不允许被拆成非法 Cell；
 -   Cursor 必须映射到新的 logical position；
--   Selection anchor 必须保持；
--   Search Match 必须保持；
+-   Selection anchor 必须保持（M5a 已落地：历史头部丢弃按物理行计数
+    近似平移并 clamp、列变 reflow 保持选区文本）；
+-   Search Match 必须保持（M5b 待建）；
 -   当前 Scrollback View Position 应尽可能保持；
 -   Alternate Screen 的 Reflow 行为必须单独定义并测试。
 
@@ -891,7 +898,10 @@ Reflow 可以是昂贵操作，因此必须建立独立 Benchmark。
 注：`ZzTermRenderer` 指 ZzTermWidget 内部的渲染子组件（ZzFontMetrics /
 Glyph Cache 的所在地），不是第 3 节 target 清单里的独立模块。
 
-里程碑归属：Wrap Pending / DECAWM / 宽字符右边界 → M2；Resize Reflow → M4（已落地，双后端）；Logical Position 模型 → 随 selection/search（M5）；Font Zoom / DPI / Font Metrics / Fallback →
+里程碑归属：Wrap Pending / DECAWM / 宽字符右边界 → M2；Resize Reflow → M4（已落地，双后端）；Logical Position 模型 → M5a 已落地
+ZzLogicalPos（逻辑行序号 + 行内格偏移，定义见 `ZzTerm/Types.h`）。锚定不变量：列变 reflow 保持选区文本（双后端 compat 钉住）；
+历史头部丢弃时 Core 按物理行计数近似平移锚点并 clamp；切换 Alternate 屏时选区清空。search/highlight 侧待 M5b。
+Font Zoom / DPI / Font Metrics / Fallback →
 随 ZzTermWidget 迭代（M4 之后）。
 
 以上职责边界属于架构约束，后续不得为了实现方便将字体、DPI 或像素概念引入 ZzTermCore。

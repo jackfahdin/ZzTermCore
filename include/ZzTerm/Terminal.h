@@ -239,6 +239,7 @@ public:
     void clearSelection() noexcept;
 
     /// @brief 是否有非空选区（anchor != extent）。
+    /// @return true 表示存在非空选区。
     [[nodiscard]] bool hasSelection() const noexcept;
 
     /**

@@ -49,7 +49,9 @@ struct ZzPosition {
 struct ZzLogicalPos {
     std::int64_t line = 0; ///< 逻辑行序号（统一空间）
     std::int32_t col = 0;  ///< 逻辑行内单元格偏移
-    friend bool operator==(const ZzLogicalPos&, const ZzLogicalPos&) = default;
+
+    /// @brief 相等比较（逻辑行序号与格偏移均相等）。
+    friend constexpr bool operator==(ZzLogicalPos, ZzLogicalPos) noexcept = default;
 };
 
 /// @brief 矩形区域（闭区间语义由使用方注明，默认可为空区域）。
