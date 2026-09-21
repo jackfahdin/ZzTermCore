@@ -136,9 +136,13 @@ static void testWideCharBoundaryNormalization()
     // start 落在续格 → 归一到 lead，含整字
     ZZ_TEST_EXPECT(zzExtractSelectionText(src, {0, 2}, {0, 4})
                    == zzExtractSelectionText(src, {0, 1}, {0, 4}));
+    // 锚定字面量：{0,1}-{0,4} 覆盖 界(lead+续)+y，应得 "界y"
+    ZZ_TEST_EXPECT(zzExtractSelectionText(src, {0, 1}, {0, 4}) == "界y");
     // end 落在续格（半开区间切在半字中间）→ 前扩含整字
     ZZ_TEST_EXPECT(zzExtractSelectionText(src, {0, 0}, {0, 2})
                    == zzExtractSelectionText(src, {0, 0}, {0, 3}));
+    // 锚定字面量：{0,0}-{0,2} 归一后为 {0,0}-{0,3}，覆盖 x+界，应得 "x界"
+    ZZ_TEST_EXPECT(zzExtractSelectionText(src, {0, 0}, {0, 2}) == "x界");
 }
 
 static void testClusterTakenAsWhole()

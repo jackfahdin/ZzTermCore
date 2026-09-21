@@ -35,42 +35,18 @@ std::size_t totalRows(const ZzIPhysicalLineSource& src)
     return src.historyLineCount() + static_cast<std::size_t>(src.screenRowCount());
 }
 
-// 逻辑行 lineIndex 的物理行区间 [first, first+count)；越界返回 {total, 0}。
-std::pair<std::size_t, std::size_t> logicalSpan(const ZzIPhysicalLineSource& src,
-                                                std::int64_t lineIndex)
-{
-    const std::size_t total = totalRows(src);
-    std::int64_t current = 0;
-    std::size_t row = 0;
-    while (row < total) {
-        if (current == lineIndex) {
-            std::size_t count = 1;
-            while (row + count < total && src.lineWrapped(row + count - 1))
-                ++count;
-            return {row, count};
-        }
-        while (row + 1 < total && src.lineWrapped(row))
-            ++row;
-        ++row;
-        ++current;
-    }
-    return {total, 0};
-}
-
 // 提取一条逻辑行 [colStart, colEnd) 半开列区间的文本（colEnd < 0 表示到行末）。
+// span 为该逻辑行的物理行区间 [first, first+count)，由调用方单次扫描提供。
 // 宽字符边界归一在此完成。行尾空白（空单元格与 U+0020）修剪。
 std::string extractLogicalLine(const ZzIPhysicalLineSource& src,
                                std::pair<std::size_t, std::size_t> span,
                                std::int64_t colStart, std::int64_t colEnd)
 {
     const int cols = src.cols();
-    std::vector<const ZzLine*> lines; // 指向下方 snapshots 的存活期
     std::vector<ZzLine> snapshots;
     snapshots.reserve(span.second);
     for (std::size_t i = 0; i < span.second; ++i)
         snapshots.push_back(src.lineAt(span.first + i));
-    for (const ZzLine& l : snapshots)
-        lines.push_back(&l);
 
     const std::int64_t lineLen = static_cast<std::int64_t>(cols) * static_cast<std::int64_t>(span.second);
     std::int64_t begin = std::clamp<std::int64_t>(colStart, 0, lineLen);
@@ -79,8 +55,8 @@ std::string extractLogicalLine(const ZzIPhysicalLineSource& src,
         return {};
 
     auto cellAt = [&](std::int64_t offset) -> const ZzCell& {
-        return lines[static_cast<std::size_t>(offset / cols)]
-            ->cellAt(static_cast<int>(offset % cols));
+        return snapshots[static_cast<std::size_t>(offset / cols)]
+            .cellAt(static_cast<int>(offset % cols));
     };
     // 边界归一：start 落续格退到 lead；end 落续格进到其后（不拆半字）
     if (begin > 0 && cellAt(begin).width() == ZzCellWidth::WideContinuation)
@@ -101,7 +77,7 @@ std::string extractLogicalLine(const ZzIPhysicalLineSource& src,
             break;
         }
         if (cell.isCluster()) {
-            const ZzLine& owner = *lines[static_cast<std::size_t>(i / cols)];
+            const ZzLine& owner = snapshots[static_cast<std::size_t>(i / cols)];
             out += owner.clusterText(cell.clusterIndex());
         } else if (cell.codePoint() != 0) {
             appendCodePoint(out, cell.codePoint());
@@ -150,14 +126,28 @@ std::string zzExtractSelectionText(const ZzIPhysicalLineSource& src,
         end.col = std::numeric_limits<std::int32_t>::max();
     }
 
+    // 单次物理行扫描：先快进跳过 start.line 之前的逻辑行（O(start 前物理行数）），
+    // 随后逐条定位 wrapped 链并提取，整体 O(R + 输出大小）。
+    const std::size_t total = totalRows(src);
+    std::size_t row = 0;
+    for (std::int64_t skipped = 0; skipped < start.line; ++skipped) {
+        while (row + 1 < total && src.lineWrapped(row))
+            ++row;
+        ++row;
+    }
+
     std::string out;
     for (std::int64_t line = start.line; line <= end.line; ++line) {
+        // row 当前指向本条逻辑行首物理行；顺链得出物理区间 [row, row+count)
+        std::size_t count = 1;
+        while (row + count < total && src.lineWrapped(row + count - 1))
+            ++count;
         if (line != start.line)
-            out.push_back('\n');
-        const auto span = logicalSpan(src, line);
+            out.push_back('\n'); // 上一条逻辑行结束且后面还有选中行
         const std::int64_t colStart = line == start.line ? start.col : 0;
         const std::int64_t colEnd = line == end.line ? end.col : -1;
-        out += extractLogicalLine(src, span, colStart, colEnd);
+        out += extractLogicalLine(src, {row, count}, colStart, colEnd);
+        row += count;
     }
     return out;
 }

@@ -100,7 +100,7 @@ std::string selectedText() const;                                    // 纯文�
 ```
 
 - 坐标越界一律 clamp 到有效范围，不抛异常。clamp 语义细目（T2 审查裁定）：选区终点越界 = 选到内容末尾（终点行 clamp 到末条逻辑行、列 clamp 到该行行末）；起点行号越出有效范围时无可选内容，selectedText 返回空串而非 clamp；
-- hasSelection 语义：选区非空（anchor != extent）即 true，即使内容已被全部丢弃（此时 selectedText 为空串，selectionRange 返回 clamp 后的退化区间）。
+- hasSelection 语义（终审裁定，以 M5a 实现为准）：选区锚点内容全部被丢弃时选区清空（hasSelection 返回 false）；部分丢弃时存活端平移 clamp（起点负值 clamp 到 {0,0}）。实现见 ZzSelection::onLinesDropped，由 testOnLinesDroppedBeyondExtentClears 钉住。
 
 ### 5.6 Contour 适配
 

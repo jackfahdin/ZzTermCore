@@ -64,6 +64,8 @@ bool ZzTerminal::resize(int cols, int rows)
 {
     const bool changed = impl_->backend->resize(cols, rows);
     if (changed) {
+        // 隐含前提：后端 resize 永不置 activeBufferChanged；若未来违反，
+        // 语义仍安全（走 noteSelectionAfterFeed 的清选区分支）。
         impl_->noteSelectionAfterFeed(ZzTermChanges{}); // resize 也可能丢弃（reflow 裁剪）
         impl_->selection.clampTo(zzLogicalLineCount(impl_->backend->lineSource()));
     }

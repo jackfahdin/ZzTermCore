@@ -84,15 +84,22 @@ static void testResizeReflowKeepsSelection()
 static void testDroppedShiftsAnchor()
 {
     ZzTerminal term(10, 2, ZzBackendKind::Native, 4); // 历史容量 4
-    feed(term, "aaaaaaaaaa"); // 第 0 行内容
+    feed(term, "aaaaaaaaaa"); // 第 0 行写满 10 列，处于 wrap-pending
+    feed(term, "\r\n");       // 终结该逻辑行（消除 wrap-pending），光标到屏幕行 1
     term.setSelection(ZzLogicalPos{0, 0}, ZzLogicalPos{0, 10});
+    ZZ_TEST_EXPECT(term.selectedText() == "aaaaaaaaaa");
     std::string script;
     for (int i = 0; i < 6; ++i)
-        script += "x" + std::to_string(i) + "\r\n"; // 挤出历史容量
+        script += "x" + std::to_string(i) + "\r\n"; // 每条在末行滚一行入历史
     feed(term, script);
-    // 原选区内容已被丢弃：锚点 clamp 到 0 或选区清空，两种都合法——
-    // 断言不为崩溃且文本不再是原始内容
-    ZZ_TEST_EXPECT(term.selectedText() != "aaaaaaaaaa");
+    // 推演：6 次末行回车共滚入历史 6 行（aaaaaaaaaa, x0..x4），容量 4 丢弃
+    // aaaaaaaaaa 与 x0；历史剩 x1..x4，屏幕剩 x5 与空行。选区两端都锚在被丢弃的
+    // aaaaaaaaaa 上：内容全丢 → 选区清空（规格 5.5 全丢语义，ZzSelection::
+    // onLinesDropped 的 e.line < 0 分支）。若 Terminal.cpp 的 onLinesDropped
+    // 接线被删掉，锚点停在 {0,0}-{0,10}，selectedText 会读出历史新第 0 行
+    // "x1"，本用例两条断言同时变红。
+    ZZ_TEST_EXPECT(!term.hasSelection());
+    ZZ_TEST_EXPECT(term.selectedText().empty());
 }
 
 static void testAlternateSwitchClearsSelection()

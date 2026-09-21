@@ -176,6 +176,10 @@ feed/resize 后坐标可能已被平移或 clamp，需重新查询。双后端
 `selectedText` 逐字节一致性由 test_selection_compat 钉住（native 为
 基准，本里程碑未产生新 b 类分歧）。
 
+已知限制：滚动区局部滚动、DL/IL 等销毁屏幕内容的操作发生时，后续逻辑行
+序号上移而已有选区锚点不跟随（规格 5.1 的序号不变量只对全屏滚出入历史
+成立）；v1 接受该语义。
+
 ### Parser（UTF-8 / VT / xterm）
 
 增量解析，支持任意 chunk 边界；状态至少包含 Ground、Escape、

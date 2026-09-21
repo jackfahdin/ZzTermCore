@@ -30,6 +30,19 @@
 //    物理行按新宽度重新切分），_linesUsed 与 historyLineCount() 相应更新，
 //    lineAt(LineOffset 负偏移) 照常工作；nothingToReflowOrCut 快路径仅原地
 //    resize 各行，内容不动。
+//
+// ③ noteFloor 在 Alternate 期间读的是 alt Grid 的 floor（主屏/备屏各自独立
+//    Grid，stableFloor 跟随当前激活 Grid）。进 Alternate 时 alt floor 低于
+//    lastFloor_ 则按 noteFloor 的回退分支静默对齐（不计负丢弃）；Alternate
+//    期间 alt Grid 的真实裁剪会被计入 droppedAccum_。今天该行为不可观察：
+//    Alternate 切换即清选区（Terminal 侧 activeBufferChanged 分支），且
+//    lastFloor_ 每轮自校正、回主屏后不回补，主屏裁剪不漏记。钉住该语义；
+//    未来若开放 Alternate 下选区，需重审此计数路径。
+//
+// ④ reanchorFloor 会一并吞掉列变 reflow 中的真实容量裁剪：历史已满时缩列，
+//    reflow 重建伴随的真实丢弃（超出容量的行被裁）与行身份重建副产混在一起，
+//    被整体对齐而不累计，选区锚点因此漏平移。属边角案例（列变且历史恰好满
+//    容量），终审裁定 v1 接受，钉住备查。
 #include "ZzContourLineSource.h"
 
 #include "ZzContourBackend.h"
