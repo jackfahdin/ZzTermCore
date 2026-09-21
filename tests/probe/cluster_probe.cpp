@@ -227,8 +227,9 @@ int main()
     probe("V4 U+00A9+VS16", "\xC2\xA9\xEF\xB8\x8F");
     probe("V5 U+203C+VS16", "\xE2\x80\xBC\xEF\xB8\x8F");
     probe("V6 a+VS16 判别例", "a\xEF\xB8\x8F");
-    // M7c T3 修复波：方向 2 反例（ExtPic 且 Emoji 但非 variation base——
-    // libunicode 真规则下 contour 应保窄；证伪"Emoji 属性"泛化）。
+    // M7c T3 修复波：方向 2 反例（ExtPic=Yes 但 Emoji=No、非 variation
+    // base——libunicode 真规则下 contour 应保窄；2135 码位分歧全部由
+    // extPic 分支贡献，此三例证伪的是 extPic 泛化）。
     probe("V7 ★ U+2605+VS16 反例", "\xE2\x98\x85\xEF\xB8\x8F");
     probe("V8 ♔ U+2654+VS16 反例", "\xE2\x99\x94\xEF\xB8\x8F");
     probe("V9 ♩ U+2669+VS16 反例", "\xE2\x99\xA9\xEF\xB8\x8F");

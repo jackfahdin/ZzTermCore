@@ -509,9 +509,9 @@ void testV6AsciiVs16Narrow()
     });
 }
 
-// V7-V9 方向 2 反例（M7c T3 修复波）：ExtPic 且 Emoji 但非 variation
-// base——libunicode 真规则下 contour 保窄，native 按 emojiVariationBase
-// 对齐（证伪"Emoji 属性"泛化）。
+// V7-V9 方向 2 反例（M7c T3 修复波）：ExtPic=Yes 但 Emoji=No、非
+// variation base——libunicode 真规则下 contour 保窄，native 按
+// emojiVariationBase 对齐（分歧全部由 extPic 分支贡献，证伪 extPic 泛化）。
 void testV7StarVs16Narrow()
 {
     bothModes("\xE2\x98\x85\xEF\xB8\x8F", [](const ZzTerminal& t, const char* m) {

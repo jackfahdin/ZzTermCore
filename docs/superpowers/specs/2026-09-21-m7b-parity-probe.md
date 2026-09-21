@@ -176,7 +176,7 @@ EA B0 80 E1 86 A8
 
 **V7 ★ U+2605 + VS16 / V8 ♔ U+2654 + VS16 / V9 ♩ U+2669 + VS16（方向 2 反例，M7c T3 修复波补探）**——两式一致。各 1 格 w1 聚簇，光标 (0,1)。**全部保窄**。
 
-**裁定（规则形态，M7c T3 修复波更正）**：判别属性为 **emoji variation base**——emoji-variation-sequences.txt 的 emoji style（FE0F）base 集合（16.0.0 共 371 码位），即 libunicode width.cpp:85 的真规则数据源（base.is_emoji_variation_base 且窄 → VS16 变宽）。证伪过程留痕：本任务初版据 V1-V6 实测归约出"Emoji 属性"泛化（数字系 Emoji_Presentation=No 故排除 EP），方向 1（contour 宽 / native 窄）虽为空不漏宽，但 Emoji 属性是 variation base 集合的严格超集——方向 2（native 宽 / contour 窄）涉及 2135 码位（★ U+2605、♔-♞、扑克牌系、♩-♺ 等 ExtPic/Emoji 但非 variation base 者），审查以 libunicode 源码 ground truth 证伪后按真规则对齐；V7-V9 反例补探确认 contour 对该集合保窄。ExtPic 亦从 VS16 变宽条件移除（ExtPic 非 variation base + VS16 保窄）；keycap 经 20E3 独立路径不受影响。V1-V9 全部对齐用例（无 b 类）。
+**裁定（规则形态，M7c T3 修复波更正）**：判别属性为 **emoji variation base**——emoji-variation-sequences.txt 的 emoji style（FE0F）base 集合（16.0.0 共 371 码位），即 libunicode width.cpp:85 的真规则数据源（base.is_emoji_variation_base 且窄 → VS16 变宽）。证伪过程留痕：本任务初版据 V1-V6 实测归约出"Emoji 属性"泛化（数字系 Emoji_Presentation=No 故排除 EP），方向 1（contour 宽 / native 窄）为空不漏宽；审查以 libunicode 源码 ground truth 复核后确认：Emoji 属性在"窄且非 EP 且已分配"有效域上与 variation base 全等，方向 2（native 宽 / contour 窄）的 2135 码位分歧全部由 M7b 起潜伏的 extPic 分支贡献（★ U+2605、♔-♞、扑克牌系、♩-♺ 等 ExtPic=Yes 但 Emoji=No、非 variation base 者），随修复统一按真规则对齐；V7-V9 反例补探确认 contour 对该集合保窄。ExtPic 已从 VS16 变宽条件移除；keycap 经 20E3 独立路径不受影响。V1-V9 全部对齐用例（无 b 类）。
 
 ## 裁定结论（T3 实现依据）
 
