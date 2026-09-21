@@ -180,6 +180,49 @@ feed/resize 后坐标可能已被平移或 clamp，需重新查询。双后端
 序号上移而已有选区锚点不跟随（规格 5.1 的序号不变量只对全屏滚出入历史
 成立）；v1 接受该语义。
 
+### 搜索（M5b）
+
+子串搜索基于 `ZzLogicalRange`（`ZzTerm/Types.h`）：半开区间
+[start, end)，start 为命中首格，end 为命中末格之后一格，坐标语义同
+`ZzLogicalPos` 统一空间（历史区头部为 0，屏幕区紧跟其后）。
+
+`ZzTerminal` 四条搜索 API（双后端语义一致）：
+
+- `search(pattern, options)` 执行子串搜索并替换旧搜索状态，返回匹配数；
+  空 pattern 清空搜索状态并返回 0。`ZzSearchOptions` 目前仅
+  `caseSensitive`（默认 true；false 时 ASCII 大小写折叠，Unicode
+  不折叠）。
+- `clearSearch()` 清空搜索状态。
+- `searchMatchCount()` 当前搜索的 match 总数（无搜索状态为 0）。
+- `searchMatch(index, start, end)` 查询第 index 个 match 的坐标区间
+  （坐标升序）；index 越界或无搜索状态返回 false 且不写入出参。
+
+match 坐标快照语义：match 是搜索时刻的坐标快照，此后 feed 改写的同坐标
+内容不校验（内容漂移钉注，规格 5.4）；新内容不触发自动重搜。保持机制与
+选区同口径：历史头部丢弃时 Core 按物理行计数近似平移 match 并 clamp，
+列变 reflow 保持 match，切换 Alternate 屏时搜索状态清空。
+
+前端职责：高亮绘制由前端经 `searchMatch` 取 match 坐标后自行换算屏幕行
+绘制（Core 不引入装饰/渲染概念）；feed 后是否重搜由前端决定。
+
+钉注四条：
+
+1. 不跨逻辑行匹配：pattern 含换行符时永不命中；
+2. 命中不重叠：同一逻辑行内 match 区间互不相交；
+3. 大小写折叠仅 ASCII：`caseSensitive = false` 只折叠 ASCII 字母，
+   Unicode 大小写不折叠；
+4. 裸组合符 pattern 归并整格：pattern 为组合符等 cluster 字节串的中段
+   片段时，命中坐标归并到所在整格，命中文本与 pattern 逐字节相等的
+   自洽不变量不成立；v1 接受该语义（T2 审查裁定，规格 5.2）。
+5. 截断行 col 快照语义：列变 reflow 截断行上的 match 其 col 保持快照
+   原值（可能越出截断后行末），查询返回不 clamp；前端绘制高亮时自行
+   按行 clamp，需要精确文本时经 `selectedText` 提取（提取层按行
+   clamp）（规格 5.4）。
+
+双后端 match 列表逐一相等由 test_search_compat 钉住（native 为基准，
+本里程碑未产生新 b 类分歧）；10 万行搜索性能门控见
+test_perf_search 与 tests/perf/records/2026-09-21-m5b-search.json。
+
 ### Parser（UTF-8 / VT / xterm）
 
 增量解析，支持任意 chunk 边界；状态至少包含 Ground、Escape、

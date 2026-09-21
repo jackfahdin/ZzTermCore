@@ -1,6 +1,7 @@
 #include "ZzSelectionText.h"
 
 #include "../backend/ZzLineSource.h"
+#include "ZzUtf8Encode.h"
 
 #include <ZzTerm/Cell.h>
 
@@ -10,25 +11,6 @@
 #include <vector>
 
 namespace {
-
-void appendCodePoint(std::string& out, char32_t cp)
-{
-    if (cp < 0x80) {
-        out.push_back(static_cast<char>(cp));
-    } else if (cp < 0x800) {
-        out.push_back(static_cast<char>(0xC0 | (cp >> 6)));
-        out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
-    } else if (cp < 0x10000) {
-        out.push_back(static_cast<char>(0xE0 | (cp >> 12)));
-        out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
-        out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
-    } else {
-        out.push_back(static_cast<char>(0xF0 | (cp >> 18)));
-        out.push_back(static_cast<char>(0x80 | ((cp >> 12) & 0x3F)));
-        out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
-        out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
-    }
-}
 
 std::size_t totalRows(const ZzIPhysicalLineSource& src)
 {
@@ -80,7 +62,7 @@ std::string extractLogicalLine(const ZzIPhysicalLineSource& src,
             const ZzLine& owner = snapshots[static_cast<std::size_t>(i / cols)];
             out += owner.clusterText(cell.clusterIndex());
         } else if (cell.codePoint() != 0) {
-            appendCodePoint(out, cell.codePoint());
+            zzAppendCodePoint(out, cell.codePoint());
         } else {
             out.push_back(' ');
         }

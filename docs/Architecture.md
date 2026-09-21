@@ -180,7 +180,9 @@ blanks、wide cell、grapheme。
 
 M5a 已落地统一物理行数据源 ZzIPhysicalLineSource（历史区 + 屏幕区统一
 行视图，跨历史/屏幕接缝拼接逻辑行，选区提取即建于其上）——这正是 M5b
-按 logical line/chunk 扫描的地基。
+按 logical line/chunk 扫描的地基。M5b 已落地 zzSearchLines 单扫描
+（不拼巨大字符串）：逐逻辑行子串匹配 + 位置回映，facade 四 API
+（search/clearSearch/searchMatchCount/searchMatch）双后端可用。
 
 ## 14. 性能目标
 
@@ -257,7 +259,11 @@ UTF-8。
     第一版（已完成，双后端；selection/copy/search/highlight 移入 M5）。
 -   M5：selection/copy/search/highlight、Unicode edge cases、Fuzz、百万行实验、性能优化、macOS。
     M5a（selection/copy）已完成：ZzLogicalPos 统一空间坐标、facade 六条选区
-    API、双后端 selectedText 逐字节 compat；M5b（search/highlight）待建。
+    API、双后端 selectedText 逐字节 compat；M5b（search/highlight）已完成：
+    facade 四搜索 API、ZzSearchState 保持切面（丢弃平移/reflow 保持/
+    Alternate 清空）、双后端 match 列表 compat 与 10 万行搜索 benchmark
+    门控（高亮绘制为前端职责，Core 交付 match 坐标）。M5 核心侧整体收口，
+    Unicode edge cases / Fuzz / 百万行实验 / macOS 随后续里程碑推进。
 -   M6：API/ABI 收敛、静态/动态发布、兼容矩阵稳定、OpenHarmony
     适配验证准备。
 
@@ -509,7 +515,8 @@ ConPTY Resize
 -   Cursor 必须映射到新的 logical position；
 -   Selection anchor 必须保持（M5a 已落地：历史头部丢弃按物理行计数
     近似平移并 clamp、列变 reflow 保持选区文本）；
--   Search Match 必须保持（M5b 待建）；
+-   Search Match 必须保持（M5b 已落地：列变 reflow 保持 match，双后端
+    compat 与集成测试钉住）；
 -   当前 Scrollback View Position 应尽可能保持；
 -   Alternate Screen 的 Reflow 行为必须单独定义并测试。
 
@@ -900,7 +907,9 @@ Glyph Cache 的所在地），不是第 3 节 target 清单里的独立模块。
 
 里程碑归属：Wrap Pending / DECAWM / 宽字符右边界 → M2；Resize Reflow → M4（已落地，双后端）；Logical Position 模型 → M5a 已落地
 ZzLogicalPos（逻辑行序号 + 行内格偏移，定义见 `ZzTerm/Types.h`）。锚定不变量：列变 reflow 保持选区文本（双后端 compat 钉住）；
-历史头部丢弃时 Core 按物理行计数近似平移锚点并 clamp；切换 Alternate 屏时选区清空。search/highlight 侧待 M5b。
+历史头部丢弃时 Core 按物理行计数近似平移锚点并 clamp；切换 Alternate 屏时选区清空。M5b 已落地 search 侧：
+ZzLogicalRange match 坐标快照，保持机制与选区同口径（丢弃平移 clamp、reflow 保持、Alternate 切换清空）；
+highlight 绘制为前端职责（经 searchMatch 取坐标自行绘制）。
 Font Zoom / DPI / Font Metrics / Fallback →
 随 ZzTermWidget 迭代（M4 之后）。
 

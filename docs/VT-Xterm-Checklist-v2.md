@@ -183,8 +183,8 @@ Wrap / Reflow 章为准。
 -   [ ] \[Contour\]\[Test\] Wide grapheme boundary
 -   [ ] \[Contour\]\[Test\] Cursor mapping
 -   [x] \[Zz-Native\]\[Test\] Selection/Search anchor mapping（M5a
-    已交付 Selection 侧：丢弃平移 clamp、全丢清空、Alternate 切换清空；
-    Search 侧待 M5b）
+    已交付 Selection 侧、M5b 已交付 Search 侧：丢弃平移 clamp、
+    全丢清空、Alternate 切换清空）
 -   [ ] \[Contour\]\[Test\] Alternate-screen resize behavior
 
 ## Wrap / Reflow
@@ -218,8 +218,8 @@ Wrap / Reflow 章为准。
 -   [x] \[Contour\]\[Zz-Native\]\[Test\] Selection Mapping after
     Reflow（M5a 已交付：列变 reflow 保持选区文本，
     testResizeReflowKeepsSelection 与双后端 compat 钉住）
--   [ ] \[Contour\]\[Zz-Native\]\[Test\] Search Match Mapping after
-    Reflow
+-   [x] \[Contour\]\[Zz-Native\]\[Test\] Search Match Mapping after
+    Reflow（M5b 已交付：列变 reflow 保持 match，集成测试钉住）
 -   [ ] \[Contour\]\[Zz-Native\]\[Test\] Scrollback View Anchor after
     Reflow
 -   [ ] \[Contour\]\[Zz-Native\]\[Test\] Alternate Screen Resize

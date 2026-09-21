@@ -54,6 +54,26 @@ struct ZzLogicalPos {
     friend constexpr bool operator==(ZzLogicalPos, ZzLogicalPos) noexcept = default;
 };
 
+/**
+ * @brief 逻辑行坐标区间（搜索 match，M5b）。
+ *
+ * 半开区间 [start, end)：start 为命中首格，end 为命中末格之后一格。
+ * 坐标语义见 ZzLogicalPos；match 为搜索时刻的坐标快照，此后内容漂移不校验。
+ */
+struct ZzLogicalRange {
+    ZzLogicalPos start; ///< 区间起点（含）
+    ZzLogicalPos end;   ///< 区间终点（不含）
+    /// @brief 相等比较（起点与终点均相等）。
+    friend constexpr bool operator==(ZzLogicalRange, ZzLogicalRange) noexcept = default;
+};
+
+/**
+ * @brief 搜索选项（M5b）。
+ */
+struct ZzSearchOptions {
+    bool caseSensitive = true; ///< true = 大小写敏感；false = ASCII 大小写折叠（Unicode 不折叠）
+};
+
 /// @brief 矩形区域（闭区间语义由使用方注明，默认可为空区域）。
 struct ZzRect {
     int topRow = 0;    ///< 起始行（含）。

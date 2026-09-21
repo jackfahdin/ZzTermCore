@@ -119,7 +119,7 @@
 -   [x] Wide grapheme boundary（宽字符不拆半，M4）
 -   [x] Cursor mapping（逻辑行链 + 链内偏移跟随，M4）
 -   [x] Selection mapping（M5a 已交付：reflow 保持选区文本，见 Selection 节）
--   [ ] Search mapping（M5b）
+-   [x] Search mapping（M5b 已交付：丢弃平移 clamp、Alternate 清空，见 Search 小节）
 -   [x] Alternate-screen behavior（备用屏重组、溢出丢弃，M4）
 
 ## Input / IME
@@ -208,7 +208,7 @@
 -   [x] Shrink Rows（纯行数增减不触发 reflow，M4 已交付，见 Resize / Reflow 节）
 -   [x] Cursor Mapping after Reflow（M4 已交付，见 Resize / Reflow 节）
 -   [x] Selection Mapping after Reflow（M5a 已交付，见 Selection 节）
--   [ ] Search Match Mapping after Reflow（M5b）
+-   [x] Search Match Mapping after Reflow（M5b 已交付：列变 reflow 保持 match）
 -   [ ] Scrollback View Anchor after Reflow
 -   [x] Alternate Screen Resize Behavior（备用屏重组、溢出丢弃，M4 已交付，见 Resize / Reflow 节）
 -   [x] 100k-line Reflow Benchmark（M4 已交付 test_perf_scrollback 10 万行 reflow 门控）
