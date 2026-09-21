@@ -23,11 +23,14 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
 
     const std::byte* bytes = reinterpret_cast<const std::byte*>(data);
     const std::size_t mid = size / 2;
+    bool resized = false;
     for (std::size_t off = 0; off < size; off += chunk) {
         const std::size_t n = (off + chunk <= size) ? chunk : size - off;
         term.feed(std::span<const std::byte>(bytes + off, n));
-        if (doResize && off < mid && mid < off + n)
-            term.resize(resizeCols, 24); // feed 中段穿插 resize
+        if (doResize && !resized && mid < off + n) {
+            term.resize(resizeCols, 24); // feed 中段穿插 resize（恰好一次）
+            resized = true;
+        }
     }
     return 0;
 }
