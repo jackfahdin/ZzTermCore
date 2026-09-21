@@ -136,6 +136,8 @@ ZzScreen& ZzTerminal::screen()
     auto* native = dynamic_cast<ZzNativeBackend*>(impl_->backend.get());
     if (!native)
         throw std::logic_error("ZzTerminal::screen() 仅 Native 后端可用");
+    // 可变逃生舱保守置脏——调用方可能经可变引用改内容绕过 feed/resize 切面
+    impl_->cachedLogicalCount = -1;
     return native->screen();
 }
 
@@ -144,6 +146,8 @@ ZzScrollback& ZzTerminal::scrollback()
     auto* native = dynamic_cast<ZzNativeBackend*>(impl_->backend.get());
     if (!native)
         throw std::logic_error("ZzTerminal::scrollback() 仅 Native 后端可用");
+    // 可变逃生舱保守置脏——调用方可能经可变引用改内容绕过 feed/resize 切面
+    impl_->cachedLogicalCount = -1;
     return native->scrollback();
 }
 
