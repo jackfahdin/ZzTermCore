@@ -4,6 +4,7 @@
 #include "ZzContourPtyBridge.h"
 
 #include <vtbackend/render/RenderBuffer.hpp>
+#include <vtbackend/screen/Screen.hpp>
 #include <vtbackend/screen/Terminal.hpp>
 
 #include <crispy/Environment.hpp>
@@ -47,6 +48,64 @@ size_t trailingIncompleteUtf8(std::string_view data)
         return 0; // 非法前导字节（含孤立续字节），不缓冲
     size_t const present = continuationCount + 1;
     return present < expected ? present : 0;
+}
+
+// M5a：把 contour Line（SoA）转为 ZzLine 值快照。nextLineWrapped = 本行是否续到下一行。
+// ZzLine 宽度统一取页面列数（调用方传入）：行列同时增长/窄化快路径下个别行可能
+// 仍持旧宽度存储（Grid::resize / nothingToReflowOrCut），越界列保持默认格——与
+// ZzContourRenderView::cellAtThunk / snapshot() 同款防御。禁用 Screen::at/useCellAt
+// （blank 行会物化分配），经 isBlank 守卫 + storage() const 直读 SoA。
+ZzLine zzSnapshotContourLine(const vtbackend::Line& line, int cols, bool nextLineWrapped)
+{
+    ZzLine out;
+    out.resize(cols);
+    if (!line.isBlank())
+    {
+        auto const& soa = line.storage();
+        const int lineColumns = line.size().value;
+        for (int col = 0; col < cols && col < lineColumns; ++col)
+        {
+            ZzCell cell;
+            // 宽度/续格判定与 ZzContourConvert.h 的 zzWidth 一致：
+            // WideCharContinuation flag → WideContinuation；width==2 → WideLead；否则 Narrow。
+            const bool continuation =
+                soa.sgr[col].flags.contains(vtbackend::CellFlag::WideCharContinuation);
+            if (continuation)
+                cell.setWidth(ZzCellWidth::WideContinuation);
+            else if (line.cellWidthAt(vtbackend::ColumnOffset(col)) == 2)
+                cell.setWidth(ZzCellWidth::WideLead);
+            else
+                cell.setWidth(ZzCellWidth::Narrow);
+            cell.setForeground(zzColor(soa.sgr[col].foregroundColor));
+            cell.setBackground(zzColor(soa.sgr[col].backgroundColor));
+            cell.setAttributes(zzAttributes(soa.sgr[col].flags));
+            // 文本：cluster（多码点）整串 UTF-8 intern 到快照行侧表；单码点直接
+            // setCodePoint。续格与空单元格（clusterSize==0）不携带文本——与
+            // snapshot() 的 codepoints 为空语义一致。
+            if (!continuation)
+            {
+                if (soa.clusterSize[col] > 1)
+                    cell.setCluster(out.internCluster(
+                        vtbackend::ConstCellProxy(soa, static_cast<size_t>(col)).toUtf8()));
+                else if (soa.clusterSize[col] == 1)
+                    cell.setCodePoint(soa.codepoints[col]);
+            }
+            out.setCell(col, cell);
+        }
+    }
+    else
+    {
+        // blank 行：默认格 + fillAttrs 背景/属性（照 ZzContourRenderView.cpp:52-55
+        // 与 snapshot() 的 BCE 擦除还原；前景保持默认）。
+        auto const& fillAttrs = line.storage().fillAttrs;
+        ZzCell cell;
+        cell.setBackground(zzColor(fillAttrs.backgroundColor));
+        cell.setAttributes(zzAttributes(fillAttrs.flags));
+        for (int col = 0; col < cols; ++col)
+            out.setCell(col, cell);
+    }
+    out.setWrapped(nextLineWrapped);
+    return out;
 }
 
 } // namespace
@@ -169,6 +228,40 @@ bool ZzContourBackend::lineWrapped(int row) const
     return impl_->terminal->currentScreen()
         .lineFlags(vtbackend::LineOffset(row + 1))
         .contains(vtbackend::LineFlag::Wrapped);
+}
+
+ZzLine ZzContourBackend::historyLineSnapshot(int historyIndex) const
+{
+    auto const& screen = impl_->terminal->currentScreen();
+    // 历史第 i 行（0=最旧）→ 负偏移 i - historyLineCount()（Grid.hpp:641-642，
+    // LineOffset(-1) = 最新历史行）。
+    const int offset = historyIndex - historyLineCount();
+    // 「本行续到下一行」= 下一行带 Wrapped；Screen::isLineWrapped 自带范围检查
+    // （Grid.hpp:1257-1261），历史末行的下一行即屏幕首行（历史/屏幕接缝）。
+    return zzSnapshotContourLine(screen.grid().lineAt(vtbackend::LineOffset(offset)),
+                                 impl_->pageSize.columns.value,
+                                 screen.isLineWrapped(vtbackend::LineOffset(offset + 1)));
+}
+
+ZzLine ZzContourBackend::screenLineSnapshot(int row) const
+{
+    auto const& screen = impl_->terminal->currentScreen();
+    const bool next = row + 1 < impl_->pageSize.lines.value
+                      && screen.isLineWrapped(vtbackend::LineOffset(row + 1));
+    return zzSnapshotContourLine(screen.grid().lineAt(vtbackend::LineOffset(row)),
+                                 impl_->pageSize.columns.value, next);
+}
+
+bool ZzContourBackend::historyLineWrapped(int historyIndex) const
+{
+    auto const& screen = impl_->terminal->currentScreen();
+    return screen.isLineWrapped(vtbackend::LineOffset(historyIndex - historyLineCount() + 1));
+}
+
+std::int64_t ZzContourBackend::stableFloor() const
+{
+    // Screen 无 stableRangeFloor 转发，须走 grid()（Grid.hpp:836，public）。
+    return impl_->terminal->currentScreen().grid().stableRangeFloor();
 }
 
 void ZzContourBackend::flushReplies()

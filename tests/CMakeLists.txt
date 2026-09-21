@@ -12,6 +12,7 @@ list(REMOVE_ITEM ZZTERM_UNIT_TEST_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_contour_smoke.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_contour_backend.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_contour_adapter.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_contour_linesource.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_backend_compat.cpp")
 
 foreach(test_source IN LISTS ZZTERM_UNIT_TEST_SOURCES)
@@ -60,9 +61,11 @@ if(TARGET vtparser)
 endif()
 
 # M1a：ZzContourBackend headless 回归测试，仅 Contour 后端启用时构建。
+# ZzTermCore 自 M5a 起必需：ZzContourBackend 的快照口产出 ZzLine
+# （src/screen/Line.cpp，非 header-only，不在 contour 后端库内）。
 if(TARGET ZzTermContourBackend)
     add_executable(test_contour_backend unit/test_contour_backend.cpp)
-    target_link_libraries(test_contour_backend PRIVATE ZzTermContourBackend vtpty) # Contour target 一律 PRIVATE
+    target_link_libraries(test_contour_backend PRIVATE ZzTermContourBackend ZzTermCore vtpty) # Contour target 一律 PRIVATE
     target_compile_features(test_contour_backend PRIVATE cxx_std_23)
     add_test(NAME test_contour_backend COMMAND test_contour_backend)
 endif()
@@ -74,6 +77,16 @@ if(TARGET ZzTermContourBackend)
     add_executable(test_contour_adapter unit/test_contour_adapter.cpp)
     target_link_libraries(test_contour_adapter PRIVATE ZzTermCore) # Contour target 一律 PRIVATE
     add_test(NAME test_contour_adapter COMMAND test_contour_adapter)
+endif()
+
+# M5a：ZzContourLineSource 数据源测试，仅 Contour 后端启用时构建。
+# 除 ZzTermContourBackend 外还需 ZzTermCore：ZzLine 实现（src/screen/Line.cpp）
+# 不在 contour 后端库内（该库此前只消费 header-only 的 ZzCell）。
+if(TARGET ZzTermContourBackend)
+    add_executable(test_contour_linesource unit/test_contour_linesource.cpp)
+    target_link_libraries(test_contour_linesource PRIVATE ZzTermContourBackend ZzTermCore vtpty) # Contour target 一律 PRIVATE
+    target_compile_features(test_contour_linesource PRIVATE cxx_std_23)
+    add_test(NAME test_contour_linesource COMMAND test_contour_linesource)
 endif()
 
 # M1b：双后端对照测试，同一 VT 序列喂 Native/Contour 逐格比对（native 为基准）。

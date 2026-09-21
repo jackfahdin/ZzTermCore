@@ -4,6 +4,7 @@
 
 #include <ZzTerm/Cell.h>
 #include <ZzTerm/Input.h>
+#include <ZzTerm/Line.h>
 
 #include <cstddef>
 #include <cstdint>
@@ -70,6 +71,16 @@ public:
     [[nodiscard]] int historyLineCount() const;
     /// \brief 第 row 行（主屏 0 起）的内容是否自动续到下一行（即该行是自动换行逻辑行的首行）。
     [[nodiscard]] bool lineWrapped(int row) const;
+
+    /// \brief 历史第 i 行内容快照（i ∈ [0, historyLineCount())，0 = 最旧）。
+    /// 返回 ZzLine 值快照（含 wrapped 标记，ZzLine 语义：续到下一行为 true）。
+    [[nodiscard]] ZzLine historyLineSnapshot(int historyIndex) const;
+    /// \brief 主屏/当前屏第 row 行内容快照（同上）。
+    [[nodiscard]] ZzLine screenLineSnapshot(int row) const;
+    /// \brief 历史第 i 行是否续到下一行（等价快照内 wrapped，轻量路径）。
+    [[nodiscard]] bool historyLineWrapped(int historyIndex) const;
+    /// \brief Grid stable id 下限（容量裁剪丢弃探测；单调，zero-history 分支可回退）。
+    [[nodiscard]] std::int64_t stableFloor() const;
     /// \brief 把缓冲中的终端回传字节（DA 响应等）经 onWriteToTransport 发出。
     void flushReplies();
 
