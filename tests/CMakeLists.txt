@@ -63,6 +63,16 @@ if(TARGET test_search)
         "${CMAKE_SOURCE_DIR}/src/terminal/ZzSelectionText.cpp")
 endif()
 
+# M7b：聚簇 golden 测试的数据路径与 shared 构建内部符号。
+# GraphemeBreak.h 为 src/ 内部头（经 "unicode/GraphemeBreak.h" 引用），
+# 需 src/ 在 include 路径上（先例见上方 test_backend_interface）。
+if(TARGET test_grapheme_break)
+    target_include_directories(test_grapheme_break PRIVATE "${CMAKE_SOURCE_DIR}/src")
+    target_compile_definitions(test_grapheme_break
+        PRIVATE ZZ_GRAPHEME_TEST_DATA="${CMAKE_CURRENT_SOURCE_DIR}/data/GraphemeBreakTest.txt")
+    target_sources(test_grapheme_break PRIVATE "${CMAKE_SOURCE_DIR}/src/unicode/GraphemeBreak.cpp")
+endif()
+
 if(TARGET vtparser)
     add_executable(test_contour_smoke unit/test_contour_smoke.cpp)
     target_link_libraries(test_contour_smoke PRIVATE vtparser) # Contour target 一律 PRIVATE
