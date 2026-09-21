@@ -127,6 +127,26 @@ static void testWideCharRemap()
     const auto my = zzSearchLines(src, "y", ZzSearchOptions{});
     ZZ_TEST_EXPECT(my.size() == 1);
     expectMatch(my[0], 0, 3, 4);
+    const auto mx = zzSearchLines(src, "x", ZzSearchOptions{});
+    ZZ_TEST_EXPECT(mx.size() == 1);
+    expectMatch(mx[0], 0, 0, 1); // 宽字符前的单字节窄字符命中不受影响
+}
+
+static void testClusterPrefixByteMatch()
+{
+    // 布局同 testClusterRemap；搜索 cluster 首字节 "a"：命中尾落在单元
+    // 字节中段，归并到所在整格（规格 5.2），不得产出零宽区间
+    ZzLine line;
+    line.resize(8);
+    line.setCell(0, narrowCell('z'));
+    ZzCell cluster;
+    cluster.setWidth(ZzCellWidth::Narrow);
+    cluster.setCluster(line.internCluster("a\xCC\x81")); // a + 组合重音符，占 1 格（3 字节）
+    line.setCell(1, cluster);
+    FakeSource src(8, 0, {std::move(line)});
+    const auto m = zzSearchLines(src, "a", ZzSearchOptions{});
+    ZZ_TEST_EXPECT(m.size() == 1);
+    expectMatch(m[0], 0, 1, 2); // 归并整格，非零宽 {1,1}
 }
 
 static void testClusterRemap()
@@ -198,6 +218,7 @@ int main()
     testCaseInsensitiveAscii();
     testWideCharRemap();
     testClusterRemap();
+    testClusterPrefixByteMatch();
     testMatchInsideSoftWrapChain();
     testNoCrossLogicalLineMatch();
     testPatternWithNewlineNeverMatches();

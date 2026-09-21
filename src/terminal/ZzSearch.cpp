@@ -25,9 +25,10 @@ std::string foldString(std::string_view in)
 }
 
 struct LineTextMap {
-    std::string text;                      // 行尾空白已修剪
-    std::string folded;                    // ASCII 折叠副本（仅不敏感模式构建）
-    std::vector<std::int32_t> byteToCell;  // text.size()+1 项：字节位置 → 格偏移
+    std::string text;                        // 行尾空白已修剪
+    std::string folded;                      // ASCII 折叠副本（仅不敏感模式构建）
+    std::vector<std::int32_t> byteToCell;    // text.size()+1 项：字节位置 → 格偏移
+    std::vector<std::int32_t> byteToCellEnd; // text.size() 项：字节位置 → 所在单元末格之后一格
 };
 
 // 组建一条逻辑行的纯文本与位置回映表（规则同 ZzSelectionText 提取：
@@ -42,6 +43,7 @@ LineTextMap buildLineText(const ZzIPhysicalLineSource& src,
         for (char c : bytes) {
             m.text.push_back(c);
             m.byteToCell.push_back(cell);
+            m.byteToCellEnd.push_back(cell + cellCount);
             if (needFolded)
                 m.folded.push_back(foldByte(c));
         }
@@ -73,11 +75,13 @@ LineTextMap buildLineText(const ZzIPhysicalLineSource& src,
         }
     }
     // 末尾哨兵先入表（text.size() → 行总长（格）），再行尾空白修剪
-    //（text/folded 同步截断；回映表裁到 text.size()+1，哨兵随之落为
-    // 首个被修剪空白的格偏移=末字符之后一格，而非含尾随空白的行长）。
+    //（text/folded 同步截断；byteToCell 裁到 text.size()+1，哨兵随之落为
+    // 首个被修剪空白的格偏移=末字符之后一格，而非含尾随空白的行长；
+    // byteToCellEnd 无哨兵，逐字节同步 pop，长度恒为 text.size()）。
     m.byteToCell.push_back(cell);
     while (!m.text.empty() && m.text.back() == ' ') {
         m.text.pop_back();
+        m.byteToCellEnd.pop_back();
         if (needFolded)
             m.folded.pop_back();
     }
@@ -112,7 +116,10 @@ std::vector<ZzLogicalRange> zzSearchLines(const ZzIPhysicalLineSource& src,
         std::size_t pos = 0;
         while ((pos = hay.find(needle, pos)) != std::string::npos) {
             const auto cellStart = m.byteToCell[pos];
-            const auto cellEnd = m.byteToCell[pos + needle.size()];
+            // 末字节所在单元的末格之后一格：命中尾落在单元字节中段时
+            // 同样归并整格（规格 5.2），不产零宽区间；match 末尾恰好
+            // 对齐单元边界时等价于 byteToCell[pos + needle.size()]。
+            const auto cellEnd = m.byteToCellEnd[pos + needle.size() - 1];
             out.push_back(ZzLogicalRange{{logicalLine, cellStart}, {logicalLine, cellEnd}});
             pos += needle.size(); // 命中不重叠：从 match 末尾继续
         }
