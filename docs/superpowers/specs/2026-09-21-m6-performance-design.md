@@ -47,9 +47,9 @@ M4/M5 的 benchmark 与终审台账量化出三笔性能债，本里程碑定向
 ### 5.1 债 3：lineAt 借用口（先行任务，其余两件建立其上）
 
 - 接口变更（src/backend/ZzLineSource.h）：`virtual ZzLine lineAt(std::size_t) const = 0` 替换为 `virtual void lineAt(std::size_t unifiedRow, ZzLine& out) const = 0`；内部接口不留双口并存；
-- out 约定：进入时可为任意状态，实现方负责完整覆写（含 cluster 侧表——native copy-assign 天然覆写；contour 填充前须清侧表，ZzLine 侧表清理语义在计划阶段核实后钉进代码注释）；
+- out 约定：进入时可为任意状态，实现方负责完整覆写（含 cluster 侧表——两侧均经赋值语义覆写：native copy-assign、contour move-assign，侧表随赋值整体替换，无残留）；
 - native：out = scrollback_.lineAt(i) / out = screen_.lineAt(r)（vector copy-assign 复用 out 已有容量，消灭反复 malloc）；
-- contour：照现状逻辑填入 out（resize 在列数不变时不重分配；blank 行 fillAttrs 防御等现状逻辑不变）；
+- contour：经既有 snapshot 转换构建后 move-assign 给 out（`out = zzSnapshotContourLine(...)`）。容量复用对 contour 不启用——ZzLine 的 cluster 侧表无公开清理口（clear/resize 均不动侧表，Line.cpp:32-43 已核实），而本里程碑禁止公开 API 变化（3.2），无法新增清理方法；move-assign 语义完整覆写（侧表随赋值替换，无残留泄漏），分配开销与现状持平、零回归。若后续里程碑为 ZzLine 增补侧表清理口，再启用 contour 容量复用（注释钉住）；
 - 调用方迁移：extractLogicalLine（ZzSelectionText.cpp）snapshots 循环复用同一 ZzLine 缓冲改为按行填充——注意该函数当前按值收 snapshots 且 cluster 文本经 owner 行 clusterText 查询，缓冲复用时须保证"cluster 查询与格遍历同一行生命周期内完成"（现逻辑已是逐行处理，天然满足）；buildLineText（ZzSearch.cpp）同形；两个 linesource 测试改调用形式。
 
 ### 5.2 债 1：搜索分配复用（ZzSearch.cpp）
@@ -94,7 +94,7 @@ M4/M5 的 benchmark 与终审台账量化出三笔性能债，本里程碑定向
 ## 6. 风险与对策
 
 - **借用口引入 use-after-clear 类生命周期 bug**（缓冲复用后 cluster 文本查询跨行失效）：调用点逐行处理语义不变，且 cluster 查询严格在同行生命周期内（5.1 已钉）；既有矩阵（cluster/宽字符/接缝用例）兜底；
-- **contour 侧 ZzLine 侧表残留**（复用缓冲时旧 cluster 串污染新行）：out 约定强制完整覆写，代码注释钉住，linesource 测试含 cluster 断言；
+- **contour 侧 ZzLine 侧表残留**（复用缓冲时旧 cluster 串污染新行）：move-assign 整体替换侧表（5.1 已钉），linesource 测试含 cluster 断言兜底；
 - **缓存脏标志漏置**（新路径绕过 noteSelectionAfterFeed）：置脏集中在既有切面，feed/resize 是内容变更唯二入口（M5a 架构事实）；若漏置，测试表现为坐标类断言失败，44 测试兜底；
 - **优化后行为漂移未发现**：硬约束 + 自洽不变量 + compat 三层网；
 - **目标不达**：2A 已定按实测重新裁定，不硬扛。
