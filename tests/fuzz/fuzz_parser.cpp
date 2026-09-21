@@ -1,6 +1,6 @@
 // M7a：ZzVtParser Fuzz target——状态机在任意字节流与任意 chunk 边界下
 // 不崩、不断言、不 UB（ASan + libFuzzer）。sink 基类默认回调全 no-op
-//（src/parser/Parser.cpp:47-54），语义不在本 target 校验范围。
+//（src/parser/VtParser.cpp:47-54），语义不在本 target 校验范围。
 #include "ZzTerm/Parser.h"
 
 #include <cstddef>
