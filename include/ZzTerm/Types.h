@@ -37,6 +37,21 @@ struct ZzPosition {
     friend constexpr bool operator==(ZzPosition, ZzPosition) noexcept = default;
 };
 
+/**
+ * @brief 逻辑行坐标（选区/复制，M5a）。
+ *
+ * line：统一空间逻辑行序号。0 = 当前最早一条有效逻辑行（历史区头部），
+ *       屏幕区紧跟其后；append 与滚动不改变已有内容的序号；历史头部丢弃时
+ *       序号整体下移，Core 自动平移选区锚点。
+ * col：逻辑行内单元格偏移（0 起，按格不按字符）；落在宽字符续格上时
+ *      提取层归一到 lead 格。
+ */
+struct ZzLogicalPos {
+    std::int64_t line = 0; ///< 逻辑行序号（统一空间）
+    std::int32_t col = 0;  ///< 逻辑行内单元格偏移
+    friend bool operator==(const ZzLogicalPos&, const ZzLogicalPos&) = default;
+};
+
 /// @brief 矩形区域（闭区间语义由使用方注明，默认可为空区域）。
 struct ZzRect {
     int topRow = 0;    ///< 起始行（含）。

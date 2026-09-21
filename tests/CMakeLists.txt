@@ -39,6 +39,12 @@ if(TARGET test_reflow)
     target_sources(test_reflow PRIVATE "${CMAKE_SOURCE_DIR}/src/screen/Reflow.cpp")
 endif()
 
+# test_selection / test_selection_text 直接调用 src/terminal 内部实现（无
+# ZZTERM_API 导出）：shared 构建下须把实现文件编进测试可执行文件。
+if(TARGET test_selection)
+    target_sources(test_selection PRIVATE "${CMAKE_SOURCE_DIR}/src/terminal/ZzSelection.cpp")
+endif()
+
 if(TARGET vtparser)
     add_executable(test_contour_smoke unit/test_contour_smoke.cpp)
     target_link_libraries(test_contour_smoke PRIVATE vtparser) # Contour target 一律 PRIVATE
