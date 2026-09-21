@@ -2,6 +2,7 @@
 
 #include "ZzContourBackend.h"
 #include "ZzContourEvents.h"
+#include "ZzContourLineSource.h"
 #include "ZzContourRenderView.h"
 
 #include <utility>
@@ -16,6 +17,8 @@ public:
         : events_(std::make_unique<EventsImpl>(*this))
         , backend_(std::make_unique<ZzContourBackend>(cols, rows, *events_,
                                                       static_cast<int>(scrollbackLines)))
+        // lineSource_ 借用 backend_：声明顺序须在 backend_ 之后（成员按声明序构造）。
+        , lineSource_(*backend_)
         , renderView_(*backend_, state_)
     {}
 
@@ -26,6 +29,7 @@ public:
         backend_->feed(std::string_view(reinterpret_cast<const char*>(data.data()), data.size()));
         backend_->flushReplies(); // 回传字节经 onWriteToTransport（锁外）进 output handler
         const int historyAfter = backend_->historyLineCount();
+        lineSource_.noteFloor(); // 累计 stableFloor 真实前移（容量裁剪）
 
         ZzTermChanges changes;
         changes.screenDirty = screenDirty_;
@@ -51,9 +55,17 @@ public:
     {
         if (cols <= 0 || rows <= 0)
             return false;
-        if (backend_->size() == std::make_pair(cols, rows))
+        const auto [oldCols, oldRows] = backend_->size();
+        if (oldCols == cols && oldRows == rows)
             return false;
         backend_->resize(cols, rows);
+        // 双入口划分（ZzContourLineSource.cpp 文件头结论①）：列变化触发 reflow，
+        // floor 前移是行身份重建副产而非真实丢弃——reanchorFloor 直接对齐不累计；
+        // 纯行数变化 floor 仅在真实裁剪时前移——noteFloor 累计。
+        if (cols != oldCols)
+            lineSource_.reanchorFloor();
+        else
+            lineSource_.noteFloor();
         state_.dirtySinceClear = true;
         ++state_.dirtyGeneration;
         return true;
@@ -103,6 +115,7 @@ public:
         backend_->sendFocusEvent(focused);
         backend_->flushReplies();
     }
+    [[nodiscard]] const ZzIPhysicalLineSource& lineSource() const noexcept override { return lineSource_; }
 
 private:
     // ZzContourEvents 实现：锁内回调（title/bell/altBuffer）只写 adapter 自有状态
@@ -130,6 +143,7 @@ private:
 
     std::unique_ptr<EventsImpl>       events_;
     std::unique_ptr<ZzContourBackend> backend_;
+    ZzContourLineSource               lineSource_; // 借用 backend_，须声明在其后
     ZzContourRenderView::State        state_;
     ZzContourRenderView               renderView_;
     std::string                       title_;

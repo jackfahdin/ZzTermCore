@@ -12,7 +12,9 @@ list(REMOVE_ITEM ZZTERM_UNIT_TEST_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_contour_smoke.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_contour_backend.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_contour_adapter.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_backend_compat.cpp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_contour_linesource.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_backend_compat.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_selection_compat.cpp")
 
 foreach(test_source IN LISTS ZZTERM_UNIT_TEST_SOURCES)
     get_filename_component(test_name "${test_source}" NAME_WE)
@@ -39,6 +41,19 @@ if(TARGET test_reflow)
     target_sources(test_reflow PRIVATE "${CMAKE_SOURCE_DIR}/src/screen/Reflow.cpp")
 endif()
 
+# test_selection / test_selection_text 直接调用 src/terminal 内部实现（无
+# ZZTERM_API 导出）：shared 构建下须把实现文件编进测试可执行文件。
+if(TARGET test_selection)
+    target_sources(test_selection PRIVATE "${CMAKE_SOURCE_DIR}/src/terminal/ZzSelection.cpp")
+endif()
+if(TARGET test_selection_text)
+    target_sources(test_selection_text PRIVATE "${CMAKE_SOURCE_DIR}/src/terminal/ZzSelectionText.cpp")
+endif()
+if(TARGET test_native_linesource)
+    target_sources(test_native_linesource PRIVATE
+        "${CMAKE_SOURCE_DIR}/src/backend/native/ZzNativeLineSource.cpp")
+endif()
+
 if(TARGET vtparser)
     add_executable(test_contour_smoke unit/test_contour_smoke.cpp)
     target_link_libraries(test_contour_smoke PRIVATE vtparser) # Contour target 一律 PRIVATE
@@ -47,9 +62,11 @@ if(TARGET vtparser)
 endif()
 
 # M1a：ZzContourBackend headless 回归测试，仅 Contour 后端启用时构建。
+# ZzTermCore 自 M5a 起必需：ZzContourBackend 的快照口产出 ZzLine
+# （src/screen/Line.cpp，非 header-only，不在 contour 后端库内）。
 if(TARGET ZzTermContourBackend)
     add_executable(test_contour_backend unit/test_contour_backend.cpp)
-    target_link_libraries(test_contour_backend PRIVATE ZzTermContourBackend vtpty) # Contour target 一律 PRIVATE
+    target_link_libraries(test_contour_backend PRIVATE ZzTermContourBackend ZzTermCore vtpty) # Contour target 一律 PRIVATE
     target_compile_features(test_contour_backend PRIVATE cxx_std_23)
     add_test(NAME test_contour_backend COMMAND test_contour_backend)
 endif()
@@ -63,12 +80,30 @@ if(TARGET ZzTermContourBackend)
     add_test(NAME test_contour_adapter COMMAND test_contour_adapter)
 endif()
 
+# M5a：ZzContourLineSource 数据源测试，仅 Contour 后端启用时构建。
+# 除 ZzTermContourBackend 外还需 ZzTermCore：ZzLine 实现（src/screen/Line.cpp）
+# 不在 contour 后端库内（该库此前只消费 header-only 的 ZzCell）。
+if(TARGET ZzTermContourBackend)
+    add_executable(test_contour_linesource unit/test_contour_linesource.cpp)
+    target_link_libraries(test_contour_linesource PRIVATE ZzTermContourBackend ZzTermCore vtpty) # Contour target 一律 PRIVATE
+    target_compile_features(test_contour_linesource PRIVATE cxx_std_23)
+    add_test(NAME test_contour_linesource COMMAND test_contour_linesource)
+endif()
+
 # M1b：双后端对照测试，同一 VT 序列喂 Native/Contour 逐格比对（native 为基准）。
 # 只碰公开头（C++20 即可），仅链接 ZzTermCore。
 if(TARGET ZzTermContourBackend)
     add_executable(test_backend_compat unit/test_backend_compat.cpp)
     target_link_libraries(test_backend_compat PRIVATE ZzTermCore)
     add_test(NAME test_backend_compat COMMAND test_backend_compat)
+endif()
+
+# M5a：双后端选区提取 compat（同一脚本 selectedText 逐字节一致，native 为基准）。
+# 只碰公开头，仅链接 ZzTermCore（同 test_backend_compat 的 shared 构建理由）。
+if(TARGET ZzTermContourBackend)
+    add_executable(test_selection_compat unit/test_selection_compat.cpp)
+    target_link_libraries(test_selection_compat PRIVATE ZzTermCore)
+    add_test(NAME test_selection_compat COMMAND test_selection_compat)
 endif()
 
 # 脚本化冒烟：PTY 驱动 Core 全链路——真实 bash 输出经 ZzTerminal 渲染回 stdout，

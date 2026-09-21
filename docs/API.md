@@ -141,6 +141,45 @@ Native 引擎已落地语义：
   有意简化。其余 DEC 私有模式（鼠标、bracketed paste 等）
   安全忽略，属 M3。
 
+### 选区与复制（M5a）
+
+选区基于 `ZzLogicalPos` 统一空间坐标（`ZzTerm/Types.h`）：`line` 为逻辑
+行序号，0 = 当前最早一条有效逻辑行（历史区头部），屏幕区紧跟其后；
+append 与滚动不改变已有内容的序号，历史头部丢弃时序号整体下移、Core
+自动平移选区锚点（物理行计数近似并 clamp）；`col` 为逻辑行内单元格
+偏移（0 起，按格不按字符），落在宽字符续格上时提取层归一到 lead 格。
+坐标越界 clamp 到有效范围；切换 Alternate 屏时选区清空。
+
+`ZzTerminal` 六条选区 API（双后端语义一致）：
+
+- `setSelection(anchor, extent)` 设置选区（替换现有）；两端无序要求，
+  内部规范化。
+- `extendSelection(extent)` 拖动活动端（anchor 不变）；无选区时等价于
+  `setSelection(extent, extent)`。
+- `clearSelection()` 清空选区。
+- `hasSelection()` 是否有非空选区（anchor != extent）。
+- `selectionRange(start, end)` 查询规范化选区区间（半开区间
+  [start, end)），空选区返回 false 且不写入出参；供前端绘制高亮。
+- `selectedText()` 提取选区纯文本（UTF-8；空选区返回空串）。
+
+提取规则四条（规格 5.4）：
+
+1. 宽字符按格步进、续格跳过；边界落在半字上时归一（start 退到 lead、
+   end 进到续格之后），不拆半字；
+2. cluster 格取整串；
+3. 软换行不插换行；跨逻辑行插单个换行符，末尾无换行；
+4. 每条逻辑行尾部的空单元格与空格修剪；行内空单元格输出为一个空格。
+
+前端职责：鼠标/触摸像素坐标换算为 `ZzLogicalPos` 由前端负责（Core 不
+引入像素概念）；高亮绘制经 `selectionRange` 取区间后自行换算屏幕行；
+feed/resize 后坐标可能已被平移或 clamp，需重新查询。双后端
+`selectedText` 逐字节一致性由 test_selection_compat 钉住（native 为
+基准，本里程碑未产生新 b 类分歧）。
+
+已知限制：滚动区局部滚动、DL/IL 等销毁屏幕内容的操作发生时，后续逻辑行
+序号上移而已有选区锚点不跟随（规格 5.1 的序号不变量只对全屏滚出入历史
+成立）；v1 接受该语义。
+
 ### Parser（UTF-8 / VT / xterm）
 
 增量解析，支持任意 chunk 边界；状态至少包含 Ground、Escape、

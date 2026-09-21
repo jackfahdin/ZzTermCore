@@ -30,6 +30,7 @@ struct ZzNativeBackend::Sink : ZzParserSink {
 ZzNativeBackend::ZzNativeBackend(int cols, int rows, std::size_t scrollbackMaxLines)
     : screen_(cols, rows)
     , scrollback_(zzCreateChunkedScrollback(scrollbackMaxLines))
+    , lineSource_(screen_, *scrollback_)
     , renderView_(screen_)
     , sink_(std::make_unique<Sink>(*this))
     , parser_(std::make_unique<ZzVtParser>(sink_.get()))

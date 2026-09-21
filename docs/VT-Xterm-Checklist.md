@@ -118,7 +118,8 @@
 -   [x] Hard-newline preservation（硬行永不多行化，M4）
 -   [x] Wide grapheme boundary（宽字符不拆半，M4）
 -   [x] Cursor mapping（逻辑行链 + 链内偏移跟随，M4）
--   [ ] Selection/Search mapping（M5）
+-   [x] Selection mapping（M5a 已交付：reflow 保持选区文本，见 Selection 节）
+-   [ ] Search mapping（M5b）
 -   [x] Alternate-screen behavior（备用屏重组、溢出丢弃，M4）
 
 ## Input / IME
@@ -206,12 +207,29 @@
 -   [x] Grow Rows（纯行数增减不触发 reflow，M4 已交付，见 Resize / Reflow 节）
 -   [x] Shrink Rows（纯行数增减不触发 reflow，M4 已交付，见 Resize / Reflow 节）
 -   [x] Cursor Mapping after Reflow（M4 已交付，见 Resize / Reflow 节）
--   [ ] Selection Mapping after Reflow
--   [ ] Search Match Mapping after Reflow
+-   [x] Selection Mapping after Reflow（M5a 已交付，见 Selection 节）
+-   [ ] Search Match Mapping after Reflow（M5b）
 -   [ ] Scrollback View Anchor after Reflow
 -   [x] Alternate Screen Resize Behavior（备用屏重组、溢出丢弃，M4 已交付，见 Resize / Reflow 节）
 -   [x] 100k-line Reflow Benchmark（M4 已交付 test_perf_scrollback 10 万行 reflow 门控）
 -   [ ] 1M-line Reflow Benchmark
+
+## Selection
+
+-   [x] setSelection（M5a 双后端：设置选区，两端无序内部规范化，越界 clamp）
+-   [x] extendSelection（M5a：拖动活动端，anchor 不变）
+-   [x] clearSelection（M5a）
+-   [x] hasSelection（M5a：非空选区判定 anchor != extent）
+-   [x] selectionRange（M5a：规范化半开区间 [start, end)，供前端绘制高亮）
+-   [x] selectedText（M5a：提取纯文本——宽字符整取、cluster 整串、
+    软换行不插换行、跨逻辑行插单个换行、行尾空白修剪）
+-   [x] 历史+屏幕统一空间选区（M5a：ZzLogicalPos 逻辑行序号跨历史/屏幕接缝）
+-   [x] 软换行逻辑行选区（M5a：软链拼接不插换行）
+-   [x] 宽字符选区（M5a：边界归一不拆半字）
+-   [x] Selection Mapping after Reflow（M5a：列变 reflow 保持选区文本）
+-   [x] 双后端 compat（M5a test_selection_compat：同一脚本 selectedText
+    逐字节一致，native 为基准；本里程碑未产生新 b 类分歧）
+-   [ ] 前端鼠标换算与高亮绘制（ZzTermWidget 职责）
 
 ## Terminal Font Zoom
 
