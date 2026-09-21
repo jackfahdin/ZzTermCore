@@ -11,6 +11,7 @@
 #include "ZzTerm/Utf8.h"
 
 #include "ZzNativeRenderView.h"
+#include "ZzNativeLineSource.h"
 
 class ZzNativeBackend final : public ZzTerminalBackend {
 public:
@@ -33,6 +34,7 @@ public:
     void sendMouse(const ZzMouseEvent& event) override;
     void sendPaste(std::string_view utf8) override;
     void sendFocus(bool focused) override;
+    [[nodiscard]] const ZzIPhysicalLineSource& lineSource() const noexcept override { return lineSource_; }
 
     // ---- facade 的 screen()/scrollback() 委托用（Native 限定访问） ----
     [[nodiscard]] ZzScreen& screen() noexcept { return screen_; }
@@ -60,6 +62,7 @@ public:
 
     ZzScreen                     screen_;     ///< 工作区（内含 Primary/Alternate）。
     std::unique_ptr<ZzScrollback> scrollback_; ///< 历史后端（接口指针，实现可替换）。
+    ZzNativeLineSource           lineSource_; ///< 统一物理行数据源（借用 screen_/scrollback_，须声明在二者之后）。
     ZzNativeRenderView           renderView_; ///< 渲染边界（借用 screen_）。
     std::string                  title_;      ///< OSC 标题（UTF-8）。
     std::size_t                  scrolledOutPending_ = 0; ///< feed 内滚出行计数（回调聚合用）。

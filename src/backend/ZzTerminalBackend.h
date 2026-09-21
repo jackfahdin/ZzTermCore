@@ -12,6 +12,7 @@
 #include <string>
 #include <string_view>
 
+#include "ZzLineSource.h"
 #include "ZzTerm/Input.h"
 #include "ZzTerm/RenderView.h"
 #include "ZzTerm/Screen.h"
@@ -46,4 +47,6 @@ public:
     virtual void sendPaste(std::string_view utf8) = 0;
     /// 编码并发出焦点事件（focus reporting 1004 开启时 CSI I/O）。
     virtual void sendFocus(bool focused) = 0;
+    /// 统一物理行只读数据源（M5a 选区/复制；借用语义同 renderView）。
+    [[nodiscard]] virtual const ZzIPhysicalLineSource& lineSource() const noexcept = 0;
 };

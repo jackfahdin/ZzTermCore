@@ -250,6 +250,8 @@ void ZzNativeBackend::switchToAlternate(bool saveCur)
         hasSavedScrollRegion_ = true;
         screen_.setActiveBuffer(ZzScreenBuffer::Alternate);
         screen_.resetScrollRegion();
+        if (activeChanges_)
+            activeChanges_->activeBufferChanged = true;
     }
     // xterm：1049h/1047h 进入 alt 均清全屏；alt 光标为该 buffer 自存位置
     // （初次进入即原点），eraseInDisplay 不动光标。
@@ -262,6 +264,8 @@ void ZzNativeBackend::switchToPrimary(bool restoreCur)
     if (screen_.activeBuffer() == ZzScreenBuffer::Primary)
         return; // 幂等
     screen_.setActiveBuffer(ZzScreenBuffer::Primary);
+    if (activeChanges_)
+        activeChanges_->activeBufferChanged = true;
     if (hasSavedScrollRegion_) {
         screen_.setScrollRegion(savedScrollTop_, savedScrollBottom_);
         hasSavedScrollRegion_ = false;

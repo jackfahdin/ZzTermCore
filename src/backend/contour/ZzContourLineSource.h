@@ -1,7 +1,8 @@
 // ZzContourLineSource：contour 后端的统一物理行数据源（M5a）。
-// 历史读取经 ZzContourBackend 新增只读口；丢弃计数由适配层在每次
-// feed/resize 后调 noteFloor() 累计（stableFloor 前移量；zero-history 分支
-// 回退不计）。Alternate 屏时历史归零。
+// 历史读取经 ZzContourBackend 新增只读口；丢弃计数由适配层双入口维护：
+// feed/纯行数 resize 后调 noteFloor() 累计真实裁剪（stableFloor 前移量；
+// zero-history 分支回退不计）；列变化 resize（reflow，RowIdentity::Destroyed）
+// 后调 reanchorFloor() 直接对齐不累计。Alternate 屏时历史归零。
 #pragma once
 
 #include "../ZzLineSource.h"

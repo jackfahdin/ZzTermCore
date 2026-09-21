@@ -217,6 +217,46 @@ public:
      */
     void sendFocus(bool focused);
 
+    // ---- 选区与复制（M5a） ----
+
+    /**
+     * @brief 设置选区（替换现有选区）。
+     * @param anchor 锚点（选区固定端）。
+     * @param extent 活动端。anchor 与 extent 无序要求，内部规范化。
+     * @note 坐标越界 clamp 到有效范围；鼠标/触摸换算由前端负责。
+     *       历史头部丢弃时 Core 自动平移锚点（物理行计数近似，语义见
+     *       docs/Architecture.md 选区条款）；切换 Alternate 屏时选区清空。
+     */
+    void setSelection(ZzLogicalPos anchor, ZzLogicalPos extent);
+
+    /**
+     * @brief 拖动选区活动端（anchor 不变）。
+     * @param extent 新活动端。无选区时等价于 setSelection(extent, extent)。
+     */
+    void extendSelection(ZzLogicalPos extent);
+
+    /// @brief 清空选区。
+    void clearSelection() noexcept;
+
+    /// @brief 是否有非空选区（anchor != extent）。
+    [[nodiscard]] bool hasSelection() const noexcept;
+
+    /**
+     * @brief 查询规范化选区区间（半开区间 [start, end)）。
+     * @param start 输出：区间起点。
+     * @param end 输出：区间终点。
+     * @return false = 空选区（start/end 不写入）。
+     * @note 供前端绘制高亮使用；feed/resize 后坐标可能已被平移/clamp。
+     */
+    bool selectionRange(ZzLogicalPos& start, ZzLogicalPos& end) const;
+
+    /**
+     * @brief 提取选区纯文本。
+     * @return UTF-8 文本；空选区返回空串。规则：宽字符整取、cluster 整串、
+     *         软换行不插换行、跨逻辑行插单个换行、行尾空白修剪。
+     */
+    [[nodiscard]] std::string selectedText() const;
+
     // ---- Core 内部访问（供 parser/terminal 模块协作，不属于 Renderer API） ----
 
     /**

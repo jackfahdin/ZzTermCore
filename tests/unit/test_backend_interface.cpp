@@ -23,6 +23,16 @@ public:
     ZzCellRange dirtyRange(int) const noexcept override { return {}; }
 };
 
+class FakeLineSource final : public ZzIPhysicalLineSource {
+public:
+    std::size_t historyLineCount() const override { return 0; }
+    int screenRowCount() const override { return 0; }
+    int cols() const override { return 0; }
+    ZzLine lineAt(std::size_t) const override { return {}; }
+    bool lineWrapped(std::size_t) const override { return false; }
+    std::uint64_t droppedLineCount() const override { return 0; }
+};
+
 class FakeBackend : public ZzTerminalBackend {
 public:
     ZzTermChanges feed(std::span<const std::byte> data) override
@@ -51,11 +61,13 @@ public:
     void sendMouse(const ZzMouseEvent& /*event*/) override {}
     void sendPaste(std::string_view /*utf8*/) override {}
     void sendFocus(bool /*focused*/) override {}
+    const ZzIPhysicalLineSource& lineSource() const noexcept override { return lineSource_; }
 
     std::size_t fedBytes = 0;
     bool outputHandlerSet = false;
     ZzSize lastSize{80, 24};
     FakeRenderView view_;
+    FakeLineSource lineSource_;
     std::string title_;
     int clearCount = 0;
 };
