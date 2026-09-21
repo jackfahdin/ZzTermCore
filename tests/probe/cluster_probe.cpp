@@ -177,5 +177,37 @@ int main()
     // H1 连用 Jamo L+V（U+1100+U+1161）、H2 预组音节+Jamo T（가+U+11A8）。
     probe("H1 Hangul L+V U+1100+U+1161", "\xE1\x84\x80\xE1\x85\xA1");
     probe("H2 Hangul LV+T U+AC00+U+11A8", "\xEA\xB0\x80\xE1\x86\xA8");
+
+    // T4 并入项 A：T3 审查延后的四个边界形态（先探后钉）。
+    // A1a ZWJ 链尾列变体 a：77a + 👨（占 c77-78，光标 (0,79)）+ ZWJ + 👩。
+    {
+        std::string s(77, 'a');
+        s += "\xF0\x9F\x91\xA8\xE2\x80\x8D\xF0\x9F\x91\xA9";
+        probe("A1a 77a+👨+ZWJ+👩 ZWJ链尾列变体a", s);
+    }
+    // A1b 变体 b：78a + 👨（占 c78-79，wrap-pending）+ ZWJ + 👩。
+    {
+        std::string s(78, 'a');
+        s += "\xF0\x9F\x91\xA8\xE2\x80\x8D\xF0\x9F\x91\xA9";
+        probe("A1b 78a+👨wp+ZWJ+👩 ZWJ链尾列变体b", s);
+    }
+    // A2a 变宽覆盖既有内容：abc + CUB2 回移 c1 + ☝ + VS16（c2 的 c 命运）。
+    probe("A2a abc回移+☝+VS16 覆盖变宽", "abc\x1b[2D\xE2\x98\x9D\xEF\xB8\x8F");
+    // A2b 宽格邻居：a中b + CUB3 回移 c1 + ☝ + VS16（中 lead 被覆盖后其续格命运）。
+    probe("A2b a中b回移+☝+VS16 覆盖宽格", "a\xE4\xB8\xAD"
+                                          "b\x1b[3D\xE2\x98\x9D\xEF\xB8\x8F");
+    // A3 prev 在 c78 变宽恰好占满行尾：78a + ☝（c78）+ VS16。
+    {
+        std::string s(78, 'a');
+        s += "\xE2\x98\x9D\xEF\xB8\x8F";
+        probe("A3 78a+☝+VS16 变宽占满行尾", s);
+    }
+    // A4 DECAWM 关 + wrap-pending + 组合符：80a 写满 c79 置 wrap-pending 后喂 U+0301。
+    {
+        std::string s = "\x1b[?7l";
+        s += std::string(80, 'a');
+        s += "\xCC\x81";
+        probe("A4 DECAWM关+80a+U+0301", s);
+    }
     return 0;
 }

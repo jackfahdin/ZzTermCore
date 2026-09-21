@@ -93,17 +93,17 @@ bool zzTryClusterContinue(ZzScreen& screen, char32_t cp, ZzPosition cur,
 {
     const ZzSize sz = screen.size();
 
-    // 前格定位（T2 §3 软换行边界裁定）：普通情形取光标同行左邻格；本次
-    // wrap-pending 换行后（cur 在新行首列）取上一行行尾格（B2 形态）；
-    // DECAWM 关未换行时取覆盖目标格本身（未探边界，按覆盖语义续）；其余
-    // 行首无前格即断。
+    // 前格定位（T2 §3 软换行边界裁定 + A4 实测）：DECAWM 关且 wrap-pending
+    // 未换行时取覆盖目标格本身（组合符并入末格，与 contour A4 实测一致）；
+    // 普通情形取光标同行左邻格；本次 wrap-pending 换行后（cur 在新行首列）
+    // 取上一行行尾格（B2 形态）；其余行首无前格即断。
     ZzPosition prev{-1, -1};
-    if (cur.col > 0)
+    if (wasWrapPending && !wrappedThis) // DECAWM 关：覆盖目标即最后一格
+        prev = cur;
+    else if (cur.col > 0)
         prev = ZzPosition{cur.row, cur.col - 1};
     else if (wrappedThis && cur.row > 0)
         prev = ZzPosition{cur.row - 1, sz.cols - 1};
-    else if (wasWrapPending) // DECAWM 关：覆盖目标即最后一格
-        prev = cur;
     else
         return false;
     // 左邻是 WideContinuation 时退到其 WideLead（宽格对上的续接落首格）。

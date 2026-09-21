@@ -15,7 +15,8 @@ list(REMOVE_ITEM ZZTERM_UNIT_TEST_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_contour_linesource.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_backend_compat.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_selection_compat.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_search_compat.cpp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_search_compat.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_cluster_compat.cpp")
 
 foreach(test_source IN LISTS ZZTERM_UNIT_TEST_SOURCES)
     get_filename_component(test_name "${test_source}" NAME_WE)
@@ -137,6 +138,13 @@ if(TARGET ZzTermContourBackend)
     add_executable(test_search_compat unit/test_search_compat.cpp)
     target_link_libraries(test_search_compat PRIVATE ZzTermCore)
     add_test(NAME test_search_compat COMMAND test_search_compat)
+endif()
+
+# M7b：双后端聚簇 compat（同一聚簇脚本逐格比对，native 以 contour 为基准）。
+if(TARGET ZzTermContourBackend)
+    add_executable(test_cluster_compat unit/test_cluster_compat.cpp)
+    target_link_libraries(test_cluster_compat PRIVATE ZzTermCore)
+    add_test(NAME test_cluster_compat COMMAND test_cluster_compat)
 endif()
 
 # 脚本化冒烟：PTY 驱动 Core 全链路——真实 bash 输出经 ZzTerminal 渲染回 stdout，
