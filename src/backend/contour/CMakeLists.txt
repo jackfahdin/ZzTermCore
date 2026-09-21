@@ -13,5 +13,7 @@ add_library(ZzTermContourBackend STATIC
 target_include_directories(ZzTermContourBackend PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 # ZzContourBackend.h 引用 ZzTermCore 公开头（<ZzTerm/Cell.h>，header-only），只引 include 路径、不链接 ZzTermCore。
 target_include_directories(ZzTermContourBackend PUBLIC "${CMAKE_SOURCE_DIR}/include")
+# M7c：unicode/Utf8Encode.h（src 内部头）经本路径引入，UTF-8 编码与主库统一。
+target_include_directories(ZzTermContourBackend PRIVATE "${CMAKE_SOURCE_DIR}/src")
 target_link_libraries(ZzTermContourBackend PRIVATE vtbackend)
 target_compile_features(ZzTermContourBackend PRIVATE cxx_std_23)

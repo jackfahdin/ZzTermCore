@@ -1,5 +1,8 @@
-// zzEncodeUtf8：码点 → UTF-8 编码（src/terminal 内部共享，M5b 自
-// ZzSelectionText.cpp 抽出；ZzSearch/ZzSelectionText 共用）。
+// zzEncodeUtf8 / zzAppendCodePoint：码点 → UTF-8 编码的 canonical 实现
+// （unicode 模块；M5b 自 ZzSelectionText.cpp 抽出，M7c 自 src/terminal 迁入）。
+// 解码器在 ZzTerm/Utf8.h（ZzUtf8Decoder），编码/解码同属 unicode 模块。
+// header-only inline、C++20 写法（C++23 兼容），供主库与 contour 后端库
+// 共享——contour 库经 PRIVATE include "${CMAKE_SOURCE_DIR}/src" 引用。
 #pragma once
 
 #include <cstddef>

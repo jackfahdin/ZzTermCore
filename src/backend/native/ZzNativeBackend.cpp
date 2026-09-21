@@ -4,6 +4,7 @@
 #include "ZzTerm/Utf8.h"
 
 #include "unicode/GraphemeBreak.h"
+#include "unicode/Utf8Encode.h"
 
 #include <string>
 #include <vector>
@@ -13,26 +14,6 @@
 // print 通道字节经 ZzUtf8Decoder 解码为码点后由 putChar 落格。
 
 namespace {
-
-// 单码点 UTF-8 编码追加（Utf8.h 只提供解码器；聚簇串拼接用）。
-void zzAppendUtf8(std::string& out, char32_t cp)
-{
-    if (cp < 0x80) {
-        out.push_back(static_cast<char>(cp));
-    } else if (cp < 0x800) {
-        out.push_back(static_cast<char>(0xC0u | (cp >> 6)));
-        out.push_back(static_cast<char>(0x80u | (cp & 0x3Fu)));
-    } else if (cp < 0x10000) {
-        out.push_back(static_cast<char>(0xE0u | (cp >> 12)));
-        out.push_back(static_cast<char>(0x80u | ((cp >> 6) & 0x3Fu)));
-        out.push_back(static_cast<char>(0x80u | (cp & 0x3Fu)));
-    } else {
-        out.push_back(static_cast<char>(0xF0u | (cp >> 18)));
-        out.push_back(static_cast<char>(0x80u | ((cp >> 12) & 0x3Fu)));
-        out.push_back(static_cast<char>(0x80u | ((cp >> 6) & 0x3Fu)));
-        out.push_back(static_cast<char>(0x80u | (cp & 0x3Fu)));
-    }
-}
 
 // 聚簇宽度裁定（T2 表 §1 实测归约）：true = 聚簇应占 2 格——RI（单发即宽）、
 // ExtPic+VS16、keycap（须带 VS16，裸 keycap 窄）、InCB 连字（基窄也宽）、
@@ -139,7 +120,7 @@ bool zzTryClusterContinue(ZzScreen& screen, char32_t cp, ZzPosition cur,
         prevCps.assign(decoded.begin(), decoded.end());
     } else {
         prevCps.push_back(prevCell.codePoint());
-        zzAppendUtf8(newText, prevCell.codePoint());
+        zzAppendCodePoint(newText, prevCell.codePoint());
     }
     if (!zzGraphemeContinues(prevCps, cp))
         return false;
@@ -147,7 +128,7 @@ bool zzTryClusterContinue(ZzScreen& screen, char32_t cp, ZzPosition cur,
     // 续接落格（T2 §5b 画笔裁定：只更新文本，前景/背景/属性保持前格原值；
     // 旧 cluster 侧表条目弃置不管——internCluster 不查重约定）。
     prevCps.push_back(cp);
-    zzAppendUtf8(newText, cp);
+    zzAppendCodePoint(newText, cp);
     ZzCell merged = prevCell;
     merged.setCluster(screen.internClusterAt(prev.row, newText));
 
