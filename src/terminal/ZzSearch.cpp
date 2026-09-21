@@ -49,8 +49,9 @@ LineTextMap buildLineText(const ZzIPhysicalLineSource& src,
         }
         cell += cellCount;
     };
+    ZzLine line;
     for (std::size_t r = 0; r < rowCount; ++r) {
-        const ZzLine line = src.lineAt(firstRow + r);
+        src.lineAt(firstRow + r, line);
         for (int c = 0; c < cols; ++c) {
             const ZzCell& zc = line.cellAt(c);
             switch (zc.width()) {

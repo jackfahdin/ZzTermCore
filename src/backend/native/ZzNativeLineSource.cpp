@@ -25,12 +25,13 @@ int ZzNativeLineSource::cols() const
     return screen_.size().cols;
 }
 
-ZzLine ZzNativeLineSource::lineAt(std::size_t unifiedRow) const
+void ZzNativeLineSource::lineAt(std::size_t unifiedRow, ZzLine& out) const
 {
     const std::size_t history = historyLineCount();
     if (unifiedRow < history)
-        return scrollback_.lineAt(unifiedRow);
-    return screen_.lineAt(static_cast<int>(unifiedRow - history));
+        out = scrollback_.lineAt(unifiedRow); // copy-assign：复用 out 容量
+    else
+        out = screen_.lineAt(static_cast<int>(unifiedRow - history));
 }
 
 bool ZzNativeLineSource::lineWrapped(std::size_t unifiedRow) const

@@ -28,7 +28,7 @@ public:
     std::size_t historyLineCount() const override { return 0; }
     int screenRowCount() const override { return 0; }
     int cols() const override { return 0; }
-    ZzLine lineAt(std::size_t) const override { return {}; }
+    void lineAt(std::size_t, ZzLine& out) const override { out = ZzLine{}; }
     bool lineWrapped(std::size_t) const override { return false; }
     std::uint64_t droppedLineCount() const override { return 0; }
 };

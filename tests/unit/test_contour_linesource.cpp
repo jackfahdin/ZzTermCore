@@ -49,11 +49,14 @@ static void testHistorySnapshot()
     // 造 3 条硬行历史 + 屏幕可见行：每行 "r0\r\n" 等
     backend.feed("r0\r\nr1\r\nr2\r\nr3");
     ZzContourLineSource src(backend);
-    ZZ_TEST_EXPECT(src.historyLineCount() == 2);      // 4 行内容 2 行屏 → 2 行历史
-    ZZ_TEST_EXPECT(lineText(src.lineAt(0), 2) == "r0"); // 0 = 最旧
-    ZZ_TEST_EXPECT(!src.lineWrapped(0));                // 硬行
+    ZZ_TEST_EXPECT(src.historyLineCount() == 2); // 4 行内容 2 行屏 → 2 行历史
+    ZzLine line;
+    src.lineAt(0, line);
+    ZZ_TEST_EXPECT(lineText(line, 2) == "r0"); // 0 = 最旧
+    ZZ_TEST_EXPECT(!src.lineWrapped(0));       // 硬行
     ZZ_TEST_EXPECT(src.screenRowCount() == 2);
-    ZZ_TEST_EXPECT(lineText(src.lineAt(src.historyLineCount()), 2) == "r2"); // 屏幕首行
+    src.lineAt(src.historyLineCount(), line);
+    ZZ_TEST_EXPECT(lineText(line, 2) == "r2"); // 屏幕首行
 }
 
 static void testSoftWrapChainWrappedFlag()
@@ -66,7 +69,9 @@ static void testSoftWrapChainWrappedFlag()
     const auto screenFirst = src.historyLineCount();
     ZZ_TEST_EXPECT(src.lineWrapped(screenFirst));
     ZZ_TEST_EXPECT(!src.lineWrapped(screenFirst + 1));
-    ZZ_TEST_EXPECT(lineText(src.lineAt(screenFirst), 5) == "abcde");
+    ZzLine line;
+    src.lineAt(screenFirst, line);
+    ZZ_TEST_EXPECT(lineText(line, 5) == "abcde");
 }
 
 static void testDroppedCountAccumulates()

@@ -70,12 +70,14 @@ int ZzContourLineSource::cols() const
     return backend_.size().first;
 }
 
-ZzLine ZzContourLineSource::lineAt(std::size_t unifiedRow) const
+void ZzContourLineSource::lineAt(std::size_t unifiedRow, ZzLine& out) const
 {
     const auto history = historyLineCount();
     if (unifiedRow < history)
-        return backend_.historyLineSnapshot(static_cast<int>(unifiedRow));
-    return backend_.screenLineSnapshot(static_cast<int>(unifiedRow - history));
+        out = backend_.historyLineSnapshot(static_cast<int>(unifiedRow));
+    else
+        out = backend_.screenLineSnapshot(static_cast<int>(unifiedRow - history));
+    // move-assign：侧表整体替换无残留；分配开销与旧值返回持平（规格 M6 5.1 裁定）
 }
 
 bool ZzContourLineSource::lineWrapped(std::size_t unifiedRow) const
