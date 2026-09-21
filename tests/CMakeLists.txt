@@ -53,6 +53,9 @@ if(TARGET test_native_linesource)
     target_sources(test_native_linesource PRIVATE
         "${CMAKE_SOURCE_DIR}/src/backend/native/ZzNativeLineSource.cpp")
 endif()
+if(TARGET test_search_state)
+    target_sources(test_search_state PRIVATE "${CMAKE_SOURCE_DIR}/src/terminal/ZzSearchState.cpp")
+endif()
 
 if(TARGET vtparser)
     add_executable(test_contour_smoke unit/test_contour_smoke.cpp)
