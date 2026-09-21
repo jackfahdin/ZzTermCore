@@ -26,15 +26,23 @@ file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/corpus/feed"
 
 # ctest smoke：seed corpus 起步各跑 30 秒，TIMEOUT 60。
 # 撞出崩溃时的处置按规格 M7a 4.5 崩溃预案裁定。
+# ENVIRONMENT ASAN_OPTIONS=symbolize=0：本机符号化路径可能病态缓慢
+# （NEW_FUNC 逐符号 ~1s 阻塞，实证把 fuzz_feed smoke 拖过 TIMEOUT 60）；
+# symbolize=0 不影响崩溃侦测语义（ASan 报错仍 abort、crash artifact 仍
+# 落盘、退出码语义不变），符号栈可从 artifact 离线符号化。
 add_test(NAME fuzz_parser_smoke
     COMMAND fuzz_parser "${CMAKE_CURRENT_BINARY_DIR}/corpus-work/parser"
             "${CMAKE_CURRENT_SOURCE_DIR}/corpus/parser"
             -max_total_time=30 -print_final_stats=1
             "-artifact_prefix=${CMAKE_CURRENT_BINARY_DIR}/fuzz-artifacts/")
-set_tests_properties(fuzz_parser_smoke PROPERTIES TIMEOUT 60)
+set_tests_properties(fuzz_parser_smoke PROPERTIES
+    TIMEOUT 60
+    ENVIRONMENT "ASAN_OPTIONS=symbolize=0")
 add_test(NAME fuzz_feed_smoke
     COMMAND fuzz_feed "${CMAKE_CURRENT_BINARY_DIR}/corpus-work/feed"
             "${CMAKE_CURRENT_SOURCE_DIR}/corpus/feed"
             -max_total_time=30 -print_final_stats=1
             "-artifact_prefix=${CMAKE_CURRENT_BINARY_DIR}/fuzz-artifacts/")
-set_tests_properties(fuzz_feed_smoke PROPERTIES TIMEOUT 60)
+set_tests_properties(fuzz_feed_smoke PROPERTIES
+    TIMEOUT 60
+    ENVIRONMENT "ASAN_OPTIONS=symbolize=0")

@@ -69,7 +69,7 @@ Architecture §204 早已点名三类 Fuzz target，至今空白。M7b（Unicode
 
 ### 4.5 smoke 测试与崩溃预案
 
-- 仅 ZZTERM_FUZZ=ON 时注册两个 ctest 用例：fuzz_parser_smoke、fuzz_feed_smoke，各以 `-max_total_time=30 -print_final_stats=1` 跑 seed corpus 起始的 30 秒 fuzz，TIMEOUT 60 秒；
+- 仅 ZZTERM_FUZZ=ON 时注册两个 ctest 用例：fuzz_parser_smoke、fuzz_feed_smoke，各以 `-max_total_time=30 -print_final_stats=1` 跑 seed corpus 起始的 30 秒 fuzz，TIMEOUT 60 秒；smoke 注册固定 `ASAN_OPTIONS=symbolize=0`（防机器符号化路径病态拖垮门控——实证本机 NEW_FUNC 逐符号约 1s 阻塞可把 smoke 拖过 TIMEOUT；崩溃侦测语义不变：ASan 报错仍 abort、crash artifact 仍落盘，符号栈从 artifact 离线符号化）；
 - 崩溃预案（钉死）：smoke 撞出崩溃 → 留最小复现输入 → 控制者裁定两条路——少量且成因明确的 bug 顺手修掉；成批出现或触及深水区的，记录为后续必修项，崩溃输入加入 corpus，门控语义改为「已知崩溃集合外无新崩溃」（用 -ignore_crashes 或等价机制隔离已知项）。不搞假绿，也不让基建被存量 bug 绑架；
 - 崩溃产物：CI 与本地产物目录约定为 build 下 fuzz-artifacts/，gitignore 排除。
 
