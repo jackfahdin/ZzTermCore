@@ -45,7 +45,8 @@ Architecture §204 早已点名三类 Fuzz target，至今空白。M7b（Unicode
 - 根 CMakeLists.txt 增加 `option(ZZTERM_FUZZ "Build libFuzzer targets" OFF)`；ON 时校验 `CMAKE_CXX_COMPILER_ID MATCHES "Clang"`，否则 FATAL_ERROR（gcc 无 libFuzzer，提前硬失败优于链接期玄学报错）；
 - 编译选项分层：ON 时全 build 追加 `-fsanitize=address`（库与测试同被 ASan 覆盖，保证 harness 链接一致）；仅 fuzz target 追加 `fuzzer`（即 target 级 `-fsanitize=fuzzer,address`，libFuzzer 的 main 只进 harness）；
 - preset `linux-clang-fuzz`：继承 ninja-base 惯例，RelWithDebInfo（保留符号便于崩溃定位，优化级别贴近真实运行）、`ZZTERM_FUZZ=ON`、`ZZTERM_WITH_CONTOUR=OFF`（砍 contour 构建换迭代速度）；编译器写通用名 clang/clang++，本机无裸名时以 `CXX=clang++-20 cmake --preset linux-clang-fuzz` env 覆盖，CI 装包后通用名直接可用；
-- CI：ci.yml 的 ubuntu-clang job 追加 fuzz preset 配置 + 构建 + 两个 smoke 测试步骤（ctest -R fuzz）。
+- CI：ci.yml 的 ubuntu-clang job 追加 fuzz preset 配置 + 构建 + 两个 smoke 测试步骤（ctest -R fuzz）；
+- Action 版本策略（本里程碑起生效的仓库惯例）：GitHub 官方托管 Runner（ubuntu-latest、windows-latest、macos-latest）默认采用 Action 的最新稳定 Major 版本；self-hosted Runner 升级 Action Major 前必须核查最低 Runner 版本、Node.js runtime 要求与 Breaking Changes。现状核查：ci.yml 全部为 actions/checkout v4（当前最新稳定 Major），合规。
 
 ### 4.2 fuzz_parser.cpp（ZzVtParser 裸解析）
 
