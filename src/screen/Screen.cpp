@@ -151,6 +151,15 @@ void ZzScreen::putCell(ZzPosition pos, const ZzCell& cell) noexcept
     markDirty(pos.row, pos.col);
 }
 
+std::uint32_t ZzScreen::internClusterAt(int row, std::string_view utf8)
+{
+    // 与 putCell 同通道取可变行；row 界内前提同 lineAt 注释约定（越界忽略）。
+    if (row < 0 || row >= rows_)
+        return 0;
+    Buffer& buf = active_ == ZzScreenBuffer::Primary ? primary_ : alternate_;
+    return buf.lines[static_cast<std::size_t>(row)].internCluster(utf8);
+}
+
 void ZzScreen::setLineWrapped(int row, bool wrapped) noexcept
 {
     if (row < 0 || row >= rows_)

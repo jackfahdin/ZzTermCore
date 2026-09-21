@@ -5,7 +5,6 @@
 
 #include "unicode/GraphemeBreak.h"
 
-#include <cassert>
 #include <string>
 #include <vector>
 
@@ -14,18 +13,6 @@
 // print 通道字节经 ZzUtf8Decoder 解码为码点后由 putChar 落格。
 
 namespace {
-
-// M7b：ZzScreen 只暴露 const lineAt，cluster 侧表追加（internCluster）需可变
-// ZzLine。底层对象本身非常量（screen 内部行缓冲），const_cast 安全；这是
-// 本任务"只改 ZzNativeBackend.cpp"约束下的局部手段，不扩散使用。
-// 前提钉死：row 恒在界内（调用方的 prev 由光标位置推导，光标不变量保证
-// 0 <= row < rows）——ZzScreen::lineAt 越界返回 static const 空行对象，
-// 对它 const_cast + internCluster 是真 UB，故 assert 看护。
-ZzLine& zzMutableLine(ZzScreen& screen, int row) noexcept
-{
-    assert(row >= 0 && row < screen.size().rows);
-    return const_cast<ZzLine&>(screen.lineAt(row));
-}
 
 // 单码点 UTF-8 编码追加（Utf8.h 只提供解码器；聚簇串拼接用）。
 void zzAppendUtf8(std::string& out, char32_t cp)
@@ -162,7 +149,7 @@ bool zzTryClusterContinue(ZzScreen& screen, char32_t cp, ZzPosition cur,
     prevCps.push_back(cp);
     zzAppendUtf8(newText, cp);
     ZzCell merged = prevCell;
-    merged.setCluster(zzMutableLine(screen, prev.row).internCluster(newText));
+    merged.setCluster(screen.internClusterAt(prev.row, newText));
 
     // 窄变宽（VS16/keycap/InCB 连字续接使窄基聚簇变宽，T2 §1/§2 裁定）。
     const bool narrowToWide =

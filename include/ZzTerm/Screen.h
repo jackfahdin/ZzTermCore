@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <string_view>
 #include <vector>
 
 #include "ZzTerm/Cell.h"
@@ -125,6 +126,18 @@ public:
      *       一致性由 ZzTerminal 的写入流程负责。
      */
     void putCell(ZzPosition pos, const ZzCell& cell) noexcept;
+
+    /**
+     * @brief 向第 row 行的 grapheme cluster 侧表注册 cluster 文本，返回索引。
+     *
+     * 配合 Cell::setCluster 使用：聚簇续接等场景把新 cluster 串注册进
+     * 行侧表后，以索引更新目标格。遵循 putCell/setLineWrapped 的靶向
+     * mutator 先例——只开侧表注册一条通道，不开通用可变行口。
+     * @param row 物理行号（0 <= row < size().rows，越界忽略并返回 0）。
+     * @param utf8 cluster 的 UTF-8 编码（必须非空）。
+     * @return 侧表索引（ZzLine::clusterText 可取回文本）。
+     */
+    std::uint32_t internClusterAt(int row, std::string_view utf8);
 
     /**
      * @brief 设置活动缓冲区指定行的 soft wrap 标记（DECAWM 换行时使用）。
