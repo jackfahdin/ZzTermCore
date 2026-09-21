@@ -6,6 +6,8 @@
 #include "../backend/contour/ZzContourBackendAdapter.h"
 #endif
 
+#include "ZzSearch.h"
+#include "ZzSearchState.h"
 #include "ZzSelection.h"
 #include "ZzSelectionText.h"
 
@@ -34,16 +36,20 @@ public:
     std::unique_ptr<ZzTerminalBackend> backend;
 
     ZzSelection selection;
+    ZzSearchState searchState;
     std::uint64_t lastDropped = 0; // lineSource().droppedLineCount() 的上次观测值
 
-    // feed/resize 后维护选区锚点（规格 5.1：Alternate 切换清空；丢弃平移）
+    // feed/resize 后维护选区与搜索锚点（规格 M5a 5.1 / M5b 5.4：
+    // Alternate 切换清空；丢弃按物理计数平移，近似语义）
     void noteSelectionAfterFeed(const ZzTermChanges& changes)
     {
         const std::uint64_t dropped = backend->lineSource().droppedLineCount();
         if (changes.activeBufferChanged) {
             selection.clear();
+            searchState.clear();
         } else if (dropped > lastDropped) {
             selection.onLinesDropped(dropped - lastDropped);
+            searchState.onLinesDropped(dropped - lastDropped);
         }
         lastDropped = dropped;
     }
@@ -65,9 +71,11 @@ bool ZzTerminal::resize(int cols, int rows)
     const bool changed = impl_->backend->resize(cols, rows);
     if (changed) {
         // 隐含前提：后端 resize 永不置 activeBufferChanged；若未来违反，
-        // 语义仍安全（走 noteSelectionAfterFeed 的清选区分支）。
+        // 语义仍安全（走 noteSelectionAfterFeed 的清空分支）。
         impl_->noteSelectionAfterFeed(ZzTermChanges{}); // resize 也可能丢弃（reflow 裁剪）
-        impl_->selection.clampTo(zzLogicalLineCount(impl_->backend->lineSource()));
+        const std::int64_t count = zzLogicalLineCount(impl_->backend->lineSource());
+        impl_->selection.clampTo(count);
+        impl_->searchState.clampTo(count);
     }
     return changed;
 }
@@ -183,4 +191,30 @@ std::string ZzTerminal::selectedText() const
     if (!impl_->selection.range(start, end))
         return {};
     return zzExtractSelectionText(impl_->backend->lineSource(), start, end);
+}
+
+std::size_t ZzTerminal::search(std::string_view pattern, ZzSearchOptions options)
+{
+    if (pattern.empty()) {
+        impl_->searchState.clear();
+        return 0;
+    }
+    auto matches = zzSearchLines(impl_->backend->lineSource(), pattern, options);
+    impl_->searchState.set(std::string(pattern), options, std::move(matches));
+    return impl_->searchState.matchCount();
+}
+
+void ZzTerminal::clearSearch() noexcept
+{
+    impl_->searchState.clear();
+}
+
+std::size_t ZzTerminal::searchMatchCount() const noexcept
+{
+    return impl_->searchState.matchCount();
+}
+
+bool ZzTerminal::searchMatch(std::size_t index, ZzLogicalPos& start, ZzLogicalPos& end) const
+{
+    return impl_->searchState.match(index, start, end);
 }

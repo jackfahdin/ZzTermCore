@@ -258,6 +258,36 @@ public:
      */
     [[nodiscard]] std::string selectedText() const;
 
+    // ---- 搜索（M5b；高亮渲染由前端用 match 坐标自行绘制） ----
+
+    /**
+     * @brief 执行子串搜索（替换旧搜索状态）。
+     * @param pattern 搜索子串；空串清空搜索状态并返回 0。
+     * @param options 搜索选项（大小写敏感见 ZzSearchOptions）。
+     * @return 匹配数。
+     * @note 不跨逻辑行匹配：pattern 含换行符时永不命中；命中不重叠。
+     *       match 为搜索时刻的坐标快照，此后 feed 改写的同坐标内容不校验；
+     *       新内容不触发自动重搜，重搜时机由前端决定。
+     */
+    std::size_t search(std::string_view pattern, ZzSearchOptions options = {});
+
+    /// @brief 清空搜索状态。
+    void clearSearch() noexcept;
+
+    /// @brief 当前搜索的 match 总数（无搜索状态为 0）。
+    [[nodiscard]] std::size_t searchMatchCount() const noexcept;
+
+    /**
+     * @brief 查询第 index 个 match 的坐标区间（半开区间，坐标升序）。
+     * @param index match 序号（0 起）。
+     * @param start 输出：区间起点。
+     * @param end 输出：区间终点。
+     * @return false = index 越界或无搜索状态（start/end 不写入）。
+     * @note 历史头部丢弃时 Core 自动平移 match（与选区同一近似口径）；
+     *       reflow 后 match 保持；切换 Alternate 屏时搜索状态清空。
+     */
+    bool searchMatch(std::size_t index, ZzLogicalPos& start, ZzLogicalPos& end) const;
+
     // ---- Core 内部访问（供 parser/terminal 模块协作，不属于 Renderer API） ----
 
     /**

@@ -5,6 +5,7 @@
 
 #include <ZzTerm/Cell.h>
 
+#include <cstdint>
 #include <string>
 
 namespace {
