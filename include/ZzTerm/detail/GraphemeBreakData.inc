@@ -1,25 +1,26 @@
 // 本文件由 scripts/gen_grapheme_break.py 生成，请勿手改。
 // 数据源：https://www.unicode.org/Public/16.0.0/ucd/auxiliary/GraphemeBreakProperty.txt
 //         https://www.unicode.org/Public/16.0.0/ucd/emoji/emoji-data.txt
+//         https://www.unicode.org/Public/16.0.0/ucd/emoji/emoji-variation-sequences.txt
 //         https://www.unicode.org/Public/16.0.0/ucd/DerivedCoreProperties.txt
 //         https://www.unicode.org/Public/16.0.0/ucd/auxiliary/GraphemeBreakTest.txt
 // Unicode 版本：16.0.0  生成日期：2026-09-22
 // gcb 列为 ZzGcb 枚举值（Other=0 且无附加属性的码位不入表）；
-// flags 位布局：bit0=Extended_Pictographic，bit1-2=InCB（0=None/1=Linker/2=Consonant/3=Extend），bit3=Emoji。
+// flags 位布局：bit0=Extended_Pictographic，bit1-2=InCB（0=None/1=Linker/2=Consonant/3=Extend），bit3=EmojiVariationBase。
 // 区间按 lo 升序、互不重叠，供 zzGraphemePropsOf 二分查找。
-inline constexpr std::array<ZzGcbInterval, 1662> kZzGcbIntervals {{
+inline constexpr std::array<ZzGcbInterval, 1745> kZzGcbIntervals {{
     ZzGcbInterval{0x0000u, 0x0009u, 3u, 0u}, // Control -
     ZzGcbInterval{0x000Au, 0x000Au, 2u, 0u}, // LF -
     ZzGcbInterval{0x000Bu, 0x000Cu, 3u, 0u}, // Control -
     ZzGcbInterval{0x000Du, 0x000Du, 1u, 0u}, // CR -
     ZzGcbInterval{0x000Eu, 0x001Fu, 3u, 0u}, // Control -
-    ZzGcbInterval{0x0023u, 0x0023u, 0u, 8u}, // Other Emoji
-    ZzGcbInterval{0x002Au, 0x002Au, 0u, 8u}, // Other Emoji
-    ZzGcbInterval{0x0030u, 0x0039u, 0u, 8u}, // Other Emoji
+    ZzGcbInterval{0x0023u, 0x0023u, 0u, 8u}, // Other VSBase
+    ZzGcbInterval{0x002Au, 0x002Au, 0u, 8u}, // Other VSBase
+    ZzGcbInterval{0x0030u, 0x0039u, 0u, 8u}, // Other VSBase
     ZzGcbInterval{0x007Fu, 0x009Fu, 3u, 0u}, // Control -
-    ZzGcbInterval{0x00A9u, 0x00A9u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x00A9u, 0x00A9u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x00ADu, 0x00ADu, 3u, 0u}, // Control -
-    ZzGcbInterval{0x00AEu, 0x00AEu, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x00AEu, 0x00AEu, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x0300u, 0x036Fu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0483u, 0x0489u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x0591u, 0x05BDu, 4u, 6u}, // Extend InCB_Extend
@@ -304,143 +305,143 @@ inline constexpr std::array<ZzGcbInterval, 1662> kZzGcbIntervals {{
     ZzGcbInterval{0x200Du, 0x200Du, 13u, 6u}, // ZWJ InCB_Extend
     ZzGcbInterval{0x200Eu, 0x200Fu, 3u, 0u}, // Control -
     ZzGcbInterval{0x2028u, 0x202Eu, 3u, 0u}, // Control -
-    ZzGcbInterval{0x203Cu, 0x203Cu, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x2049u, 0x2049u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x203Cu, 0x203Cu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x2049u, 0x2049u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x2060u, 0x206Fu, 3u, 0u}, // Control -
     ZzGcbInterval{0x20D0u, 0x20F0u, 4u, 6u}, // Extend InCB_Extend
-    ZzGcbInterval{0x2122u, 0x2122u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x2139u, 0x2139u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x2194u, 0x2199u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x21A9u, 0x21AAu, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x231Au, 0x231Bu, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x2328u, 0x2328u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x2122u, 0x2122u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x2139u, 0x2139u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x2194u, 0x2199u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x21A9u, 0x21AAu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x231Au, 0x231Bu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x2328u, 0x2328u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x2388u, 0x2388u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x23CFu, 0x23CFu, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x23E9u, 0x23F3u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x23F8u, 0x23FAu, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x24C2u, 0x24C2u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x25AAu, 0x25ABu, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x25B6u, 0x25B6u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x25C0u, 0x25C0u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x25FBu, 0x25FEu, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x2600u, 0x2604u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x23CFu, 0x23CFu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x23E9u, 0x23F3u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x23F8u, 0x23FAu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x24C2u, 0x24C2u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x25AAu, 0x25ABu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x25B6u, 0x25B6u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x25C0u, 0x25C0u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x25FBu, 0x25FEu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x2600u, 0x2604u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x2605u, 0x2605u, 0u, 1u}, // Other ExtPic
     ZzGcbInterval{0x2607u, 0x260Du, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x260Eu, 0x260Eu, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x260Eu, 0x260Eu, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x260Fu, 0x2610u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x2611u, 0x2611u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x2611u, 0x2611u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x2612u, 0x2612u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x2614u, 0x2615u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x2614u, 0x2615u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x2616u, 0x2617u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x2618u, 0x2618u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x2618u, 0x2618u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x2619u, 0x261Cu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x261Du, 0x261Du, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x261Du, 0x261Du, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x261Eu, 0x261Fu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x2620u, 0x2620u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x2620u, 0x2620u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x2621u, 0x2621u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x2622u, 0x2623u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x2622u, 0x2623u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x2624u, 0x2625u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x2626u, 0x2626u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x2626u, 0x2626u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x2627u, 0x2629u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x262Au, 0x262Au, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x262Au, 0x262Au, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x262Bu, 0x262Du, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x262Eu, 0x262Fu, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x262Eu, 0x262Fu, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x2630u, 0x2637u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x2638u, 0x263Au, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x2638u, 0x263Au, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x263Bu, 0x263Fu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x2640u, 0x2640u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x2640u, 0x2640u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x2641u, 0x2641u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x2642u, 0x2642u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x2642u, 0x2642u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x2643u, 0x2647u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x2648u, 0x2653u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x2648u, 0x2653u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x2654u, 0x265Eu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x265Fu, 0x2660u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x265Fu, 0x2660u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x2661u, 0x2662u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x2663u, 0x2663u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x2663u, 0x2663u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x2664u, 0x2664u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x2665u, 0x2666u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x2665u, 0x2666u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x2667u, 0x2667u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x2668u, 0x2668u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x2668u, 0x2668u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x2669u, 0x267Au, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x267Bu, 0x267Bu, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x267Bu, 0x267Bu, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x267Cu, 0x267Du, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x267Eu, 0x267Fu, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x267Eu, 0x267Fu, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x2680u, 0x2685u, 0u, 1u}, // Other ExtPic
     ZzGcbInterval{0x2690u, 0x2691u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x2692u, 0x2697u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x2692u, 0x2697u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x2698u, 0x2698u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x2699u, 0x2699u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x2699u, 0x2699u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x269Au, 0x269Au, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x269Bu, 0x269Cu, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x269Bu, 0x269Cu, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x269Du, 0x269Fu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x26A0u, 0x26A1u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x26A0u, 0x26A1u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x26A2u, 0x26A6u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x26A7u, 0x26A7u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x26A7u, 0x26A7u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x26A8u, 0x26A9u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x26AAu, 0x26ABu, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x26AAu, 0x26ABu, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x26ACu, 0x26AFu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x26B0u, 0x26B1u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x26B0u, 0x26B1u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x26B2u, 0x26BCu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x26BDu, 0x26BEu, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x26BDu, 0x26BEu, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x26BFu, 0x26C3u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x26C4u, 0x26C5u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x26C4u, 0x26C5u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x26C6u, 0x26C7u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x26C8u, 0x26C8u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x26C8u, 0x26C8u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x26C9u, 0x26CDu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x26CEu, 0x26CFu, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x26CEu, 0x26CFu, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x26D0u, 0x26D0u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x26D1u, 0x26D1u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x26D1u, 0x26D1u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x26D2u, 0x26D2u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x26D3u, 0x26D4u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x26D3u, 0x26D4u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x26D5u, 0x26E8u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x26E9u, 0x26EAu, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x26E9u, 0x26EAu, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x26EBu, 0x26EFu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x26F0u, 0x26F5u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x26F0u, 0x26F5u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x26F6u, 0x26F6u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x26F7u, 0x26FAu, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x26F7u, 0x26FAu, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x26FBu, 0x26FCu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x26FDu, 0x26FDu, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x26FDu, 0x26FDu, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x26FEu, 0x2701u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x2702u, 0x2702u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x2702u, 0x2702u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x2703u, 0x2704u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x2705u, 0x2705u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x2708u, 0x270Du, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x2705u, 0x2705u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x2708u, 0x270Du, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x270Eu, 0x270Eu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x270Fu, 0x270Fu, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x270Fu, 0x270Fu, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x2710u, 0x2711u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x2712u, 0x2712u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x2714u, 0x2714u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x2716u, 0x2716u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x271Du, 0x271Du, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x2721u, 0x2721u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x2728u, 0x2728u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x2733u, 0x2734u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x2744u, 0x2744u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x2747u, 0x2747u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x274Cu, 0x274Cu, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x274Eu, 0x274Eu, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x2753u, 0x2755u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x2757u, 0x2757u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x2763u, 0x2764u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x2712u, 0x2712u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x2714u, 0x2714u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x2716u, 0x2716u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x271Du, 0x271Du, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x2721u, 0x2721u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x2728u, 0x2728u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x2733u, 0x2734u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x2744u, 0x2744u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x2747u, 0x2747u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x274Cu, 0x274Cu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x274Eu, 0x274Eu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x2753u, 0x2755u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x2757u, 0x2757u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x2763u, 0x2764u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x2765u, 0x2767u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x2795u, 0x2797u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x27A1u, 0x27A1u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x27B0u, 0x27B0u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x27BFu, 0x27BFu, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x2934u, 0x2935u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x2B05u, 0x2B07u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x2B1Bu, 0x2B1Cu, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x2B50u, 0x2B50u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x2B55u, 0x2B55u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x2795u, 0x2797u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x27A1u, 0x27A1u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x27B0u, 0x27B0u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x27BFu, 0x27BFu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x2934u, 0x2935u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x2B05u, 0x2B07u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x2B1Bu, 0x2B1Cu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x2B50u, 0x2B50u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x2B55u, 0x2B55u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x2CEFu, 0x2CF1u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x2D7Fu, 0x2D7Fu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x2DE0u, 0x2DFFu, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x302Au, 0x302Fu, 4u, 6u}, // Extend InCB_Extend
-    ZzGcbInterval{0x3030u, 0x3030u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x303Du, 0x303Du, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x3030u, 0x3030u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x303Du, 0x303Du, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x3099u, 0x309Au, 4u, 6u}, // Extend InCB_Extend
-    ZzGcbInterval{0x3297u, 0x3297u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x3299u, 0x3299u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x3297u, 0x3297u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x3299u, 0x3299u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0xA66Fu, 0xA672u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0xA674u, 0xA67Du, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0xA69Eu, 0xA69Fu, 4u, 6u}, // Extend InCB_Extend
@@ -1540,130 +1541,213 @@ inline constexpr std::array<ZzGcbInterval, 1662> kZzGcbIntervals {{
     ZzGcbInterval{0x1E8D0u, 0x1E8D6u, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1E944u, 0x1E94Au, 4u, 6u}, // Extend InCB_Extend
     ZzGcbInterval{0x1F000u, 0x1F003u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F004u, 0x1F004u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x1F005u, 0x1F0CEu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F0CFu, 0x1F0CFu, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x1F0D0u, 0x1F0FFu, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F004u, 0x1F004u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F005u, 0x1F0FFu, 0u, 1u}, // Other ExtPic
     ZzGcbInterval{0x1F10Du, 0x1F10Fu, 0u, 1u}, // Other ExtPic
     ZzGcbInterval{0x1F12Fu, 0x1F12Fu, 0u, 1u}, // Other ExtPic
     ZzGcbInterval{0x1F16Cu, 0x1F16Fu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F170u, 0x1F171u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x1F17Eu, 0x1F17Fu, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x1F18Eu, 0x1F18Eu, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x1F191u, 0x1F19Au, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x1F170u, 0x1F171u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F17Eu, 0x1F17Fu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F18Eu, 0x1F18Eu, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F191u, 0x1F19Au, 0u, 1u}, // Other ExtPic
     ZzGcbInterval{0x1F1ADu, 0x1F1E5u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F1E6u, 0x1F1FFu, 12u, 8u}, // Regional_Indicator Emoji
-    ZzGcbInterval{0x1F201u, 0x1F202u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x1F1E6u, 0x1F1FFu, 12u, 0u}, // Regional_Indicator -
+    ZzGcbInterval{0x1F201u, 0x1F201u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F202u, 0x1F202u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x1F203u, 0x1F20Fu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F21Au, 0x1F21Au, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x1F22Fu, 0x1F22Fu, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x1F232u, 0x1F23Au, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x1F21Au, 0x1F21Au, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F22Fu, 0x1F22Fu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F232u, 0x1F236u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F237u, 0x1F237u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F238u, 0x1F23Au, 0u, 1u}, // Other ExtPic
     ZzGcbInterval{0x1F23Cu, 0x1F23Fu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F249u, 0x1F24Fu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F250u, 0x1F251u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x1F252u, 0x1F2FFu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F300u, 0x1F321u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x1F249u, 0x1F30Cu, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F30Du, 0x1F30Fu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F310u, 0x1F314u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F315u, 0x1F315u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F316u, 0x1F31Bu, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F31Cu, 0x1F31Cu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F31Du, 0x1F320u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F321u, 0x1F321u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x1F322u, 0x1F323u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F324u, 0x1F393u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x1F324u, 0x1F32Cu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F32Du, 0x1F335u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F336u, 0x1F336u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F337u, 0x1F377u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F378u, 0x1F378u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F379u, 0x1F37Cu, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F37Du, 0x1F37Du, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F37Eu, 0x1F392u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F393u, 0x1F393u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x1F394u, 0x1F395u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F396u, 0x1F397u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x1F396u, 0x1F397u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x1F398u, 0x1F398u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F399u, 0x1F39Bu, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x1F399u, 0x1F39Bu, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x1F39Cu, 0x1F39Du, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F39Eu, 0x1F3F0u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x1F3F1u, 0x1F3F2u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F3F3u, 0x1F3F5u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x1F39Eu, 0x1F39Fu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F3A0u, 0x1F3A6u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F3A7u, 0x1F3A7u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F3A8u, 0x1F3ABu, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F3ACu, 0x1F3AEu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F3AFu, 0x1F3C1u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F3C2u, 0x1F3C2u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F3C3u, 0x1F3C3u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F3C4u, 0x1F3C4u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F3C5u, 0x1F3C5u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F3C6u, 0x1F3C6u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F3C7u, 0x1F3C9u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F3CAu, 0x1F3CEu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F3CFu, 0x1F3D3u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F3D4u, 0x1F3E0u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F3E1u, 0x1F3ECu, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F3EDu, 0x1F3EDu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F3EEu, 0x1F3F2u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F3F3u, 0x1F3F3u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F3F4u, 0x1F3F4u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F3F5u, 0x1F3F5u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x1F3F6u, 0x1F3F6u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F3F7u, 0x1F3FAu, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x1F3FBu, 0x1F3FFu, 4u, 14u}, // Extend InCB_Extend Emoji
-    ZzGcbInterval{0x1F400u, 0x1F4FDu, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x1F4FEu, 0x1F4FEu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F4FFu, 0x1F53Du, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x1F3F7u, 0x1F3F7u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F3F8u, 0x1F3FAu, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F3FBu, 0x1F3FFu, 4u, 6u}, // Extend InCB_Extend
+    ZzGcbInterval{0x1F400u, 0x1F407u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F408u, 0x1F408u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F409u, 0x1F414u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F415u, 0x1F415u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F416u, 0x1F41Eu, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F41Fu, 0x1F41Fu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F420u, 0x1F425u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F426u, 0x1F426u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F427u, 0x1F43Eu, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F43Fu, 0x1F43Fu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F440u, 0x1F440u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F441u, 0x1F442u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F443u, 0x1F445u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F446u, 0x1F449u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F44Au, 0x1F44Cu, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F44Du, 0x1F44Eu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F44Fu, 0x1F452u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F453u, 0x1F453u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F454u, 0x1F469u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F46Au, 0x1F46Au, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F46Bu, 0x1F47Cu, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F47Du, 0x1F47Du, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F47Eu, 0x1F4A2u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F4A3u, 0x1F4A3u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F4A4u, 0x1F4AFu, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F4B0u, 0x1F4B0u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F4B1u, 0x1F4B2u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F4B3u, 0x1F4B3u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F4B4u, 0x1F4BAu, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F4BBu, 0x1F4BBu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F4BCu, 0x1F4BEu, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F4BFu, 0x1F4BFu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F4C0u, 0x1F4CAu, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F4CBu, 0x1F4CBu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F4CCu, 0x1F4D9u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F4DAu, 0x1F4DAu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F4DBu, 0x1F4DEu, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F4DFu, 0x1F4DFu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F4E0u, 0x1F4E3u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F4E4u, 0x1F4E6u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F4E7u, 0x1F4E9u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F4EAu, 0x1F4EDu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F4EEu, 0x1F4F6u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F4F7u, 0x1F4F7u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F4F8u, 0x1F4F8u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F4F9u, 0x1F4FBu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F4FCu, 0x1F4FCu, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F4FDu, 0x1F4FDu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F4FEu, 0x1F507u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F508u, 0x1F508u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F509u, 0x1F50Cu, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F50Du, 0x1F50Du, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F50Eu, 0x1F511u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F512u, 0x1F513u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F514u, 0x1F53Du, 0u, 1u}, // Other ExtPic
     ZzGcbInterval{0x1F546u, 0x1F548u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F549u, 0x1F54Eu, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x1F54Fu, 0x1F54Fu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F550u, 0x1F567u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x1F549u, 0x1F54Au, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F54Bu, 0x1F54Fu, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F550u, 0x1F567u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x1F568u, 0x1F56Eu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F56Fu, 0x1F570u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x1F56Fu, 0x1F570u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x1F571u, 0x1F572u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F573u, 0x1F57Au, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x1F57Bu, 0x1F586u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F587u, 0x1F587u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x1F573u, 0x1F579u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F57Au, 0x1F586u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F587u, 0x1F587u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x1F588u, 0x1F589u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F58Au, 0x1F58Du, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x1F58Au, 0x1F58Du, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x1F58Eu, 0x1F58Fu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F590u, 0x1F590u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x1F591u, 0x1F594u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F595u, 0x1F596u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x1F597u, 0x1F5A3u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F5A4u, 0x1F5A5u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x1F590u, 0x1F590u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F591u, 0x1F5A4u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F5A5u, 0x1F5A5u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x1F5A6u, 0x1F5A7u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F5A8u, 0x1F5A8u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x1F5A8u, 0x1F5A8u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x1F5A9u, 0x1F5B0u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F5B1u, 0x1F5B2u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x1F5B1u, 0x1F5B2u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x1F5B3u, 0x1F5BBu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F5BCu, 0x1F5BCu, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x1F5BCu, 0x1F5BCu, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x1F5BDu, 0x1F5C1u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F5C2u, 0x1F5C4u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x1F5C2u, 0x1F5C4u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x1F5C5u, 0x1F5D0u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F5D1u, 0x1F5D3u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x1F5D1u, 0x1F5D3u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x1F5D4u, 0x1F5DBu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F5DCu, 0x1F5DEu, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x1F5DCu, 0x1F5DEu, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x1F5DFu, 0x1F5E0u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F5E1u, 0x1F5E1u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x1F5E1u, 0x1F5E1u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x1F5E2u, 0x1F5E2u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F5E3u, 0x1F5E3u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x1F5E3u, 0x1F5E3u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x1F5E4u, 0x1F5E7u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F5E8u, 0x1F5E8u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x1F5E8u, 0x1F5E8u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x1F5E9u, 0x1F5EEu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F5EFu, 0x1F5EFu, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x1F5EFu, 0x1F5EFu, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x1F5F0u, 0x1F5F2u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F5F3u, 0x1F5F3u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x1F5F3u, 0x1F5F3u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x1F5F4u, 0x1F5F9u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F5FAu, 0x1F64Fu, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x1F680u, 0x1F6C5u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x1F6C6u, 0x1F6CAu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F6CBu, 0x1F6D2u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x1F6D3u, 0x1F6D4u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F6D5u, 0x1F6D7u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x1F6D8u, 0x1F6DBu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F6DCu, 0x1F6E5u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x1F5FAu, 0x1F5FAu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F5FBu, 0x1F60Fu, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F610u, 0x1F610u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F611u, 0x1F64Fu, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F680u, 0x1F686u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F687u, 0x1F687u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F688u, 0x1F68Cu, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F68Du, 0x1F68Du, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F68Eu, 0x1F690u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F691u, 0x1F691u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F692u, 0x1F693u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F694u, 0x1F694u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F695u, 0x1F697u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F698u, 0x1F698u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F699u, 0x1F6ACu, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F6ADu, 0x1F6ADu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F6AEu, 0x1F6B1u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F6B2u, 0x1F6B2u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F6B3u, 0x1F6B8u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F6B9u, 0x1F6BAu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F6BBu, 0x1F6BBu, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F6BCu, 0x1F6BCu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F6BDu, 0x1F6CAu, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F6CBu, 0x1F6CBu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F6CCu, 0x1F6CCu, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F6CDu, 0x1F6CFu, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F6D0u, 0x1F6DFu, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F6E0u, 0x1F6E5u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x1F6E6u, 0x1F6E8u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F6E9u, 0x1F6E9u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x1F6EAu, 0x1F6EAu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F6EBu, 0x1F6ECu, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x1F6EDu, 0x1F6EFu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F6F0u, 0x1F6F0u, 0u, 9u}, // Other ExtPic Emoji
+    ZzGcbInterval{0x1F6E9u, 0x1F6E9u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F6EAu, 0x1F6EFu, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F6F0u, 0x1F6F0u, 0u, 9u}, // Other ExtPic VSBase
     ZzGcbInterval{0x1F6F1u, 0x1F6F2u, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F6F3u, 0x1F6FCu, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x1F6FDu, 0x1F6FFu, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F6F3u, 0x1F6F3u, 0u, 9u}, // Other ExtPic VSBase
+    ZzGcbInterval{0x1F6F4u, 0x1F6FFu, 0u, 1u}, // Other ExtPic
     ZzGcbInterval{0x1F774u, 0x1F77Fu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F7D5u, 0x1F7DFu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F7E0u, 0x1F7EBu, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x1F7ECu, 0x1F7EFu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F7F0u, 0x1F7F0u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x1F7F1u, 0x1F7FFu, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F7D5u, 0x1F7FFu, 0u, 1u}, // Other ExtPic
     ZzGcbInterval{0x1F80Cu, 0x1F80Fu, 0u, 1u}, // Other ExtPic
     ZzGcbInterval{0x1F848u, 0x1F84Fu, 0u, 1u}, // Other ExtPic
     ZzGcbInterval{0x1F85Au, 0x1F85Fu, 0u, 1u}, // Other ExtPic
     ZzGcbInterval{0x1F888u, 0x1F88Fu, 0u, 1u}, // Other ExtPic
     ZzGcbInterval{0x1F8AEu, 0x1F8FFu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1F90Cu, 0x1F93Au, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x1F93Cu, 0x1F945u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x1F947u, 0x1F9FFu, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x1FA00u, 0x1FA6Fu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1FA70u, 0x1FA7Cu, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x1FA7Du, 0x1FA7Fu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1FA80u, 0x1FA89u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x1FA8Au, 0x1FA8Eu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1FA8Fu, 0x1FAC6u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x1FAC7u, 0x1FACDu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1FACEu, 0x1FADCu, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x1FADDu, 0x1FADEu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1FADFu, 0x1FAE9u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x1FAEAu, 0x1FAEFu, 0u, 1u}, // Other ExtPic
-    ZzGcbInterval{0x1FAF0u, 0x1FAF8u, 0u, 9u}, // Other ExtPic Emoji
-    ZzGcbInterval{0x1FAF9u, 0x1FAFFu, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F90Cu, 0x1F93Au, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F93Cu, 0x1F945u, 0u, 1u}, // Other ExtPic
+    ZzGcbInterval{0x1F947u, 0x1FAFFu, 0u, 1u}, // Other ExtPic
     ZzGcbInterval{0x1FC00u, 0x1FFFDu, 0u, 1u}, // Other ExtPic
     ZzGcbInterval{0xE0000u, 0xE001Fu, 3u, 0u}, // Control -
     ZzGcbInterval{0xE0020u, 0xE007Fu, 4u, 6u}, // Extend InCB_Extend

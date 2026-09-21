@@ -6,17 +6,19 @@
 
 数据源（Unicode 16.0.0）：
 - GraphemeBreakProperty.txt：全部 GCB 类（未列出码位默认 Other 不入表）
-- emoji-data.txt：Extended_Pictographic 与 Emoji 区间（Emoji 属性为
-  VS16 变宽资格标志——M7c T3 实测：数字/#/*/©/‼ + VS16 均判宽而 a+VS16
-  保窄，判别属性是 Emoji 而非 Emoji_Presentation——数字系 EP=No）
+- emoji-data.txt：仅 Extended_Pictographic 区间
+- emoji-variation-sequences.txt：emoji style（FE0F）行的 base 码位——
+  VS16 变宽资格标志（M7c T3 修复波：libunicode width.cpp 的真规则数据
+  源即此"emoji variation base"集合，16.0.0 共 371 码位；先前用 Emoji
+  属性泛化被证伪——Emoji 属性是其严格超集，如 ★ U+2605 不在本集合）
 - DerivedCoreProperties.txt：InCB; Linker、InCB; Consonant 与 InCB; Extend
   区间全收（InCB=Extend ⊊ GCB=Extend 真子集——GCB=Extend 而 InCB=None
   的码位 16.0.0 实测仅 U+200C，不能由 GCB 表达，故显式入表）
 - GraphemeBreakTest.txt：官方 golden，原样落盘 tests/data/
 
-三份属性区间取边界并集做统一区间打包：每条区间携带
+四份属性区间取边界并集做统一区间打包：每条区间携带
 gcb（4 位枚举值，对应 ZzGcb）+ flags（bit0=ExtPic，bit1-2=InCB
-0=None/1=Linker/2=Consonant/3=Extend，bit3=Emoji），与
+0=None/1=Linker/2=Consonant/3=Extend，bit3=EmojiVariationBase），与
 src/unicode/GraphemeBreak.h 的 ZzGcbInterval 布局一致。
 """
 import datetime
@@ -29,6 +31,7 @@ UNICODE_VERSION = "16.0.0"
 BASE = f"https://www.unicode.org/Public/{UNICODE_VERSION}/ucd"
 URL_GCB = f"{BASE}/auxiliary/GraphemeBreakProperty.txt"
 URL_EMOJI = f"{BASE}/emoji/emoji-data.txt"
+URL_VS = f"{BASE}/emoji/emoji-variation-sequences.txt"
 URL_DCP = f"{BASE}/DerivedCoreProperties.txt"
 URL_TEST = f"{BASE}/auxiliary/GraphemeBreakTest.txt"
 
@@ -82,7 +85,7 @@ def parse_gcb(text: str):
 
 
 def parse_emoji(text: str, prop: str):
-    """emoji-data.txt → [(lo, hi)]，仅收 prop 属性（Extended_Pictographic / Emoji）。"""
+    """emoji-data.txt → [(lo, hi)]，仅收 prop 属性（Extended_Pictographic）。"""
     out = []
     for lineno, raw in enumerate(text.splitlines(), 1):
         line = raw.split("#", 1)[0].strip()
@@ -94,6 +97,25 @@ def parse_emoji(text: str, prop: str):
         if fields[1] != prop:
             continue
         out.append(parse_range(fields[0]))
+    return out
+
+
+def parse_variation_base(text: str):
+    """emoji-variation-sequences.txt → [(lo, hi)]，仅 emoji style（FE0F）行的
+    base 码位（行首字段为 "base FE0F" 两枚码点，base 即 VS16 变宽资格集合）。"""
+    out = []
+    for lineno, raw in enumerate(text.splitlines(), 1):
+        line = raw.split("#", 1)[0].strip()
+        if not line:
+            continue
+        fields = [f.strip() for f in line.split(";")]
+        if len(fields) < 2 or fields[1] != "emoji style":
+            continue
+        pair = fields[0].split()
+        if len(pair) != 2 or pair[1] != "FE0F":
+            raise ValueError(f"emoji-variation-sequences 第 {lineno} 行格式不符：{raw!r}")
+        cp = int(pair[0], 16)
+        out.append((cp, cp))
     return out
 
 
@@ -142,27 +164,27 @@ def atomic_write(path: str, content: str) -> None:
 
 def main() -> int:
     try:
-        texts = {url: download(url) for url in (URL_GCB, URL_EMOJI, URL_DCP, URL_TEST)}
+        texts = {url: download(url) for url in (URL_GCB, URL_EMOJI, URL_VS, URL_DCP, URL_TEST)}
     except Exception as exc:  # 网络不可达等
         return fail(f"下载失败：{exc}")
 
     try:
         gcb = sorted(parse_gcb(texts[URL_GCB]))
         extpic = sorted(parse_emoji(texts[URL_EMOJI], "Extended_Pictographic"))
-        emoji = sorted(parse_emoji(texts[URL_EMOJI], "Emoji"))
+        vsbase = sorted(parse_variation_base(texts[URL_VS]))
         incb = sorted(parse_incb(texts[URL_DCP]))
     except ValueError as exc:
         return fail(str(exc))
 
     # 源内区间互不重叠校验（同 gen_unicode_width.py:55-58 惯例）。
-    for name, ivs in (("GCB", gcb), ("ExtPic", extpic), ("Emoji", emoji), ("InCB", incb)):
+    for name, ivs in (("GCB", gcb), ("ExtPic", extpic), ("VSBase", vsbase), ("InCB", incb)):
         for prev, cur in zip(ivs, ivs[1:]):
             if cur[0] <= prev[1]:
                 return fail(f"{name} 源区间重叠：{prev} vs {cur}")
 
     # 统一边界合并：四份区间取边界并集，逐统一区间采样打包属性。
     bounds = set()
-    for ivs in (gcb, extpic, emoji, incb):
+    for ivs in (gcb, extpic, vsbase, incb):
         for lo, hi, *_ in ivs:
             bounds.add(lo)
             bounds.add(hi + 1)
@@ -176,7 +198,7 @@ def main() -> int:
         if lookup(extpic, lo, False):
             f |= 0x1
         f |= lookup(incb, lo, 0) << 1
-        if lookup(emoji, lo, False):
+        if lookup(vsbase, lo, False):
             f |= 0x8
         if g == 0 and f == 0:           # Other 且无附加属性：不入表
             continue
@@ -194,11 +216,12 @@ def main() -> int:
         "// 本文件由 scripts/gen_grapheme_break.py 生成，请勿手改。",
         f"// 数据源：{URL_GCB}",
         f"//         {URL_EMOJI}",
+        f"//         {URL_VS}",
         f"//         {URL_DCP}",
         f"//         {URL_TEST}",
         f"// Unicode 版本：{UNICODE_VERSION}  生成日期：{date}",
         "// gcb 列为 ZzGcb 枚举值（Other=0 且无附加属性的码位不入表）；",
-        "// flags 位布局：bit0=Extended_Pictographic，bit1-2=InCB（0=None/1=Linker/2=Consonant/3=Extend），bit3=Emoji。",
+        "// flags 位布局：bit0=Extended_Pictographic，bit1-2=InCB（0=None/1=Linker/2=Consonant/3=Extend），bit3=EmojiVariationBase。",
         "// 区间按 lo 升序、互不重叠，供 zzGraphemePropsOf 二分查找。",
         f"inline constexpr std::array<ZzGcbInterval, {len(unified)}> kZzGcbIntervals {{{{",
     ]
@@ -210,7 +233,7 @@ def main() -> int:
         if incb_v:
             flags_desc.append({1: "Linker", 2: "Consonant", 3: "InCB_Extend"}[incb_v])
         if f & 0x8:
-            flags_desc.append("Emoji")
+            flags_desc.append("VSBase")
         desc = " ".join(flags_desc) if flags_desc else "-"
         out.append(
             f"    ZzGcbInterval{{0x{lo:04X}u, 0x{hi:04X}u, {g}u, {f}u}},"

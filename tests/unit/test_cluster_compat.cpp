@@ -333,6 +333,22 @@ void testV6() { dualAligned("a\xEF\xB8\x8F", [](const ZzTerminal& t, int) {
     expectCursor(t, 0, 1, "V6");
 }); }
 
+// V7-V9 方向 2 反例（M7c T3 修复波）：非 variation base + VS16 保窄。
+void testV7() { dualAligned("\xE2\x98\x85\xEF\xB8\x8F", [](const ZzTerminal& t, int) {
+    expectCells(t, 0, { {0, "\xE2\x98\x85\xEF\xB8\x8F", N} }, "V7");
+    expectCursor(t, 0, 1, "V7");
+}); }
+
+void testV8() { dualAligned("\xE2\x99\x94\xEF\xB8\x8F", [](const ZzTerminal& t, int) {
+    expectCells(t, 0, { {0, "\xE2\x99\x94\xEF\xB8\x8F", N} }, "V8");
+    expectCursor(t, 0, 1, "V8");
+}); }
+
+void testV9() { dualAligned("\xE2\x99\xA9\xEF\xB8\x8F", [](const ZzTerminal& t, int) {
+    expectCells(t, 0, { {0, "\xE2\x99\xA9\xEF\xB8\x8F", N} }, "V9");
+    expectCursor(t, 0, 1, "V9");
+}); }
+
 // A2a/A2b 变宽覆盖既有内容：右格内容被覆盖（不右移），两后端对齐。
 void testA2a() { dualAligned("abc\x1b[2D\xE2\x98\x9D\xEF\xB8\x8F", [](const ZzTerminal& t, int) {
     expectCells(t, 0, { {0, "a", N}, {1, "\xE2\x98\x9D\xEF\xB8\x8F", L}, {2, "", W} }, "A2a");
@@ -527,6 +543,9 @@ int main()
     testV4();
     testV5();
     testV6();
+    testV7();
+    testV8();
+    testV9();
     testA2a();
     testA2b();
     testA3();
@@ -536,6 +555,6 @@ int main()
     testBI6ZwjTailA();
     testBI7ZwjTailB();
     if (g_failures == 0)
-        std::printf("test_cluster_compat: 全部通过（37 对齐用例 + 4 组 b 类分歧断言）\n");
+        std::printf("test_cluster_compat: 全部通过（40 对齐用例 + 4 组 b 类分歧断言）\n");
     return g_failures == 0 ? 0 : 1;
 }

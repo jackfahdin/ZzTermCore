@@ -15,11 +15,12 @@
 
 namespace {
 
-// 聚簇宽度裁定（T2 表 §1 实测归约 + M7c T3 V 系实测）：true = 聚簇应占
-// 2 格——RI（单发即宽）、Emoji 属性基字符+VS16（含数字/#/*，判别属性是
-// Emoji 而非 Emoji_Presentation——V6 a+VS16 保窄）、keycap（须带 VS16，
-// 裸 keycap 窄）、InCB 连字（基窄也宽）、emoji ZWJ 序列；窄基+组合符 /
-// VS15 / Prepend+a / 非 Emoji 基+VS16 保持基宽。
+// 聚簇宽度裁定（T2 表 §1 实测归约 + M7c T3 V 系实测与修复波）：true = 聚簇
+// 应占 2 格——RI（单发即宽）、emoji variation base+VS16（libunicode
+// width.cpp 真规则数据源 emoji-variation-sequences.txt 的 emoji style base
+// 集合；ExtPic 非 variation base+VS16 保窄——★/♔/♩ 反例实测）、keycap
+// （须带 VS16，裸 keycap 窄）、InCB 连字（基窄也宽）、emoji ZWJ 序列；
+// 窄基+组合符 / VS15 / Prepend+a / 非 variation base+VS16 保持基宽。
 bool zzClusterWantsWide(const std::u32string& cps)
 {
     bool hasVs16 = false;
@@ -46,8 +47,8 @@ bool zzClusterWantsWide(const std::u32string& cps)
             ++linkers;
     }
     const ZzGraphemeProps first = zzGraphemePropsOf(cps.front());
-    if (hasVs16 && (first.emoji || first.extPic || hasKeycap))
-        return true; // Emoji 基+VS16（例 08/09 与 M7c V1-V5）/ keycap（例 11）
+    if (hasVs16 && (first.emojiVariationBase || hasKeycap))
+        return true; // variation base+VS16（例 08/09 与 M7c V1-V5）/ keycap（例 11）
     if (consonants >= 2 && linkers >= 1)
         return true; // I-4：InCB 连字（例 12）
     if (hasZwj && extPicCount >= 2)

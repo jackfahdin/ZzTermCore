@@ -509,6 +509,33 @@ void testV6AsciiVs16Narrow()
     });
 }
 
+// V7-V9 方向 2 反例（M7c T3 修复波）：ExtPic 且 Emoji 但非 variation
+// base——libunicode 真规则下 contour 保窄，native 按 emojiVariationBase
+// 对齐（证伪"Emoji 属性"泛化）。
+void testV7StarVs16Narrow()
+{
+    bothModes("\xE2\x98\x85\xEF\xB8\x8F", [](const ZzTerminal& t, const char* m) {
+        checkCell(t, 0, 0, "\xE2\x98\x85\xEF\xB8\x8F", N, m);
+        checkCursor(t, 0, 1, m);
+    });
+}
+
+void testV8ChessVs16Narrow()
+{
+    bothModes("\xE2\x99\x94\xEF\xB8\x8F", [](const ZzTerminal& t, const char* m) {
+        checkCell(t, 0, 0, "\xE2\x99\x94\xEF\xB8\x8F", N, m);
+        checkCursor(t, 0, 1, m);
+    });
+}
+
+void testV9NoteVs16Narrow()
+{
+    bothModes("\xE2\x99\xA9\xEF\xB8\x8F", [](const ZzTerminal& t, const char* m) {
+        checkCell(t, 0, 0, "\xE2\x99\xA9\xEF\xB8\x8F", N, m);
+        checkCursor(t, 0, 1, m);
+    });
+}
+
 } // namespace
 
 int main()
@@ -551,6 +578,9 @@ int main()
     testV4CopyrightVs16();
     testV5DoubleExclVs16();
     testV6AsciiVs16Narrow();
+    testV7StarVs16Narrow();
+    testV8ChessVs16Narrow();
+    testV9NoteVs16Narrow();
     if (g_failures == 0)
         std::printf("test_native_cluster: 全部通过\n");
     return g_failures == 0 ? 0 : 1;
