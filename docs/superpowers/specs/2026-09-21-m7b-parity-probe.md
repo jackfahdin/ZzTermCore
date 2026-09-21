@@ -182,7 +182,7 @@ EA B0 80 E1 86 A8
 
 ### 1. 聚簇宽度规则
 
-- 宽 2（WideLead + WideContinuation）：emoji ZWJ 序列（例 03/04）、ExtPic + VS16（例 08/09）、keycap（例 11，须带 VS16——N3 实测裸 keycap 无 VS16 判窄）、RI 区旗——**单发即宽**（例 05/06/07）、InCB 连字（例 12，基字符窄也判宽）、宽基 + 组合符（例 13，保持基宽）、ExtPic + 肤色修饰符（N4）、RI + 组合符（N1）、宽基 + VS16（N2，保持宽）、Prepend + a 整喂聚簇（例 15b 整喂，不规则，native 目标见 §5c）。
+- 宽 2（WideLead + WideContinuation）：emoji ZWJ 序列（例 03/04）、emoji variation base + VS16（例 08/09；M7c T3 修复波更正——原记"ExtPic + VS16"，真规则为 variation base 371 码位，详见末节）、keycap（例 11，须带 VS16——N3 实测裸 keycap 无 VS16 判窄）、RI 区旗——**单发即宽**（例 05/06/07）、InCB 连字（例 12，基字符窄也判宽）、宽基 + 组合符（例 13，保持基宽）、ExtPic + 肤色修饰符（N4）、RI + 组合符（N1）、宽基 + VS16（N2，保持宽）、Prepend + a 整喂聚簇（例 15b 整喂，不规则，native 目标见 §5c）。
 - 窄 1（基字符宽度）：窄基 + 任意组合符序列（例 01/02）、ExtPic + VS15（例 10）、a + ZWJ 聚簇（例 14 的断开侧）、Prepend 单发（例 15a）。
 - 续接不推进光标（例 01 光标 (0,1)）。
 - 可供 T3 归约的形态：聚簇含 emoji 表现（ZWJ 序列 / VS16 / keycap / RI / InCB 连字）→ 宽 2；否则保持基字符原宽。InCB 连字判宽与 RI 单发判宽是 contour 实测裁定，T3 须按表对齐，不得按"基宽"自推。
