@@ -201,7 +201,7 @@ M6 已落地数据源借用口（lineAt(row, out)）与缓冲复用，行为零�
 参数数量和数值范围；防整数溢出、超大 resize、非法 UTF-8、parser
 死循环和无界内存增长。
 
-建立 UTF-8 decoder、VT Parser、feed+resize 的 Fuzz target。
+建立 UTF-8 decoder、VT Parser、feed+resize 的 Fuzz target。（M7a 已立基建：ZZTERM_FUZZ option 与 linux-clang-fuzz preset，tests/fuzz 双 harness——fuzz_parser 覆盖 VT Parser，fuzz_feed 覆盖 feed+resize 交织并经 print 通道覆盖 UTF-8 decoder；两个 30 秒 ctest smoke 入 CI。decoder 独立 harness 留作后续候选。）
 
 ## 16. 测试体系
 

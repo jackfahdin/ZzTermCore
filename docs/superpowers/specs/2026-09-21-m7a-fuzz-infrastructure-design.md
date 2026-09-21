@@ -12,7 +12,7 @@ Architecture §204 早已点名三类 Fuzz target，至今空白。M7b（Unicode
 
 ## 2. 已核实的关键事实（决策依据）
 
-1. **工具链**：本机无裸 clang++，有 clang++-20（LLVM 20），`-fsanitize=fuzzer,address` 实测编译运行通过；gcc 15.2 无 libFuzzer 支持；CI ubuntu-clang 任务 apt 装 clang 包后即有 clang++ 符号链接（.github/workflows/ci.yml:16），preset 用通用名 clang++ 即可两边通吃，本机以 env 覆盖 CXX=clang++-20；
+1. **工具链**：本机无裸 clang++，有 clang++-20（LLVM 20），`-fsanitize=fuzzer,address` 实测编译运行通过；gcc 15.2 无 libFuzzer 支持；CI ubuntu-clang 任务 apt 装 clang 包后即有 clang++ 符号链接（.github/workflows/ci.yml:16），preset 用通用名 clang++ 即可两边通吃，本机以 `cmake --preset linux-clang-fuzz -D CMAKE_CXX_COMPILER=clang++-20` 覆盖（计划阶段核实项结论：命令行 -D 可覆盖 preset cacheVariables）；
 2. **入口签名**：ZzVtParser 构造 `ZzVtParser(ZzParserSink*, ZzParserLimits={})`（Parser.h:246），增量入口 `feed(std::string_view)`（Parser.h:259），文件头注释明示可独立 Fuzz（Parser.h:24）；终端入口 `ZzTerminal::feed` 接收 std::span 字节视图（Terminal.h:112）；
 3. **构建惯例**：CMakePresets.json 现有 configure/build/test 三组（linux-clang-debug/release、linux-gcc-debug、windows-msvc、macos-clang-debug），均继承 hidden ninja-base；无 fuzz 目录与惯例，本里程碑新建；
 4. **CI 现状**：ci.yml 的 ubuntu-clang 任务已具备 clang 工具链，fuzz smoke 挂点直接复用该 job；
@@ -43,8 +43,8 @@ Architecture §204 早已点名三类 Fuzz target，至今空白。M7b（Unicode
 ### 4.1 构建集成（CMake option + preset + CI）
 
 - 根 CMakeLists.txt 增加 `option(ZZTERM_FUZZ "Build libFuzzer targets" OFF)`；ON 时校验 `CMAKE_CXX_COMPILER_ID MATCHES "Clang"`，否则 FATAL_ERROR（gcc 无 libFuzzer，提前硬失败优于链接期玄学报错）；
-- 编译选项分层：ON 时全 build 追加 `-fsanitize=address`（库与测试同被 ASan 覆盖，保证 harness 链接一致）；仅 fuzz target 追加 `fuzzer`（即 target 级 `-fsanitize=fuzzer,address`，libFuzzer 的 main 只进 harness）；
-- preset `linux-clang-fuzz`：继承 ninja-base 惯例，RelWithDebInfo（保留符号便于崩溃定位，优化级别贴近真实运行）、`ZZTERM_FUZZ=ON`、`ZZTERM_WITH_CONTOUR=OFF`（砍 contour 构建换迭代速度）；编译器写通用名 clang/clang++，本机无裸名时以 `CXX=clang++-20 cmake --preset linux-clang-fuzz` env 覆盖，CI 装包后通用名直接可用；
+- 编译选项分层：ON 时全 build 追加 `-fsanitize=address`（库与测试同被 ASan 覆盖，保证 harness 链接一致）；仅 fuzz target 追加 `fuzzer`（即 target 级 `-fsanitize=fuzzer,address`，libFuzzer 的 main 只进 harness）；全构建另加 `-fsanitize=fuzzer-no-link`（只插桩不含 main，coverage-guided 的反馈来源，main 仍只进 harness）；
+- preset `linux-clang-fuzz`：继承 ninja-base 惯例，RelWithDebInfo（保留符号便于崩溃定位，优化级别贴近真实运行）、`ZZTERM_FUZZ=ON`、`ZZTERM_WITH_CONTOUR=OFF`（砍 contour 构建换迭代速度）；编译器写通用名 clang/clang++，本机无裸名时以 `cmake --preset linux-clang-fuzz -D CMAKE_CXX_COMPILER=clang++-20` 覆盖（命令行 -D 实证可覆盖 preset cacheVariables），CI 装包后通用名直接可用；
 - CI：ci.yml 的 ubuntu-clang job 追加 fuzz preset 配置 + 构建 + 两个 smoke 测试步骤（ctest -R fuzz）；
 - Action 版本策略（本里程碑起生效的仓库惯例）：GitHub 官方托管 Runner（ubuntu-latest、windows-latest、macos-latest）默认采用 Action 的最新稳定 Major 版本；self-hosted Runner 升级 Action Major 前必须核查最低 Runner 版本、Node.js runtime 要求与 Breaking Changes。现状核查：ci.yml 全部为 actions/checkout v4（当前最新稳定 Major），合规。
 
@@ -75,7 +75,7 @@ Architecture §204 早已点名三类 Fuzz target，至今空白。M7b（Unicode
 
 ### 4.6 验收（DoD）
 
-- `CXX=clang++-20 cmake --preset linux-clang-fuzz` 全链路本机通过：双 harness 构建、两个 smoke 30 秒跑完、退出码干净（或按崩溃预案记录裁定）；
+- `cmake --preset linux-clang-fuzz -D CMAKE_CXX_COMPILER=clang++-20` 全链路本机通过：双 harness 构建、两个 smoke 30 秒跑完、退出码干净（或按崩溃预案记录裁定）；
 - 常规三配置零变化：linux-gcc-debug 44/44、OFF 35/35、shared 44/44（ZZTERM_FUZZ=OFF 下新增代码完全缺席，测试矩阵逐位不变）；doxygen 零警告；
 - CI yml 挂点生效（yml 语法与步骤序列审查通过，实际 CI 运行以推送后为准）；
 - Architecture.md §204 行更新进度标注；规格/计划入库。
