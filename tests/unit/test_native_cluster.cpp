@@ -415,13 +415,35 @@ void testX2CursorAfterContinue()
     checkCursor(t, 0, 2, "续接后光标");
 }
 
-// X3 空白格不续：组合符落在行首（无前格）独占一格（T2 裁定 5）。
+// X3 空白格不续：组合符落在行首（无前格）独占一格（简报前格守卫：
+// 前格须含文本才判续，空白格不续；裁定表末节同述）。
 void testX3BlankNoContinue()
 {
     ZzTerminal t { 80, 24, ZzBackendKind::Native, 1000 };
     feedBytes(t, "\xCC\x81"); // 行首无前格：U+0301 独立落格
     checkCell(t, 0, 0, "\xCC\x81", N, "行首组合符");
     checkCursor(t, 0, 1, "行首组合符");
+}
+
+// H1 Hangul 连用 Jamo L+V（U+1100+U+1161）：GB6 续接，宽基保持宽 2
+// （探针实测 contour w2 聚簇，快路径 prev 侧须放 Hangul 五类进慢路径）。
+void testH1HangulLV()
+{
+    bothModes("\xE1\x84\x80\xE1\x85\xA1", [](const ZzTerminal& t, const char* m) {
+        checkCell(t, 0, 0, "\xE1\x84\x80\xE1\x85\xA1", L, m);
+        checkCell(t, 0, 1, "", W, m);
+        checkCursor(t, 0, 2, m);
+    });
+}
+
+// H2 预组音节 + Jamo T（가 U+AC00 + U+11A8）：GB8 续接，宽 2 聚簇。
+void testH2HangulLvT()
+{
+    bothModes("\xEA\xB0\x80\xE1\x86\xA8", [](const ZzTerminal& t, const char* m) {
+        checkCell(t, 0, 0, "\xEA\xB0\x80\xE1\x86\xA8", L, m);
+        checkCell(t, 0, 1, "", W, m);
+        checkCursor(t, 0, 2, m);
+    });
 }
 
 } // namespace
@@ -458,6 +480,8 @@ int main()
     testX1CrossFeed();
     testX2CursorAfterContinue();
     testX3BlankNoContinue();
+    testH1HangulLV();
+    testH2HangulLvT();
     if (g_failures == 0)
         std::printf("test_native_cluster: 全部通过\n");
     return g_failures == 0 ? 0 : 1;

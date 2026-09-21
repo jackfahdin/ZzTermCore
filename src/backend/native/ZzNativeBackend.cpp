@@ -5,6 +5,7 @@
 
 #include "unicode/GraphemeBreak.h"
 
+#include <cassert>
 #include <string>
 #include <vector>
 
@@ -17,8 +18,12 @@ namespace {
 // M7b：ZzScreen 只暴露 const lineAt，cluster 侧表追加（internCluster）需可变
 // ZzLine。底层对象本身非常量（screen 内部行缓冲），const_cast 安全；这是
 // 本任务"只改 ZzNativeBackend.cpp"约束下的局部手段，不扩散使用。
+// 前提钉死：row 恒在界内（调用方的 prev 由光标位置推导，光标不变量保证
+// 0 <= row < rows）——ZzScreen::lineAt 越界返回 static const 空行对象，
+// 对它 const_cast + internCluster 是真 UB，故 assert 看护。
 ZzLine& zzMutableLine(ZzScreen& screen, int row) noexcept
 {
+    assert(row >= 0 && row < screen.size().rows);
     return const_cast<ZzLine&>(screen.lineAt(row));
 }
 
@@ -114,18 +119,27 @@ bool zzTryClusterContinue(ZzScreen& screen, char32_t cp, ZzPosition cur,
         return false;
 
     // 快路径：三点全满足走原路零回望——前格非 cluster、前格码点 GCB 非
-    // Prepend/RegionalIndicator、新码点 GCB 非 Extend/ZWJ/SpacingMark/
-    // RegionalIndicator 且非 ExtPic。纯 ASCII 双方先短路（GCB 恒 Other，
-    // 免两次表查找，append 热路径零附加成本）。
+    // Prepend/RegionalIndicator 且非 Hangul 五类（L/V/LV/LVT/T，GB6/7/8
+    // 续接候选——prev 侧排除后，新码点 Jamo/音节块跟在非 Hangul 后按
+    // GB999 断开是正确快路径，现代韩文预组音节热路径不受影响）、新码点
+    // GCB 非 Extend/ZWJ/SpacingMark/RegionalIndicator 且非 ExtPic。
+    // 纯 ASCII 双方先短路（GCB 恒 Other，免两次表查找，append 热路径
+    // 零附加成本）。
     if (!prevCell.isCluster() && prevCell.codePoint() < 0x80 && cp < 0x80)
         return false;
     const ZzGraphemeProps nextProps = zzGraphemePropsOf(cp);
     if (!prevCell.isCluster()) {
         const ZzGraphemeProps prevProps = zzGraphemePropsOf(prevCell.codePoint());
-        if (prevProps.gcb != ZzGcb::Prepend && prevProps.gcb != ZzGcb::RegionalIndicator
-            && nextProps.gcb != ZzGcb::Extend && nextProps.gcb != ZzGcb::ZWJ
-            && nextProps.gcb != ZzGcb::SpacingMark
-            && nextProps.gcb != ZzGcb::RegionalIndicator && !nextProps.extPic)
+        const bool prevMayContinue =
+            prevProps.gcb == ZzGcb::Prepend || prevProps.gcb == ZzGcb::RegionalIndicator
+            || prevProps.gcb == ZzGcb::L || prevProps.gcb == ZzGcb::V
+            || prevProps.gcb == ZzGcb::LV || prevProps.gcb == ZzGcb::LVT
+            || prevProps.gcb == ZzGcb::T;
+        const bool nextMayContinue =
+            nextProps.gcb == ZzGcb::Extend || nextProps.gcb == ZzGcb::ZWJ
+            || nextProps.gcb == ZzGcb::SpacingMark
+            || nextProps.gcb == ZzGcb::RegionalIndicator || nextProps.extPic;
+        if (!prevMayContinue && !nextMayContinue)
             return false;
     }
 
@@ -354,7 +368,7 @@ void ZzNativeBackend::putChar(char32_t cp)
     int width = zzCellWidthOf(cp, ambiguousWide_);
     // M7b T2 裁定 §1（I-3）：RI 单发即宽 2——EAW 对 RI 报 Neutral（窄），
     // contour 实测宽格，初始落格宽度按裁定表对齐。
-    if (width != 2 && cp >= 0x80 && zzGraphemePropsOf(cp).gcb == ZzGcb::RegionalIndicator)
+    if (width != 2 && zzGraphemePropsOf(cp).gcb == ZzGcb::RegionalIndicator)
         width = 2;
 
     // xterm pending-wrap：上一字符写在最后一列时，先换行再落格。

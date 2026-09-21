@@ -173,5 +173,9 @@ int main()
     probe("N2 宽基+VS16 中+U+FE0F", "\xE4\xB8\xAD\xEF\xB8\x8F");
     probe("N3 裸 keycap 1+U+20E3", "1\xE2\x83\xA3");
     probe("N4 ExtPic+肤色 👍🏽", "\xF0\x9F\x91\x8D\xF0\x9F\x8F\xBD");
+    // Hangul GB6/7/8 续接补探两例（T3 修复波 Major 1 授权）：
+    // H1 连用 Jamo L+V（U+1100+U+1161）、H2 预组音节+Jamo T（가+U+11A8）。
+    probe("H1 Hangul L+V U+1100+U+1161", "\xE1\x84\x80\xE1\x85\xA1");
+    probe("H2 Hangul LV+T U+AC00+U+11A8", "\xEA\xB0\x80\xE1\x86\xA8");
     return 0;
 }
