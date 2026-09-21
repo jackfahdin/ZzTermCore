@@ -30,6 +30,21 @@ if(ZZTERM_WITH_CONTOUR)
     endif()
 endif()
 
+# Fuzz 基建（M7a）：libFuzzer 仅 Clang 可用，默认 OFF。
+# ON 时全构建追加 ASan（库与测试同被覆盖，保证 harness 链接一致）；
+# libFuzzer 运行时（-fsanitize=fuzzer）只加在 tests/fuzz 的 harness target 上。
+# 覆盖率插桩分层：fuzzer-no-link 全构建只插桩（sancov）不含 main/运行时，
+# main 与 libFuzzer 运行时仍只进 harness（-fsanitize=fuzzer），否则 cov
+# 拿不到库内部反馈、等同盲 fuzz。
+option(ZZTERM_FUZZ "构建 libFuzzer Fuzz target（需要 Clang，全构建追加 ASan）" OFF)
+if(ZZTERM_FUZZ)
+    if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        message(FATAL_ERROR "ZZTERM_FUZZ=ON 需要 Clang（libFuzzer）；当前编译器：${CMAKE_CXX_COMPILER_ID}")
+    endif()
+    add_compile_options(-fsanitize=address -fsanitize=fuzzer-no-link -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=address)
+endif()
+
 # ---------------------------------------------------------------------------
 # ZzTermCore 库目标
 # 使用 GLOB + CONFIGURE_DEPENDS 自动收编新文件，新增源码无需修改本文件。

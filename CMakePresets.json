@@ -21,6 +21,16 @@
       }
     },
     {
+      "name": "linux-clang-fuzz",
+      "inherits": "ninja-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "ZZTERM_FUZZ": "ON",
+        "ZZTERM_WITH_CONTOUR": "OFF"
+      }
+    },
+    {
       "name": "linux-clang-release",
       "inherits": "ninja-base",
       "cacheVariables": {
@@ -58,6 +68,7 @@
   ],
   "buildPresets": [
     { "name": "linux-clang-debug", "configurePreset": "linux-clang-debug" },
+    { "name": "linux-clang-fuzz", "configurePreset": "linux-clang-fuzz" },
     { "name": "linux-clang-release", "configurePreset": "linux-clang-release" },
     { "name": "linux-gcc-debug", "configurePreset": "linux-gcc-debug" },
     { "name": "windows-msvc-debug", "configurePreset": "windows-msvc-debug", "configuration": "Debug" },
@@ -71,6 +82,7 @@
       "output": { "outputOnFailure": true }
     },
     { "name": "linux-clang-debug", "inherits": "test-base", "configurePreset": "linux-clang-debug" },
+    { "name": "linux-clang-fuzz", "inherits": "test-base", "configurePreset": "linux-clang-fuzz" },
     { "name": "linux-clang-release", "inherits": "test-base", "configurePreset": "linux-clang-release" },
     { "name": "linux-gcc-debug", "inherits": "test-base", "configurePreset": "linux-gcc-debug" },
     { "name": "windows-msvc-debug", "inherits": "test-base", "configurePreset": "windows-msvc-debug", "configuration": "Debug" },
