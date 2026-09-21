@@ -99,7 +99,7 @@ bool selectionRange(ZzLogicalPos& start, ZzLogicalPos& end) const;  // 规范化
 std::string selectedText() const;                                    // 纯文本，规则见 5.4
 ```
 
-- 坐标越界一律 clamp 到有效范围，不抛异常；
+- 坐标越界一律 clamp 到有效范围，不抛异常。clamp 语义细目（T2 审查裁定）：选区终点越界 = 选到内容末尾（终点行 clamp 到末条逻辑行、列 clamp 到该行行末）；起点行号越出有效范围时无可选内容，selectedText 返回空串而非 clamp；
 - hasSelection 语义：选区非空（anchor != extent）即 true，即使内容已被全部丢弃（此时 selectedText 为空串，selectionRange 返回 clamp 后的退化区间）。
 
 ### 5.6 Contour 适配
