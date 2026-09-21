@@ -59,7 +59,7 @@ struct ZzSearchOptions { bool caseSensitive = true; };
 - 签名：`std::vector<ZzLogicalRange> zzSearchLines(const ZzIPhysicalLineSource& src, std::string_view pattern, ZzSearchOptions options)`；
 - 单扫描：顺物理行链逐条组建逻辑行文本（规则同 M5a 提取：宽字符整字/续格跳过、cluster 整串、空单元格输出空格、行尾空白修剪）；同时产出**位置回映表**（text offset → cell offset）与大小写折叠副本（不敏感模式；ASCII 折叠，Unicode 不折叠，注释钉住）；
 - 匹配：逻辑行文本内子串查找；命中不重叠（命中后从 match 文本末尾继续找）；pattern 含换行符永不命中（不跨逻辑行，v1 钉死）；空 pattern 返回空列表；
-- 映射：命中 text 区间经回映表转为 `ZzLogicalRange{{line, cellStart}, {line, cellEnd}}`（半开；宽字符完整覆盖——起点落 lead、终点过续格之后，不拆半字）；
+- 映射：命中 text 区间经回映表转为 `ZzLogicalRange{{line, cellStart}, {line, cellEnd}}`（半开；宽字符完整覆盖——起点落 lead、终点过续格之后，不拆半字）。格粒度固有边界（T2 审查裁定）：pattern 为裸组合符等 cluster 字节串中段片段时，可命中但坐标归并到整格，此时"命中坐标提取文本等于 pattern"的自洽不变量不成立（提取结果为完整 cluster）——v1 接受，使用该不变量做断言时排除此类 pattern；
 - 每时刻只持有一条逻辑行的文本+回映表，不拼全量大串（§13 合规）；复杂度 O(R + 匹配数)。
 
 ### 5.3 ZzSearchState（Core 持有 match 列表）
