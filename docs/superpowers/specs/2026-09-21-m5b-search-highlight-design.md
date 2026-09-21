@@ -73,7 +73,7 @@ struct ZzSearchOptions { bool caseSensitive = true; };
 
 - feed：不动（已有内容序号稳定；新内容不自动重搜，重搜时机归前端）；
 - 丢弃：onLinesDropped（见 5.3）；
-- reflow：逻辑行集合不变，match 天然保持（compat 钉住）；截断行上 col 越界在查询返回时 clamp 到行末（与选区提取同层处理）；
+- reflow：逻辑行集合不变，match 天然保持（compat 钉住）；截断行上 match 的 col 保持快照原值（可能越出截断后行末）；前端绘制高亮时自行按行 clamp，需要精确文本时经 selectedText 提取（提取层按行 clamp）；
 - Alternate 切换：清空 search state（与选区同一切面）；
 - 内容漂移钉注：match 是搜索时刻的坐标快照，此后 feed 改写的同坐标内容不校验（同选区语义）；API.md 补注。
 

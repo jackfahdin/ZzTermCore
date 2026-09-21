@@ -20,7 +20,8 @@ public:
     // 存活起点负值 clamp 到 {0,0}（语义同 ZzSelection::onLinesDropped）。
     void onLinesDropped(std::uint64_t delta) noexcept;
     // line clamp 到 [0, lineCount)：起点越界的 match 移除，终点 clamp
-    //（语义同 ZzSelection::clampTo；col 由提取/查询层按行 clamp）。
+    //（语义同 ZzSelection::clampTo；col 保持快照原值，查询不 clamp——
+    // 前端绘制按行 clamp，精确文本经提取层按行 clamp）。
     void clampTo(std::int64_t lineCount) noexcept;
 
 private:

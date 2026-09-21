@@ -214,6 +214,10 @@ match 坐标快照语义：match 是搜索时刻的坐标快照，此后 feed �
 4. 裸组合符 pattern 归并整格：pattern 为组合符等 cluster 字节串的中段
    片段时，命中坐标归并到所在整格，命中文本与 pattern 逐字节相等的
    自洽不变量不成立；v1 接受该语义（T2 审查裁定，规格 5.2）。
+5. 截断行 col 快照语义：列变 reflow 截断行上的 match 其 col 保持快照
+   原值（可能越出截断后行末），查询返回不 clamp；前端绘制高亮时自行
+   按行 clamp，需要精确文本时经 `selectedText` 提取（提取层按行
+   clamp）（规格 5.4）。
 
 双后端 match 列表逐一相等由 test_search_compat 钉住（native 为基准，
 本里程碑未产生新 b 类分歧）；10 万行搜索性能门控见
