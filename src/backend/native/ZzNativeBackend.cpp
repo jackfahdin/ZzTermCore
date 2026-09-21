@@ -1,10 +1,190 @@
 #include "ZzNativeBackend.h"
 
 #include "ZzTerm/UnicodeWidth.h"
+#include "ZzTerm/Utf8.h"
+
+#include "unicode/GraphemeBreak.h"
+
+#include <string>
+#include <vector>
 
 // ZzNativeBackend 实现：Parser 已接入，feed 的真实链路为
 //   bytes -> ZzVtParser（语法） -> Sink -> Terminal 语义 -> ZzScreen。
 // print 通道字节经 ZzUtf8Decoder 解码为码点后由 putChar 落格。
+
+namespace {
+
+// M7b：ZzScreen 只暴露 const lineAt，cluster 侧表追加（internCluster）需可变
+// ZzLine。底层对象本身非常量（screen 内部行缓冲），const_cast 安全；这是
+// 本任务"只改 ZzNativeBackend.cpp"约束下的局部手段，不扩散使用。
+ZzLine& zzMutableLine(ZzScreen& screen, int row) noexcept
+{
+    return const_cast<ZzLine&>(screen.lineAt(row));
+}
+
+// 单码点 UTF-8 编码追加（Utf8.h 只提供解码器；聚簇串拼接用）。
+void zzAppendUtf8(std::string& out, char32_t cp)
+{
+    if (cp < 0x80) {
+        out.push_back(static_cast<char>(cp));
+    } else if (cp < 0x800) {
+        out.push_back(static_cast<char>(0xC0u | (cp >> 6)));
+        out.push_back(static_cast<char>(0x80u | (cp & 0x3Fu)));
+    } else if (cp < 0x10000) {
+        out.push_back(static_cast<char>(0xE0u | (cp >> 12)));
+        out.push_back(static_cast<char>(0x80u | ((cp >> 6) & 0x3Fu)));
+        out.push_back(static_cast<char>(0x80u | (cp & 0x3Fu)));
+    } else {
+        out.push_back(static_cast<char>(0xF0u | (cp >> 18)));
+        out.push_back(static_cast<char>(0x80u | ((cp >> 12) & 0x3Fu)));
+        out.push_back(static_cast<char>(0x80u | ((cp >> 6) & 0x3Fu)));
+        out.push_back(static_cast<char>(0x80u | (cp & 0x3Fu)));
+    }
+}
+
+// 聚簇宽度裁定（T2 表 §1 实测归约）：true = 聚簇应占 2 格——RI（单发即宽）、
+// ExtPic+VS16、keycap（须带 VS16，裸 keycap 窄）、InCB 连字（基窄也宽）、
+// emoji ZWJ 序列；窄基+组合符 / VS15 / Prepend+a 保持基宽。
+bool zzClusterWantsWide(const std::u32string& cps)
+{
+    bool hasVs16 = false;
+    bool hasKeycap = false;
+    bool hasZwj = false;
+    int extPicCount = 0;
+    int consonants = 0;
+    int linkers = 0;
+    for (const char32_t c : cps) {
+        const ZzGraphemeProps p = zzGraphemePropsOf(c);
+        if (p.gcb == ZzGcb::RegionalIndicator)
+            return true; // I-3：RI 单发即宽 2
+        if (c == 0xFE0F)
+            hasVs16 = true;
+        if (c == 0x20E3)
+            hasKeycap = true;
+        if (p.gcb == ZzGcb::ZWJ)
+            hasZwj = true;
+        if (p.extPic)
+            ++extPicCount;
+        if (p.incb == ZzIncb::Consonant)
+            ++consonants;
+        if (p.incb == ZzIncb::Linker)
+            ++linkers;
+    }
+    if (hasVs16 && (zzGraphemePropsOf(cps.front()).extPic || hasKeycap))
+        return true; // ExtPic+VS16（例 08/09）/ keycap（例 11）
+    if (consonants >= 2 && linkers >= 1)
+        return true; // I-4：InCB 连字（例 12）
+    if (hasZwj && extPicCount >= 2)
+        return true; // emoji ZWJ 序列（例 03/04）
+    return false;
+}
+
+// M7b 聚簇续接（无状态回望，T2 裁定表为最终语义）：cp 与前格 cluster 判续，
+// 续则并入前格。返回 true 表示已续接落格（调用方 noteScreenDirty 后返回）。
+// wrappedThis：本次 putChar 入口消费 wrap-pending 且 DECAWM 开已换行；
+// wasWrapPending：入口处 wrap-pending 原值（DECAWM 关覆盖语义判定用）。
+bool zzTryClusterContinue(ZzScreen& screen, char32_t cp, ZzPosition cur,
+                          bool wrappedThis, bool wasWrapPending)
+{
+    const ZzSize sz = screen.size();
+
+    // 前格定位（T2 §3 软换行边界裁定）：普通情形取光标同行左邻格；本次
+    // wrap-pending 换行后（cur 在新行首列）取上一行行尾格（B2 形态）；
+    // DECAWM 关未换行时取覆盖目标格本身（未探边界，按覆盖语义续）；其余
+    // 行首无前格即断。
+    ZzPosition prev{-1, -1};
+    if (cur.col > 0)
+        prev = ZzPosition{cur.row, cur.col - 1};
+    else if (wrappedThis && cur.row > 0)
+        prev = ZzPosition{cur.row - 1, sz.cols - 1};
+    else if (wasWrapPending) // DECAWM 关：覆盖目标即最后一格
+        prev = cur;
+    else
+        return false;
+    // 左邻是 WideContinuation 时退到其 WideLead（宽格对上的续接落首格）。
+    if (screen.lineAt(prev.row).cellAt(prev.col).width() == ZzCellWidth::WideContinuation) {
+        if (prev.col == 0)
+            return false;
+        --prev.col;
+    }
+
+    const ZzCell prevCell = screen.lineAt(prev.row).cellAt(prev.col);
+    // 前格须含文本才判续（T2 裁定 5：空白格不续）。
+    if (!prevCell.isCluster() && prevCell.codePoint() == 0)
+        return false;
+
+    // 快路径：三点全满足走原路零回望——前格非 cluster、前格码点 GCB 非
+    // Prepend/RegionalIndicator、新码点 GCB 非 Extend/ZWJ/SpacingMark/
+    // RegionalIndicator 且非 ExtPic。纯 ASCII 双方先短路（GCB 恒 Other，
+    // 免两次表查找，append 热路径零附加成本）。
+    if (!prevCell.isCluster() && prevCell.codePoint() < 0x80 && cp < 0x80)
+        return false;
+    const ZzGraphemeProps nextProps = zzGraphemePropsOf(cp);
+    if (!prevCell.isCluster()) {
+        const ZzGraphemeProps prevProps = zzGraphemePropsOf(prevCell.codePoint());
+        if (prevProps.gcb != ZzGcb::Prepend && prevProps.gcb != ZzGcb::RegionalIndicator
+            && nextProps.gcb != ZzGcb::Extend && nextProps.gcb != ZzGcb::ZWJ
+            && nextProps.gcb != ZzGcb::SpacingMark
+            && nextProps.gcb != ZzGcb::RegionalIndicator && !nextProps.extPic)
+            return false;
+    }
+
+    // 取前格码点串并判续（T1 单一求值核，含 64 硬上限——超了即断）。
+    std::u32string prevCps;
+    std::string newText;
+    if (prevCell.isCluster()) {
+        newText = std::string(screen.lineAt(prev.row).clusterText(prevCell.clusterIndex()));
+        const std::vector<char32_t> decoded = ZzUtf8Decoder().decodeAll(newText);
+        prevCps.assign(decoded.begin(), decoded.end());
+    } else {
+        prevCps.push_back(prevCell.codePoint());
+        zzAppendUtf8(newText, prevCell.codePoint());
+    }
+    if (!zzGraphemeContinues(prevCps, cp))
+        return false;
+
+    // 续接落格（T2 §5b 画笔裁定：只更新文本，前景/背景/属性保持前格原值；
+    // 旧 cluster 侧表条目弃置不管——internCluster 不查重约定）。
+    prevCps.push_back(cp);
+    zzAppendUtf8(newText, cp);
+    ZzCell merged = prevCell;
+    merged.setCluster(zzMutableLine(screen, prev.row).internCluster(newText));
+
+    // 窄变宽（VS16/keycap/InCB 连字续接使窄基聚簇变宽，T2 §1/§2 裁定）。
+    const bool narrowToWide =
+        prevCell.width() == ZzCellWidth::Narrow && zzClusterWantsWide(prevCps);
+    // 上一行行尾的续接（wrap-pending 已换行，B4 形态）：尾列无续格空间，
+    // 变宽抑制保持窄，光标不动。
+    const bool canWiden = narrowToWide && prev.row == cur.row && prev.col + 1 < sz.cols;
+    if (canWiden) {
+        // 行内有空间（B3/SGR2 形态）：原位转 WideLead，右侧插入
+        // WideContinuation 续格（画笔同基格），光标右移一格；右移到行外
+        // 则停末列并置 wrap-pending（同宽字符行尾既有逻辑）。
+        merged.setWidth(ZzCellWidth::WideLead);
+        screen.putCell(prev, merged);
+        ZzCell cont;
+        cont.setWidth(ZzCellWidth::WideContinuation);
+        cont.setForeground(prevCell.foreground());
+        cont.setBackground(prevCell.background());
+        cont.setAttributes(prevCell.attributes());
+        screen.putCell(ZzPosition{prev.row, prev.col + 1}, cont);
+        if (prev.col + 2 >= sz.cols) {
+            screen.setCursorPosition(ZzPosition{cur.row, sz.cols - 1});
+            screen.setWrapPending(true);
+        } else {
+            screen.setCursorPosition(ZzPosition{cur.row, prev.col + 2});
+        }
+    } else {
+        screen.putCell(prev, merged);
+        // 本次 wrap-pending 已换行（B2/B4 形态）：cur 是局部变量，须显式
+        // 提交换行后的光标位置；未换行时光标本就正确，不动。
+        if (wrappedThis)
+            screen.setCursorPosition(cur);
+    }
+    return true;
+}
+
+} // namespace
 
 /// 嵌套私有类：把解析事件转发为 Terminal 的语义方法调用。
 /// DCS 不覆盖（基类默认空实现 = 安全忽略）。
@@ -171,12 +351,19 @@ void ZzNativeBackend::putChar(char32_t cp)
     const ZzSize sz = screen_.size();
     const ZzCellRange region = screen_.scrollRegionRows(); // [top, bottom+1)
     ZzPosition cur = screen_.cursor().position;
-    const int width = zzCellWidthOf(cp, ambiguousWide_);
+    int width = zzCellWidthOf(cp, ambiguousWide_);
+    // M7b T2 裁定 §1（I-3）：RI 单发即宽 2——EAW 对 RI 报 Neutral（窄），
+    // contour 实测宽格，初始落格宽度按裁定表对齐。
+    if (width != 2 && cp >= 0x80 && zzGraphemePropsOf(cp).gcb == ZzGcb::RegionalIndicator)
+        width = 2;
 
     // xterm pending-wrap：上一字符写在最后一列时，先换行再落格。
-    if (screen_.wrapPending()) {
+    const bool wasWrapPending = screen_.wrapPending();
+    bool didWrap = false;
+    if (wasWrapPending) {
         screen_.setWrapPending(false);
         if (screen_.autoWrapMode()) {
+            didWrap = true;
             screen_.setLineWrapped(cur.row, true);
             if (cur.row == region.endCol - 1)
                 screen_.scrollUp(1, eraseFill());
@@ -200,6 +387,13 @@ void ZzNativeBackend::putChar(char32_t cp)
         else
             ++cur.row;
         cur.col = 0;
+    }
+
+    // M7b 聚簇续接（无状态回望，T2 裁定表）：新码点与前格 cluster 判续，
+    // 续则并入前格不推进光标（宽度/画笔/软换行边界语义逐条按裁定表）。
+    if (zzTryClusterContinue(screen_, cp, cur, didWrap, wasWrapPending)) {
+        noteScreenDirty();
+        return;
     }
 
     ZzCell cell;
