@@ -247,6 +247,14 @@ ZzTermCore 负责：
 `[Contour]`、`[Zz-Adapter]`、`[Zz-Native]`、`[Test]`、`[Future]`、`[Rule]`
 分类，并以 `[PASS-Native]`、`[PASS-PoC]` 记录已有验证基线。
 
+M7b 落地注记：native 聚簇生产已落地——UAX #29 自研 segmenter
+（UCD 16.0.0 钉版生成表 + 单一求值核 GB1-GB999，官方 golden 1093 用例
+零失败）经 putChar 无状态回望续接集成（快路径三点短路，ASCII 热路径
+零附加成本）；宽度/画笔/VS16 位移/软换行边界语义以 contour 探针裁定表
+（docs/superpowers/specs/2026-09-21-m7b-parity-probe.md）为准；双后端
+parity 经 test_cluster_compat 门控（b 类分歧 I-1/I-2/I-6/I-7 分别断言
+钉住）。
+
 ## 11. Input、IME 与 Transport
 
 UI 不直接拼 escape sequence。统一通过

@@ -90,11 +90,11 @@
 
 -   [x] Split UTF-8 / Invalid UTF-8
 -   [x] CJK width
--   [ ] Combining marks
--   [ ] Variation selectors
--   [ ] Emoji / ZWJ
+-   [x] Combining marks（M7b：UAX #29 聚簇续接，GB9/GB9a）
+-   [x] Variation selectors（M7b：VS16 窄变宽位移 / VS15 保窄）
+-   [x] Emoji / ZWJ（M7b：GB11 ZWJ 序列 / 区旗成对 / keycap / 肤色）
 -   [x] Wide continuation consistency
--   [ ] Grapheme-aware copy/search
+-   [x] Grapheme-aware copy/search（M7b 手工实证：聚簇串 selectedText 复制与 search 命中，M5a clusterText / M5b cluster emit 路径）
 -   [x] Unicode version recorded
 
 ## Screen / History

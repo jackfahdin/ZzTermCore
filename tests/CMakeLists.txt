@@ -15,7 +15,8 @@ list(REMOVE_ITEM ZZTERM_UNIT_TEST_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_contour_linesource.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_backend_compat.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_selection_compat.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_search_compat.cpp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_search_compat.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_cluster_compat.cpp")
 
 foreach(test_source IN LISTS ZZTERM_UNIT_TEST_SOURCES)
     get_filename_component(test_name "${test_source}" NAME_WE)
@@ -61,6 +62,22 @@ if(TARGET test_search)
     target_sources(test_search PRIVATE
         "${CMAKE_SOURCE_DIR}/src/terminal/ZzSearch.cpp"
         "${CMAKE_SOURCE_DIR}/src/terminal/ZzSelectionText.cpp")
+endif()
+
+# M7b：聚簇 golden 测试的数据路径与 shared 构建内部符号。
+# GraphemeBreak.h 为 src/ 内部头（经 "unicode/GraphemeBreak.h" 引用），
+# 需 src/ 在 include 路径上（先例见上方 test_backend_interface）。
+if(TARGET test_grapheme_break)
+    target_include_directories(test_grapheme_break PRIVATE "${CMAKE_SOURCE_DIR}/src")
+    target_compile_definitions(test_grapheme_break
+        PRIVATE ZZ_GRAPHEME_TEST_DATA="${CMAKE_CURRENT_SOURCE_DIR}/data/GraphemeBreakTest.txt")
+    target_sources(test_grapheme_break PRIVATE "${CMAKE_SOURCE_DIR}/src/unicode/GraphemeBreak.cpp")
+endif()
+
+# M7b：聚簇 parity 探针（开发期工具，不注册 ctest），仅 Contour 后端启用时构建。
+if(TARGET ZzTermContourBackend)
+    add_executable(cluster_probe probe/cluster_probe.cpp)
+    target_link_libraries(cluster_probe PRIVATE ZzTermCore) # Contour target 一律 PRIVATE
 endif()
 
 if(TARGET vtparser)
@@ -121,6 +138,13 @@ if(TARGET ZzTermContourBackend)
     add_executable(test_search_compat unit/test_search_compat.cpp)
     target_link_libraries(test_search_compat PRIVATE ZzTermCore)
     add_test(NAME test_search_compat COMMAND test_search_compat)
+endif()
+
+# M7b：双后端聚簇 compat（同一聚簇脚本逐格比对，native 以 contour 为基准）。
+if(TARGET ZzTermContourBackend)
+    add_executable(test_cluster_compat unit/test_cluster_compat.cpp)
+    target_link_libraries(test_cluster_compat PRIVATE ZzTermCore)
+    add_test(NAME test_cluster_compat COMMAND test_cluster_compat)
 endif()
 
 # 脚本化冒烟：PTY 驱动 Core 全链路——真实 bash 输出经 ZzTerminal 渲染回 stdout，

@@ -149,12 +149,12 @@ compatibility/regression tests。
 -   [ ] \[Contour\]\[Test\]\[PASS-PoC\] CJK basic output
 -   [ ] \[Contour\]\[Test\]\[PASS-PoC\]\[PASS-Native\] CJK wide-cell
     width
--   [ ] \[Contour\]\[Test\] Combining marks
--   [ ] \[Contour\]\[Test\] Variation selectors
--   [ ] \[Contour\]\[Test\] Emoji / ZWJ
+-   [x] \[Contour\]\[Test\] Combining marks（M7b test_cluster_compat）
+-   [x] \[Contour\]\[Test\] Variation selectors（M7b：VS16 位移 / VS15 / 尾列抑制）
+-   [x] \[Contour\]\[Test\] Emoji / ZWJ（M7b：GB11 / 区旗 / keycap / 肤色）
 -   [ ] \[Contour\]\[Test\]\[PASS-Native\] Wide continuation
     consistency
--   [ ] \[Zz-Native\]\[Test\] Grapheme-aware copy/search/highlight
+-   [x] \[Zz-Native\]\[Test\] Grapheme-aware copy/search/highlight（M7b 手工实证：聚簇复制与搜索命中）
 -   [ ] \[Zz-Adapter\] Unicode/libunicode version recorded
 
 ## Screen / History
