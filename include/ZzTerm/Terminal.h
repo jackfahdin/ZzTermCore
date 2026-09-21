@@ -275,6 +275,7 @@ public:
     void clearSearch() noexcept;
 
     /// @brief 当前搜索的 match 总数（无搜索状态为 0）。
+    /// @return match 总数。
     [[nodiscard]] std::size_t searchMatchCount() const noexcept;
 
     /**

@@ -63,6 +63,7 @@ struct ZzLogicalPos {
 struct ZzLogicalRange {
     ZzLogicalPos start; ///< 区间起点（含）
     ZzLogicalPos end;   ///< 区间终点（不含）
+    /// @brief 相等比较（起点与终点均相等）。
     friend constexpr bool operator==(ZzLogicalRange, ZzLogicalRange) noexcept = default;
 };
 
