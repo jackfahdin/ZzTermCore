@@ -15,7 +15,7 @@
 **已核实的关键签名（计划阶段免查）：**
 
 - `explicit ZzVtParser(ZzParserSink* sink, ZzParserLimits limits = {})`——Parser.h:246；`feed(std::string_view)` 增量入口 Parser.h:259；
-- ZzParserSink 基类默认回调全部 no-op（src/parser/Parser.cpp:47-54），harness 直接使用基类即可，无需子类覆写；
+- ZzParserSink 基类默认回调全部 no-op（src/parser/VtParser.cpp:47-54），harness 直接使用基类即可，无需子类覆写；
 - `ZzTerminal(int cols, int rows, ZzBackendKind backend, std::size_t scrollbackMaxLines = 100000)`——Terminal.h:94；
 - `ZzTermChanges feed(std::span<const std::byte> data)`——Terminal.h:112，无 nodiscard，返回值可弃；
 - `bool resize(int cols, int rows)`——Terminal.h:125，无 nodiscard；
@@ -227,7 +227,7 @@ git commit -m "build(fuzz): ZZTERM_FUZZ option 与 linux-clang-fuzz preset 及 C
 ```cpp
 // M7a：ZzVtParser Fuzz target——状态机在任意字节流与任意 chunk 边界下
 // 不崩、不断言、不 UB（ASan + libFuzzer）。sink 基类默认回调全 no-op
-//（src/parser/Parser.cpp:47-54），语义不在本 target 校验范围。
+//（src/parser/VtParser.cpp:47-54），语义不在本 target 校验范围。
 #include "ZzTerm/Parser.h"
 
 #include <cstddef>

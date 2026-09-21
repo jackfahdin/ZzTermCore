@@ -50,7 +50,7 @@ Architecture §204 早已点名三类 Fuzz target，至今空白。M7b（Unicode
 
 ### 4.2 fuzz_parser.cpp（ZzVtParser 裸解析）
 
-- 空 sink：ZzParserSink 基类默认回调全部 no-op（src/parser/Parser.cpp:47-54 已核实），直接使用或空子类皆可——目标是解析器状态机不崩、不断言、不 UB，不校验语义；
+- 空 sink：ZzParserSink 基类默认回调全部 no-op（src/parser/VtParser.cpp:47-54 已核实），直接使用或空子类皆可——目标是解析器状态机不崩、不断言、不 UB，不校验语义；
 - 喂法两段：先整输入一次 feed（完整序列路径）；再取首字节对输入长度取模得切点，切两段先后 feed（跨 chunk 续接路径，OSC 字符串、UTF-8 序列中断续接是解析器最脆的接缝）；
 - 每个 LLVMFuzzerTestOneInput 内构造全新 parser 实例（ZzVtParser 轻量、无全局态），输入间零共享。
 
