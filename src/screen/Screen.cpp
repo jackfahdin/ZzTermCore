@@ -2,6 +2,8 @@
 
 #include <algorithm>
 
+#include "Reflow.h"
+
 // ZzScreen 实现骨架（M0）。
 // 说明：本文件实现网格级原语；光标相对滚动区换算、DECAWM 换行、
 // wide/continuation 一致性等语义由 ZzTerminal 写入流程负责。
@@ -54,6 +56,67 @@ void ZzScreen::resize(int cols, int rows)
     scrollBottom_ = rows_ - 1;
     ++dirtyGeneration_;
     markAllDirty();
+}
+
+void ZzScreen::reflow(int newCols)
+{
+    if (newCols <= 0 || newCols == cols_)
+        return;
+    reflowBuffer(primary_, newCols, true);
+    reflowBuffer(alternate_, newCols, false);
+    cols_ = newCols;
+    tabStops_.assign(static_cast<std::size_t>(cols_), 0); // tab stops 不跨列宽保留
+    scrollTop_ = 0;
+    scrollBottom_ = rows_ - 1;
+    ++dirtyGeneration_;
+    markAllDirty();
+}
+
+void ZzScreen::reflowBuffer(Buffer& buf, int newCols, bool mayScrollOut)
+{
+    // 光标 -> 链坐标：向上找链起点，统计链序号，偏移 = 链内整行宽累加 + 光标列。
+    const int cursorRow = buf.cursor.position.row;
+    int chainStartRow = cursorRow;
+    while (chainStartRow > 0 && buf.lines[static_cast<std::size_t>(chainStartRow - 1)].wrapped())
+        --chainStartRow;
+    ZzReflowCursor track;
+    {
+        std::size_t index = 0;
+        int r = 0;
+        const int total = static_cast<int>(buf.lines.size());
+        while (r < chainStartRow) { // 逐链跳过
+            ++index;
+            while (r < total && buf.lines[static_cast<std::size_t>(r)].wrapped())
+                ++r;
+            ++r; // 链末行
+        }
+        track.chainIndex = index;
+        track.chainOffset = (cursorRow - chainStartRow) * cols_ + buf.cursor.position.col;
+    }
+
+    std::vector<ZzLine> out = zzReflowLines(buf.lines, cols_, newCols, &track);
+
+    // 行数平衡：溢出上移（仅 Primary）或丢弃（Alternate），不足底部补空行。
+    if (static_cast<int>(out.size()) > rows_) {
+        const int overflow = static_cast<int>(out.size()) - rows_;
+        if (mayScrollOut && scrollOutCallback_) {
+            std::vector<ZzLine> spilled;
+            spilled.reserve(static_cast<std::size_t>(overflow));
+            for (int k = 0; k < overflow; ++k)
+                spilled.push_back(std::move(out[static_cast<std::size_t>(k)]));
+            scrollOutCallback_(std::move(spilled));
+        }
+        out.erase(out.begin(), out.begin() + overflow);
+        track.row -= overflow;
+    } else if (static_cast<int>(out.size()) < rows_) {
+        while (static_cast<int>(out.size()) < rows_)
+            out.push_back(ZzLine(newCols));
+    }
+
+    buf.lines = std::move(out);
+    buf.cursor.position.row = std::clamp(track.row, 0, rows_ - 1);
+    buf.cursor.position.col = std::clamp(track.col, 0, newCols - 1);
+    buf.wrapPending = false;
 }
 
 ZzScreenBuffer ZzScreen::activeBuffer() const noexcept
@@ -169,7 +232,7 @@ void ZzScreen::resetScrollRegion() noexcept
 
 ZzCellRange ZzScreen::scrollRegionRows() const noexcept
 {
-    // 复用 ZzCellRange 表达 [top, bottom] 闭区间：endCol 存 bottom + 1。
+    // 复用 ZzCellRange 的半开区间约定：startCol 存上沿 top（含），endCol 存 bottom + 1（不含）。
     return ZzCellRange{scrollTop_, scrollBottom_ + 1};
 }
 

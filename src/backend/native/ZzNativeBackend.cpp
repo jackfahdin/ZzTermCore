@@ -64,10 +64,17 @@ bool ZzNativeBackend::resize(int cols, int rows)
 {
     if (cols <= 0 || rows <= 0)
         return false;
-    if (screen_.size() == ZzSize{cols, rows})
+    const ZzSize old = screen_.size();
+    if (old == ZzSize{cols, rows})
         return false;
-    // M0：网格级 resize，不做 reflow（见 Terminal.h 注释）。
-    screen_.resize(cols, rows);
+    // M4：列变化触发 soft-wrap reflow，先历史后屏幕
+    //（屏幕溢出行以新宽度经 ScrollOutCallback 回流到已重组的历史，宽度不变量自洽）。
+    if (cols != old.cols) {
+        scrollback_->reflow(cols);
+        screen_.reflow(cols);
+    }
+    if (rows != old.rows)
+        screen_.resize(cols, rows); // 行向语义维持 M0 现状（截断/填充/clamp）
     return true;
 }
 

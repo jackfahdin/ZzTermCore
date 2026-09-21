@@ -92,6 +92,8 @@ struct ZzContourBackend::Impl
         settings.historyLimits = vtbackend::HistoryLimits::plain(vtbackend::LineCount(scrollbackLines));
         settings.ptyReadBufferSize = 4096;
         settings.goodImageProtocol = false;
+        // M4：显式钉住（上游 Settings.hpp 默认即 true），与 native reflow 语义对齐
+        settings.primaryScreen.allowReflowOnResize = true;
 
         auto bridgePtr = std::make_unique<ZzContourPtyBridge>(
             pageSize, [this](std::string_view data) { listener.onWriteToTransport(std::string(data)); });

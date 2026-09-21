@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <vector>
 
@@ -16,7 +17,7 @@
  *   避免单行一个 allocation，也避免单一巨大 vector 的扩容拷贝；
  * - 未来：Hot RAM / Warm LZ4 压缩 / Cold mmap-file 三层。分层信息通过
  *   ZzScrollbackStats 暴露，接口本身不关心层的存在——调用方只依赖
- *   append / lineAt / lineCount / setCapacity；
+ *   append / lineAt / lineCount / setCapacity / reflow；
  * - 百万行为扩展目标；禁止退化为 historyLines × columns × sizeof(Cell)
  *   的单一朴素矩阵（chunked 分配 + 未来压缩即为此约束的回应）。
  *
@@ -32,13 +33,15 @@ struct ZzScrollbackStats {
     std::size_t hotLines  = 0;   ///< Hot 层（RAM 明文）行数。
     std::size_t warmLines = 0;   ///< Warm 层（LZ4 压缩）行数，预留。
     std::size_t coldLines = 0;   ///< Cold 层（mmap 文件）行数，预留。
+    std::uint64_t totalAppended = 0; ///< 累计入库行数（含随后被裁的）；为 M5 绝对行号选区坐标铺路。
+    std::uint64_t totalDropped  = 0; ///< 累计因容量裁剪丢弃的行数；clear 不复位。
 };
 
 /**
  * @brief 滚动历史抽象接口。
  *
  * ownership：实现类独占拥有行数据；append 以值移交所有权，
- * lineAt 返回的引用在下一次 append/clear/setCapacity 后可能失效。
+ * lineAt 返回的引用在下一次 append/clear/setCapacity/reflow 后可能失效。
  *
  * 线程安全：非线程安全，与 ZzScreen 同线程使用。
  */
@@ -50,7 +53,9 @@ public:
      * @brief 追加一批从屏幕顶部滚出的行（保持原有先后顺序）。
      * @param lines 滚出行（以值移交所有权，追加后参数处于移后状态）。
      * @note 超出容量时从最旧一端裁掉。实现应保持行的 wrapped 标记，
-     *       不做 logical line 合并/拆分。
+     *       logical line 重组由 reflow() 承担。
+     * @note 不变量：历史行宽度必须等于终端当前列宽；resize 路径由
+     *       reflow() 重组维持该不变量（调用方保证以当前列宽的行入库）。
      */
     virtual void append(std::vector<ZzLine> lines) = 0;
 
@@ -64,7 +69,7 @@ public:
      * @brief 只读访问一行。
      * @param index 行索引，0 为最旧一行。
      * @return 行的常量引用。
-     * @warning 返回引用在下一次 append/clear/setCapacity 后可能失效，
+     * @warning 返回引用在下一次 append/clear/setCapacity/reflow 后可能失效，
      *          不得长期持有。
      */
     [[nodiscard]] virtual const ZzLine& lineAt(std::size_t index) const = 0;
@@ -75,6 +80,18 @@ public:
      * @note 缩容立即从最旧一端裁剪。
      */
     virtual void setCapacity(std::size_t maxLines) = 0;
+
+    /**
+     * @brief 列向 soft-wrap reflow：全部历史行按新列宽重组（M4）。
+     * @param newCols 新列宽（> 0；等于当前行宽或历史为空时为空操作）。
+     * @note 不变量：历史行宽度与终端当前列宽一致（resize 先历史后屏幕，
+     *       屏幕溢出行以新宽度入库）；重组算法与屏幕区共用 zzReflowLines；
+     *       重组后超容量仍从最旧一端裁剪并计入 totalDropped。
+     * @note 固有边界：历史与屏幕分域重组，横跨两域的逻辑行会在接缝处
+     *       被拆成两条独立链（内容零丢失），与 Contour 统一重组的折行
+     *       位置可能不同（M5 选区工作前加 compat 钉住）。
+     */
+    virtual void reflow(int newCols) = 0;
 
     /**
      * @brief 当前容量上限（行）。

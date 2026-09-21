@@ -68,7 +68,7 @@ public:
      * @param cols 目标列数。
      * @param fill 增长时用于填充新列的单元格（通常为空白）。
      * @note 缩短时直接截断。本方法不做 soft-wrap reflow；
-     *       reflow 由 Screen/Terminal 在 resize 流程中负责。
+     *       reflow 由 ZzScreen::reflow / zzReflowLines 承担（M4 已落地）。
      */
     void resize(int cols, const ZzCell& fill = ZzCell{});
 

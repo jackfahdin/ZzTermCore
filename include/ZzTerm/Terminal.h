@@ -89,9 +89,9 @@ public:
      * @param cols 列数（> 0）。
      * @param rows 行数（> 0）。
      * @param backend 后端选择（显式，无默认值）。OFF 构建传 Contour 抛 std::logic_error。
-     * @param scrollbackMaxLines 历史容量上限（行），0 表示不保留历史。
+     * @param scrollbackMaxLines 历史容量上限（行），0 表示不保留历史；默认 10 万行（M4 benchmark 门控保障）。
      */
-    ZzTerminal(int cols, int rows, ZzBackendKind backend, std::size_t scrollbackMaxLines = 10000);
+    ZzTerminal(int cols, int rows, ZzBackendKind backend, std::size_t scrollbackMaxLines = 100000);
 
     ~ZzTerminal();
 
@@ -112,13 +112,15 @@ public:
     ZzTermChanges feed(std::span<const std::byte> data);
 
     /**
-     * @brief 调整终端尺寸。
-     * @param cols 新列数（> 0；非法值忽略并返回 false）。
-     * @param rows 新行数（> 0；非法值忽略并返回 false）。
-     * @return 尺寸是否发生变化。
-     * @note 当前为网格级 resize；列变化时的 soft-wrap reflow 与
-     *       cursor/selection 映射在 M4 里程碑实现，届时本接口语义
-     *       不变、行为增强。
+     * @brief 调整终端尺寸；列变化触发 soft-wrap reflow（M4 起）。
+     * @param cols 新列数（> 0）。
+     * @param rows 新行数（> 0）。
+     * @return true 表示尺寸实际变化。
+     * @note 列变化：屏幕区与 scrollback 历史一起重组（logical line 合并后
+     *       按新列宽重切，宽字符不拆半，硬行截断/补空），光标跟随内容；
+     *       行变化仅做网格增减，不触发 reflow。两后端语义对齐
+     *       （Contour 经 allowReflowOnResize）。resize 后 RenderView 失效，
+     *       前端需重新获取视图。
      */
     bool resize(int cols, int rows);
 

@@ -20,8 +20,8 @@
  *   ZzScrollback（Alternate Screen 永不产生历史）；
  * - ZzScreen 不做语义解释（无 SGR 画笔状态、无模式到行为的映射），
  *   语义由 ZzTerminal 负责，Screen 提供原语操作；
- * - resize 时的 soft-wrap reflow 属于 Terminal/History 协同逻辑，
- *   Screen 仅提供网格级 resize 原语。
+ * - resize 列变化时的 soft-wrap reflow 由 reflow() 原语承担（M4 落地），
+ *   ZzNativeBackend::resize 负责屏幕与历史的协调顺序。
  */
 
 /// @brief 屏幕缓冲区选择。
@@ -75,9 +75,21 @@ public:
      * @param cols 新列数（> 0）。
      * @param rows 新行数（> 0）。
      * @note 不做 reflow；列变化时的 soft-wrap reflow、cursor 映射由
-     *       ZzTerminal::resize 协调（M4 里程碑）。全屏标脏。
+     *       ZzNativeBackend::resize 协调（先历史后屏幕，M4 已落地）。全屏标脏。
      */
     void resize(int cols, int rows);
+
+    /**
+     * @brief 列向 soft-wrap reflow 原语：屏幕区行按新列宽重组（M4）。
+     * @param newCols 新列宽（> 0；等于当前列宽或非法时为空操作）。
+     * @note Primary/Alternate 两套网格各自重组；重组导致行数超出时，
+     *       Primary 顶部溢出行经 ScrollOutCallback 上移（Alternate 溢出
+     *       直接丢弃，备用屏无历史）；行数不足时底部补空行。
+     *       光标按"逻辑行链 + 链内偏移"跟随内容映射并 clamp；
+     *       wrapPending 清除；滚动区复位全屏；tab stops 按新列宽重建；
+     *       全屏标脏。行数不变（行向调整由 resize 负责）。
+     */
+    void reflow(int newCols);
 
     // ---- 缓冲区 ----
 
@@ -180,8 +192,9 @@ public:
     void resetScrollRegion() noexcept;
 
     /**
-     * @brief 当前滚动区 [top, bottom]（0 起始，含端点）。
-     * @return 滚动区行范围；ZzCellRange 的 startCol/endCol 复用为上/下沿。
+     * @brief 当前滚动区行范围（0 起始）。
+     * @return 滚动区行范围；复用 ZzCellRange 的半开区间约定：startCol 为
+     *         上沿（含），endCol 为下沿 + 1（不含）。
      */
     [[nodiscard]] ZzCellRange scrollRegionRows() const noexcept;
 
@@ -357,6 +370,8 @@ private:
     void markDirty(int row, int col) noexcept;
     void markRowDirty(int row) noexcept;
     void markAllDirty() noexcept;
+    /// @brief 重组单套缓冲区到新列宽（reflow 的 per-buffer 实现）。
+    void reflowBuffer(Buffer& buf, int newCols, bool mayScrollOut);
     /// @brief 滚动区是否覆盖全屏高度（滚出上沿的行才可进入历史）。
     [[nodiscard]] bool regionIsFullHeight() const noexcept;
     /// @brief 向上滚动滚动区（内部实现，含滚出回调）。

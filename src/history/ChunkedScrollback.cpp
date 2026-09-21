@@ -1,7 +1,11 @@
 #include "ZzTerm/Scrollback.h"
 
 #include <algorithm>
+#include <cassert>
+#include <cstdint>
 #include <deque>
+
+#include "../screen/Reflow.h"
 
 // chunked RAM 历史后端（M0 实现骨架）。
 //
@@ -23,9 +27,12 @@ public:
 
     void append(std::vector<ZzLine> lines) override
     {
+        totalAppended_ += lines.size();
+        if (capacity_ == 0) {
+            totalDropped_ += lines.size();
+            return;
+        }
         for (auto& line : lines) {
-            if (capacity_ == 0)
-                return;
             if (chunks_.empty() || chunks_.back().size() >= kChunkLines)
                 chunks_.emplace_back();
             approxBytes_ += sizeof(ZzLine) +
@@ -55,6 +62,35 @@ public:
         trimToCapacity();
     }
 
+    void reflow(int newCols) override
+    {
+        if (newCols <= 0 || totalLines_ == 0)
+            return;
+        const int oldCols = chunks_.front().front().cellCount(); // 不变量：全历史同宽
+        if (oldCols == newCols)
+            return;
+        std::vector<ZzLine> all;
+        all.reserve(totalLines_);
+        for (auto& chunk : chunks_)
+            for (auto& line : chunk) {
+                assert(line.cellCount() == oldCols); // debug 断言：全历史同宽不变量
+                all.push_back(std::move(line));
+            }
+        all = zzReflowLines(std::move(all), oldCols, newCols);
+        chunks_.clear();
+        totalLines_ = 0;
+        approxBytes_ = 0;
+        for (auto& line : all) {
+            if (chunks_.empty() || chunks_.back().size() >= kChunkLines)
+                chunks_.emplace_back();
+            approxBytes_ += sizeof(ZzLine) +
+                            static_cast<std::size_t>(line.cellCount()) * sizeof(ZzCell);
+            chunks_.back().push_back(std::move(line));
+            ++totalLines_;
+        }
+        trimToCapacity();
+    }
+
     [[nodiscard]] std::size_t capacity() const noexcept override
     {
         return capacity_;
@@ -73,6 +109,8 @@ public:
         s.lineCount = totalLines_;
         s.approxBytes = approxBytes_;
         s.hotLines = totalLines_; // 当前全部位于 Hot(RAM) 层。
+        s.totalAppended = totalAppended_;
+        s.totalDropped = totalDropped_;
         return s;
     }
 
@@ -90,6 +128,7 @@ private:
                                 static_cast<std::size_t>(head[i].cellCount()) * sizeof(ZzCell);
             head.erase(head.begin(), head.begin() + static_cast<std::ptrdiff_t>(removable));
             totalLines_ -= removable;
+            totalDropped_ += removable;
             if (head.empty())
                 chunks_.pop_front();
         }
@@ -99,6 +138,8 @@ private:
     std::size_t totalLines_  = 0;
     std::size_t capacity_    = 0;
     std::size_t approxBytes_ = 0;
+    std::uint64_t totalAppended_ = 0; ///< 累计入库行数（clear 不复位）。
+    std::uint64_t totalDropped_  = 0; ///< 累计裁剪丢弃行数（clear 不复位）。
 };
 
 } // namespace
