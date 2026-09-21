@@ -1901,6 +1901,14 @@ git commit -m "test(selection): 双后端选区 compat 与 M5a 文档落定（M5
 
 ## 自检结论（计划编写后）
 
+## 执行修正记录（SDD 过程中沉淀，规格语义不变）
+
+- T2：testOutOfRangeClamped 与实现自相矛盾，以测试为准修复（终点越界=选到内容末尾）；规格 5.5 已补裁定细目（ab5e9a6）。
+- T4：步骤 0 核实项结论①不成立——Contour 列变 reflow 把 stableFloor 顶到旧 base（行身份重建副产）；落地为 noteFloor/reanchorFloor 双入口，规格 5.6 退化路径兑现。
+- T5：testResizeReflowKeepsSelection 原文 resize(4,3) 断言与 M4 硬行截断语义冲突，改为 resize(8,3)（不触发截断的最大缩列幅度，双向 reflow 覆盖保持）。
+- T5 顺带修复：native 1049 切换补 activeBufferChanged 置位（前序遗漏，native 此前从不置位）；test_backend_interface FakeBackend 补 lineSource() override。
+- T1 遗留待 T6 修复：Types.h:52 ZzLogicalPos::operator== 缺 doxygen 注释（阻塞 doxygen 全量验证）。
+
 - **规格覆盖度**：§3.1 全项有对应任务——ZzLogicalPos/锚定不变量（T1/T5）、统一视图（T2 接口 + T3/T4 实现；接缝规则 T2 单测 + T6 compat）、ZzSelection（T1）、提取四规则（T2）、facade API（T5）、Contour 历史只读口与 stableFloor（T4）、M4 观察项①收口（T2 testSeamStitchHistoryToScreen + T6 用例 4）、测试矩阵（T1-T6）、文档（T6）。§5.6 计划阶段核实项 → T4 步骤 0。
 - **占位符扫描**：T4 步骤 3 的 SoA 字段名与 T4 步骤 1 的 events stub 标注了"以实际声明为准"——这是上游 API 适配的固有不确定性（third_party 代码本地已改造），每个标注点都给出了确切的核实文件路径（Line.hpp/CellProxy.hpp/ZzContourEvents.h），不构成占位符。
 - **类型一致性**：ZzIPhysicalLineSource 六方法在 T2 定义、T3/T4 实现、T5 消费一致；ZzSelection 公开方法（set/extend/clear/empty/range/onLinesDropped/clampTo）T1 定义、T5 使用一致；facade 六 API（setSelection/extendSelection/clearSelection/hasSelection/selectionRange/selectedText）T5 声明/实现/测试一致；ZzContourBackend 新口（historyLineSnapshot/screenLineSnapshot/historyLineWrapped/stableFloor）T4 声明、实现、ZzContourLineSource 消费一致。
