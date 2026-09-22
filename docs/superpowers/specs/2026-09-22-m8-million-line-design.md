@@ -17,7 +17,7 @@ ZzScrollback 当前为 chunked RAM 实现，1M 行乘以 80 列乘以 sizeof(Cel
 - `bench_common.h/.cpp`——共享件：RSS 采样（Linux /proc/self/status 的 VmRSS 当前值 + getrusage 的 ru_maxrss 峰值）、计时段封装、确定性负载生成器（固定种子，产出合成行批与合成 VT 字节流，可控 wrapped 链比例与 CJK 混合比）；
 - `zz_bench_scrollback.cpp`——单元轨：直接驱动 ZzScrollback，测 append 吞吐（lines/s）、lineAt 顺序/随机访问（ns/op）、reflow 80 列到 120 列耗时、RSS；
 - `zz_bench_feed.cpp`——facade 轨：Terminal + native 后端经 feed() 灌合成 VT 流，测端到端 feed 吞吐（MB/s）、1M 行后的全量 search 耗时、reflow 耗时、RSS/peak；
-- CMake 走 tests 现有 GLOB+CONFIGURE_DEPENDS 收编惯例；ctest 注册 10k 短跑档（单档耗时小于 2s，随默认 ctest 运行，测试总数随惯例自然增长）；100k/1M 长跑档打 bench-long label，手动 ctest -L bench-long 触发，不进默认跑；
+- CMake 走 tests 现有 GLOB+CONFIGURE_DEPENDS 收编惯例；ctest 注册 10k 短跑档（单档耗时小于 2s，随默认 ctest 运行，测试总数随惯例自然增长）；100k/1M 长跑档经 bench-long 自定义构建目标手动触发（cmake --build --target bench-long），不进默认 ctest（ctest 无单测试默认排除机制，label 方案需改动既有 preset 基线命令，实施期改裁定）；
 - 平台边界：RSS 采样为 Linux 专属实现，macOS 适配（M9 移植 bench 时）以条件编译预留接口形态，本里程碑不实现。
 
 ## 3. 测量矩阵
