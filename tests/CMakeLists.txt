@@ -206,9 +206,19 @@ if(UNIX AND NOT APPLE)
     add_test(NAME zz_bench_scrollback COMMAND zz_bench_scrollback)
     set_tests_properties(zz_bench_scrollback PROPERTIES TIMEOUT 60)
 
+    add_executable(zz_bench_feed bench/zz_bench_feed.cpp bench/bench_common.cpp)
+    target_link_libraries(zz_bench_feed PRIVATE ZzTermCore)
+    add_test(NAME zz_bench_feed_ascii COMMAND zz_bench_feed --profile=ascii)
+    add_test(NAME zz_bench_feed_mixed COMMAND zz_bench_feed --profile=mixed)
+    set_tests_properties(zz_bench_feed_ascii zz_bench_feed_mixed PROPERTIES TIMEOUT 60)
+
     add_custom_target(bench-long
         COMMAND zz_bench_scrollback --tier=100k
         COMMAND zz_bench_scrollback --tier=1m
+        COMMAND zz_bench_feed --profile=ascii --tier=100k
+        COMMAND zz_bench_feed --profile=mixed --tier=100k
+        COMMAND zz_bench_feed --profile=ascii --tier=1m
+        COMMAND zz_bench_feed --profile=mixed --tier=1m
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         COMMENT "M8 长跑 benchmark（100k/1M，JSON 落盘 ${CMAKE_CURRENT_BINARY_DIR}）")
 endif()
