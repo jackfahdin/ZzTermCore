@@ -62,27 +62,9 @@ inline ZzCellWidth zzWidth(const vtbackend::BasicCellProxy<true>& cell)
     return cell.width() == 2 ? ZzCellWidth::WideLead : ZzCellWidth::Narrow;
 }
 
-/// \brief 单个 codepoint 编码为 UTF-8 追加到 out。
-/// 与 ZzNativeRenderView.cpp 的 appendUtf8 同款逻辑各持一份属有意为之：
-/// native 在主库 C++20、contour 在独立库 C++23，跨库共享无合适落点。
-inline void zzAppendUtf8(std::string& out, char32_t cp)
-{
-    if (cp < 0x80) {
-        out += static_cast<char>(cp);
-    } else if (cp < 0x800) {
-        out += static_cast<char>(0xC0 | (cp >> 6));
-        out += static_cast<char>(0x80 | (cp & 0x3F));
-    } else if (cp < 0x10000) {
-        out += static_cast<char>(0xE0 | (cp >> 12));
-        out += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
-        out += static_cast<char>(0x80 | (cp & 0x3F));
-    } else {
-        out += static_cast<char>(0xF0 | (cp >> 18));
-        out += static_cast<char>(0x80 | ((cp >> 12) & 0x3F));
-        out += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
-        out += static_cast<char>(0x80 | (cp & 0x3F));
-    }
-}
+/// \brief ZzTerm 侧码点经 unicode 模块 canonical（unicode/Utf8Encode.h，
+/// M7c 统一；本库经 PRIVATE include "${CMAKE_SOURCE_DIR}/src" 引用）编码。
+#include "unicode/Utf8Encode.h"
 
 // ---- ZzTerm → vtbackend（输入方向，M3a）----
 

@@ -446,6 +446,96 @@ void testH2HangulLvT()
     });
 }
 
+// V 系（M7c T3 实测）：Emoji 属性基字符 + VS16 判宽 2；非 Emoji 基（a）
+// + VS16 保窄——判别属性是 Emoji 而非 Emoji_Presentation。
+void testV1DigitVs16()
+{
+    bothModes("0\xEF\xB8\x8F"
+              "5\xEF\xB8\x8F"
+              "9\xEF\xB8\x8F",
+              [](const ZzTerminal& t, const char* m) {
+                  checkCell(t, 0, 0, "0\xEF\xB8\x8F", L, m);
+                  checkCell(t, 0, 1, "", W, m);
+                  checkCell(t, 0, 2, "5\xEF\xB8\x8F", L, m);
+                  checkCell(t, 0, 3, "", W, m);
+                  checkCell(t, 0, 4, "9\xEF\xB8\x8F", L, m);
+                  checkCell(t, 0, 5, "", W, m);
+                  checkCursor(t, 0, 6, m);
+              });
+}
+
+void testV2HashVs16()
+{
+    bothModes("#\xEF\xB8\x8F", [](const ZzTerminal& t, const char* m) {
+        checkCell(t, 0, 0, "#\xEF\xB8\x8F", L, m);
+        checkCell(t, 0, 1, "", W, m);
+        checkCursor(t, 0, 2, m);
+    });
+}
+
+void testV3StarVs16()
+{
+    bothModes("*\xEF\xB8\x8F", [](const ZzTerminal& t, const char* m) {
+        checkCell(t, 0, 0, "*\xEF\xB8\x8F", L, m);
+        checkCell(t, 0, 1, "", W, m);
+        checkCursor(t, 0, 2, m);
+    });
+}
+
+void testV4CopyrightVs16()
+{
+    bothModes("\xC2\xA9\xEF\xB8\x8F", [](const ZzTerminal& t, const char* m) {
+        checkCell(t, 0, 0, "\xC2\xA9\xEF\xB8\x8F", L, m);
+        checkCell(t, 0, 1, "", W, m);
+        checkCursor(t, 0, 2, m);
+    });
+}
+
+void testV5DoubleExclVs16()
+{
+    bothModes("\xE2\x80\xBC\xEF\xB8\x8F", [](const ZzTerminal& t, const char* m) {
+        checkCell(t, 0, 0, "\xE2\x80\xBC\xEF\xB8\x8F", L, m);
+        checkCell(t, 0, 1, "", W, m);
+        checkCursor(t, 0, 2, m);
+    });
+}
+
+// V6 判别例：a + VS16 保窄（非 Emoji 基字符不适用 VS16 变宽）。
+void testV6AsciiVs16Narrow()
+{
+    bothModes("a\xEF\xB8\x8F", [](const ZzTerminal& t, const char* m) {
+        checkCell(t, 0, 0, "a\xEF\xB8\x8F", N, m);
+        checkCursor(t, 0, 1, m);
+    });
+}
+
+// V7-V9 方向 2 反例（M7c T3 修复波）：ExtPic=Yes 但 Emoji=No、非
+// variation base——libunicode 真规则下 contour 保窄，native 按
+// emojiVariationBase 对齐（分歧全部由 extPic 分支贡献，证伪 extPic 泛化）。
+void testV7StarVs16Narrow()
+{
+    bothModes("\xE2\x98\x85\xEF\xB8\x8F", [](const ZzTerminal& t, const char* m) {
+        checkCell(t, 0, 0, "\xE2\x98\x85\xEF\xB8\x8F", N, m);
+        checkCursor(t, 0, 1, m);
+    });
+}
+
+void testV8ChessVs16Narrow()
+{
+    bothModes("\xE2\x99\x94\xEF\xB8\x8F", [](const ZzTerminal& t, const char* m) {
+        checkCell(t, 0, 0, "\xE2\x99\x94\xEF\xB8\x8F", N, m);
+        checkCursor(t, 0, 1, m);
+    });
+}
+
+void testV9NoteVs16Narrow()
+{
+    bothModes("\xE2\x99\xA9\xEF\xB8\x8F", [](const ZzTerminal& t, const char* m) {
+        checkCell(t, 0, 0, "\xE2\x99\xA9\xEF\xB8\x8F", N, m);
+        checkCursor(t, 0, 1, m);
+    });
+}
+
 } // namespace
 
 int main()
@@ -482,6 +572,15 @@ int main()
     testX3BlankNoContinue();
     testH1HangulLV();
     testH2HangulLvT();
+    testV1DigitVs16();
+    testV2HashVs16();
+    testV3StarVs16();
+    testV4CopyrightVs16();
+    testV5DoubleExclVs16();
+    testV6AsciiVs16Narrow();
+    testV7StarVs16Narrow();
+    testV8ChessVs16Narrow();
+    testV9NoteVs16Narrow();
     if (g_failures == 0)
         std::printf("test_native_cluster: 全部通过\n");
     return g_failures == 0 ? 0 : 1;

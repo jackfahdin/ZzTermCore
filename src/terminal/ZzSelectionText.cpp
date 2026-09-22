@@ -1,7 +1,7 @@
 #include "ZzSelectionText.h"
 
 #include "../backend/ZzLineSource.h"
-#include "ZzUtf8Encode.h"
+#include "../unicode/Utf8Encode.h"
 
 #include <ZzTerm/Cell.h>
 

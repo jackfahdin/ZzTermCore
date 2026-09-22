@@ -94,7 +94,7 @@
 -   [x] Variation selectors（M7b：VS16 窄变宽位移 / VS15 保窄）
 -   [x] Emoji / ZWJ（M7b：GB11 ZWJ 序列 / 区旗成对 / keycap / 肤色）
 -   [x] Wide continuation consistency
--   [x] Grapheme-aware copy/search（M7b 手工实证：聚簇串 selectedText 复制与 search 命中，M5a clusterText / M5b cluster emit 路径）
+-   [x] Grapheme-aware copy/search（M7b 手工实证：聚簇串 selectedText 复制与 search 命中，M5a clusterText / M5b cluster emit 路径；M7c 固化：test_selection_compat/test_search_compat 聚簇用例）
 -   [x] Unicode version recorded
 
 ## Screen / History

@@ -1,35 +1,15 @@
 #include "ZzTerm/Input.h"
 
+#include "unicode/Utf8Encode.h"
+
 // ZzInputEncoder 实现骨架（M0）。
 //
 // 覆盖：普通文本透传、方向键/Home/End/Insert/Delete/PgUp/PgDn/F1-F12
 // （含 application cursor 模式与 xterm 修饰键参数）、SGR(1006) 与经典
 // 鼠标编码、bracketed paste、focus reporting。
-//
-// 注：文件内的 appendUtf8 是局部 UTF-8 编码小工具，仅服务按键字符输出；
-// 正式的 UTF-8/Unicode 数据由 unicode 模块提供，届时可替换为模块 API。
+// 按键字符的 UTF-8 编码统一走 unicode 模块 canonical（M7c）。
 
 namespace {
-
-/// @brief 将单个码位编码为 UTF-8 追加到 out（局部工具，见文件头注释）。
-void appendUtf8(std::string& out, char32_t cp)
-{
-    if (cp <= 0x7F) {
-        out.push_back(static_cast<char>(cp));
-    } else if (cp <= 0x7FF) {
-        out.push_back(static_cast<char>(0xC0 | (cp >> 6)));
-        out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
-    } else if (cp <= 0xFFFF) {
-        out.push_back(static_cast<char>(0xE0 | (cp >> 12)));
-        out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
-        out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
-    } else {
-        out.push_back(static_cast<char>(0xF0 | (cp >> 18)));
-        out.push_back(static_cast<char>(0x80 | ((cp >> 12) & 0x3F)));
-        out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
-        out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
-    }
-}
 
 /// @brief xterm 修饰键参数：Shift=2, Alt=3, Alt+Shift=4, Ctrl=5, ...（1 + 位值和）。
 int modifierParam(ZzKeyModifier mods)
@@ -84,10 +64,10 @@ std::string ZzInputEncoder::encodeKey(const ZzKeyEvent& event) const
             case U'^':  out.push_back('\x1E'); break;
             case U'_':  out.push_back('\x1F'); break;
             case U'?':  out.push_back('\x7F'); break;
-            default:    appendUtf8(out, event.character); break;
+            default:    zzAppendCodePoint(out, event.character); break;
             }
         } else {
-            appendUtf8(out, event.character);
+            zzAppendCodePoint(out, event.character);
         }
         return out;
     }

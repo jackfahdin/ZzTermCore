@@ -4,8 +4,8 @@
 #include "ZzTerm/Utf8.h"
 
 #include "unicode/GraphemeBreak.h"
+#include "unicode/Utf8Encode.h"
 
-#include <cassert>
 #include <string>
 #include <vector>
 
@@ -15,41 +15,12 @@
 
 namespace {
 
-// M7b：ZzScreen 只暴露 const lineAt，cluster 侧表追加（internCluster）需可变
-// ZzLine。底层对象本身非常量（screen 内部行缓冲），const_cast 安全；这是
-// 本任务"只改 ZzNativeBackend.cpp"约束下的局部手段，不扩散使用。
-// 前提钉死：row 恒在界内（调用方的 prev 由光标位置推导，光标不变量保证
-// 0 <= row < rows）——ZzScreen::lineAt 越界返回 static const 空行对象，
-// 对它 const_cast + internCluster 是真 UB，故 assert 看护。
-ZzLine& zzMutableLine(ZzScreen& screen, int row) noexcept
-{
-    assert(row >= 0 && row < screen.size().rows);
-    return const_cast<ZzLine&>(screen.lineAt(row));
-}
-
-// 单码点 UTF-8 编码追加（Utf8.h 只提供解码器；聚簇串拼接用）。
-void zzAppendUtf8(std::string& out, char32_t cp)
-{
-    if (cp < 0x80) {
-        out.push_back(static_cast<char>(cp));
-    } else if (cp < 0x800) {
-        out.push_back(static_cast<char>(0xC0u | (cp >> 6)));
-        out.push_back(static_cast<char>(0x80u | (cp & 0x3Fu)));
-    } else if (cp < 0x10000) {
-        out.push_back(static_cast<char>(0xE0u | (cp >> 12)));
-        out.push_back(static_cast<char>(0x80u | ((cp >> 6) & 0x3Fu)));
-        out.push_back(static_cast<char>(0x80u | (cp & 0x3Fu)));
-    } else {
-        out.push_back(static_cast<char>(0xF0u | (cp >> 18)));
-        out.push_back(static_cast<char>(0x80u | ((cp >> 12) & 0x3Fu)));
-        out.push_back(static_cast<char>(0x80u | ((cp >> 6) & 0x3Fu)));
-        out.push_back(static_cast<char>(0x80u | (cp & 0x3Fu)));
-    }
-}
-
-// 聚簇宽度裁定（T2 表 §1 实测归约）：true = 聚簇应占 2 格——RI（单发即宽）、
-// ExtPic+VS16、keycap（须带 VS16，裸 keycap 窄）、InCB 连字（基窄也宽）、
-// emoji ZWJ 序列；窄基+组合符 / VS15 / Prepend+a 保持基宽。
+// 聚簇宽度裁定（T2 表 §1 实测归约 + M7c T3 V 系实测与修复波）：true = 聚簇
+// 应占 2 格——RI（单发即宽）、emoji variation base+VS16（libunicode
+// width.cpp 真规则数据源 emoji-variation-sequences.txt 的 emoji style base
+// 集合；ExtPic 非 variation base+VS16 保窄——★/♔/♩ 反例实测）、keycap
+// （须带 VS16，裸 keycap 窄）、InCB 连字（基窄也宽）、emoji ZWJ 序列；
+// 窄基+组合符 / VS15 / Prepend+a / 非 variation base+VS16 保持基宽。
 bool zzClusterWantsWide(const std::u32string& cps)
 {
     bool hasVs16 = false;
@@ -75,8 +46,9 @@ bool zzClusterWantsWide(const std::u32string& cps)
         if (p.incb == ZzIncb::Linker)
             ++linkers;
     }
-    if (hasVs16 && (zzGraphemePropsOf(cps.front()).extPic || hasKeycap))
-        return true; // ExtPic+VS16（例 08/09）/ keycap（例 11）
+    const ZzGraphemeProps first = zzGraphemePropsOf(cps.front());
+    if (hasVs16 && (first.emojiVariationBase || hasKeycap))
+        return true; // variation base+VS16（例 08/09 与 M7c V1-V5）/ keycap（例 11）
     if (consonants >= 2 && linkers >= 1)
         return true; // I-4：InCB 连字（例 12）
     if (hasZwj && extPicCount >= 2)
@@ -152,7 +124,7 @@ bool zzTryClusterContinue(ZzScreen& screen, char32_t cp, ZzPosition cur,
         prevCps.assign(decoded.begin(), decoded.end());
     } else {
         prevCps.push_back(prevCell.codePoint());
-        zzAppendUtf8(newText, prevCell.codePoint());
+        zzAppendCodePoint(newText, prevCell.codePoint());
     }
     if (!zzGraphemeContinues(prevCps, cp))
         return false;
@@ -160,9 +132,9 @@ bool zzTryClusterContinue(ZzScreen& screen, char32_t cp, ZzPosition cur,
     // 续接落格（T2 §5b 画笔裁定：只更新文本，前景/背景/属性保持前格原值；
     // 旧 cluster 侧表条目弃置不管——internCluster 不查重约定）。
     prevCps.push_back(cp);
-    zzAppendUtf8(newText, cp);
+    zzAppendCodePoint(newText, cp);
     ZzCell merged = prevCell;
-    merged.setCluster(zzMutableLine(screen, prev.row).internCluster(newText));
+    merged.setCluster(screen.internClusterAt(prev.row, newText));
 
     // 窄变宽（VS16/keycap/InCB 连字续接使窄基聚簇变宽，T2 §1/§2 裁定）。
     const bool narrowToWide =

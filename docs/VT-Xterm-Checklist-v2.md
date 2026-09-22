@@ -154,7 +154,7 @@ compatibility/regression tests。
 -   [x] \[Contour\]\[Test\] Emoji / ZWJ（M7b：GB11 / 区旗 / keycap / 肤色）
 -   [ ] \[Contour\]\[Test\]\[PASS-Native\] Wide continuation
     consistency
--   [x] \[Zz-Native\]\[Test\] Grapheme-aware copy/search/highlight（M7b 手工实证：聚簇复制与搜索命中）
+-   [x] \[Zz-Native\]\[Test\] Grapheme-aware copy/search/highlight（M7b 手工实证：聚簇复制与搜索命中；M7c 固化：test_selection_compat/test_search_compat 聚簇用例）
 -   [ ] \[Zz-Adapter\] Unicode/libunicode version recorded
 
 ## Screen / History

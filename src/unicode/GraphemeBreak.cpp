@@ -110,10 +110,11 @@ ZzGraphemeProps zzGraphemePropsOf(char32_t cp) noexcept
                 static_cast<ZzGcb>(e.gcb),
                 (e.flags & 0x1u) != 0,
                 static_cast<ZzIncb>((e.flags >> 1) & 0x3u),
+                (e.flags & 0x8u) != 0,
             };
         }
     }
-    return ZzGraphemeProps{ ZzGcb::Other, false, ZzIncb::None };
+    return ZzGraphemeProps{ ZzGcb::Other, false, ZzIncb::None, false };
 }
 
 void zzGraphemeBreaks(std::u32string_view cps, std::vector<bool>& out)

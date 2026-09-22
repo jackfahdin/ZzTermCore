@@ -88,7 +88,7 @@ ZzCellView ZzContourRenderView::cellAtThunk(const void* storage, int col)
     if (col < gridLine.size().value) {
         auto const cell = screen.at(vtbackend::LineOffset(ref.row), vtbackend::ColumnOffset(col));
         for (const char32_t cp : cell.codepoints())
-            zzAppendUtf8(view.text, cp);
+            zzAppendCodePoint(view.text, cp);
         view.width = zzWidth(cell);
         view.foreground = zzColor(cell.foregroundColor());
         view.background = zzColor(cell.backgroundColor());

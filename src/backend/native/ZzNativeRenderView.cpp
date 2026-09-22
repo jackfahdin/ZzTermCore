@@ -3,26 +3,9 @@
 #include <ZzTerm/Line.h>
 #include <ZzTerm/Screen.h>
 
-namespace {
+#include "unicode/Utf8Encode.h"
 
-void appendUtf8(std::string& out, char32_t cp)
-{
-    if (cp < 0x80) {
-        out += static_cast<char>(cp);
-    } else if (cp < 0x800) {
-        out += static_cast<char>(0xC0 | (cp >> 6));
-        out += static_cast<char>(0x80 | (cp & 0x3F));
-    } else if (cp < 0x10000) {
-        out += static_cast<char>(0xE0 | (cp >> 12));
-        out += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
-        out += static_cast<char>(0x80 | (cp & 0x3F));
-    } else {
-        out += static_cast<char>(0xF0 | (cp >> 18));
-        out += static_cast<char>(0x80 | ((cp >> 12) & 0x3F));
-        out += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
-        out += static_cast<char>(0x80 | (cp & 0x3F));
-    }
-}
+namespace {
 
 // ZzLineView 内联存储的是 const ZzLine*（指针值），thunk 需先取指针再解引用。
 const ZzLine& lineFrom(const void* storage)
@@ -62,7 +45,7 @@ ZzCellView ZzNativeRenderView::cellAtThunk(const void* storage, int col)
     if (cell.isCluster()) {
         view.text = line.clusterText(cell.clusterIndex());
     } else if (cell.codePoint() != 0) {
-        appendUtf8(view.text, cell.codePoint());
+        zzAppendCodePoint(view.text, cell.codePoint());
     }
     view.foreground = cell.foreground();
     view.background = cell.background();

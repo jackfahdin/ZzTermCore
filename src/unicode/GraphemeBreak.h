@@ -41,10 +41,15 @@ struct ZzGraphemeProps {
     ZzGcb gcb;
     bool extPic;   // Extended_Pictographic
     ZzIncb incb;
+    // EmojiVariationBase（emoji-variation-sequences.txt 的 emoji style base
+    // 集合）：VS16 变宽资格——libunicode width.cpp 的真规则数据源（M7c T3
+    // 修复波；先前 Emoji 属性泛化被证伪，见生成表头注释）。
+    bool emojiVariationBase;
 };
 
 // 生成表区间条目（include/ZzTerm/detail/GraphemeBreakData.inc 的行格式）：
-// flags 位布局 bit0=Extended_Pictographic，bit1-2=InCB（0/1/2/3 对应 ZzIncb）。
+// flags 位布局 bit0=Extended_Pictographic，bit1-2=InCB（0/1/2/3 对应 ZzIncb），
+// bit3=EmojiVariationBase。
 struct ZzGcbInterval {
     std::uint32_t lo;
     std::uint32_t hi;

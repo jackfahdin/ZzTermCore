@@ -158,11 +158,31 @@ EA B0 80 E1 86 A8
 
 **A4 DECAWM 关 + wrap-pending + 组合符（80a 写满 + U+0301）**——两式一致。contour：U+0301 **并入末格**——`c79` w1（61 CC 81），光标 (0,79)，不换行不另立格。native：T4 compat 首轮实测发现分支顺序缺陷（左邻格分支抢先，组合符错附 `c78`），已修为覆盖目标格优先（wasWrapPending 且未换行 → prev 取覆盖格）——修后形态与 contour 一致。**裁定：正常对齐用例**。
 
+### VS16 非 ExtPic 基字符补探（M7c T3，先探后判）
+
+**V1 数字 0-9 + VS16**——两式一致。十枚全部 2 格宽（w2 + w3 聚簇），如 `c0` 文本：
+
+```
+30 EF B8 8F
+```
+
+光标 (0,20)。**判宽**。
+
+**V2 # + VS16 / V3 * + VS16**——两式一致。各 2 格宽（w2 + w3），光标 (0,2)。**判宽**。
+
+**V4 © U+00A9 + VS16 / V5 ‼ U+203C + VS16**——两式一致。各 2 格宽，光标 (0,2)。**判宽**（两符 16.0.0 兼为 ExtPic）。
+
+**V6 a + VS16（规则形态判别例）**——两式一致。1 格 w1（61 EF B8 8F 聚簇），光标 (0,1)。**保窄**。
+
+**V7 ★ U+2605 + VS16 / V8 ♔ U+2654 + VS16 / V9 ♩ U+2669 + VS16（方向 2 反例，M7c T3 修复波补探）**——两式一致。各 1 格 w1 聚簇，光标 (0,1)。**全部保窄**。
+
+**裁定（规则形态，M7c T3 修复波更正）**：判别属性为 **emoji variation base**——emoji-variation-sequences.txt 的 emoji style（FE0F）base 集合（16.0.0 共 371 码位），即 libunicode width.cpp:85 的真规则数据源（base.is_emoji_variation_base 且窄 → VS16 变宽）。证伪过程留痕：本任务初版据 V1-V6 实测归约出"Emoji 属性"泛化（数字系 Emoji_Presentation=No 故排除 EP），方向 1（contour 宽 / native 窄）为空不漏宽；审查以 libunicode 源码 ground truth 复核后确认：Emoji 属性在"窄且非 EP 且已分配"有效域上与 variation base 全等，方向 2（native 宽 / contour 窄）的 2135 码位分歧全部由 M7b 起潜伏的 extPic 分支贡献（★ U+2605、♔-♞、扑克牌系、♩-♺ 等 ExtPic=Yes 但 Emoji=No、非 variation base 者），随修复统一按真规则对齐；V7-V9 反例补探确认 contour 对该集合保窄。ExtPic 已从 VS16 变宽条件移除；keycap 经 20E3 独立路径不受影响。V1-V9 全部对齐用例（无 b 类）。
+
 ## 裁定结论（T3 实现依据）
 
 ### 1. 聚簇宽度规则
 
-- 宽 2（WideLead + WideContinuation）：emoji ZWJ 序列（例 03/04）、ExtPic + VS16（例 08/09）、keycap（例 11，须带 VS16——N3 实测裸 keycap 无 VS16 判窄）、RI 区旗——**单发即宽**（例 05/06/07）、InCB 连字（例 12，基字符窄也判宽）、宽基 + 组合符（例 13，保持基宽）、ExtPic + 肤色修饰符（N4）、RI + 组合符（N1）、宽基 + VS16（N2，保持宽）、Prepend + a 整喂聚簇（例 15b 整喂，不规则，native 目标见 §5c）。
+- 宽 2（WideLead + WideContinuation）：emoji ZWJ 序列（例 03/04）、emoji variation base + VS16（例 08/09；M7c T3 修复波更正——原记"ExtPic + VS16"，真规则为 variation base 371 码位，详见末节）、keycap（例 11，须带 VS16——N3 实测裸 keycap 无 VS16 判窄）、RI 区旗——**单发即宽**（例 05/06/07）、InCB 连字（例 12，基字符窄也判宽）、宽基 + 组合符（例 13，保持基宽）、ExtPic + 肤色修饰符（N4）、RI + 组合符（N1）、宽基 + VS16（N2，保持宽）、Prepend + a 整喂聚簇（例 15b 整喂，不规则，native 目标见 §5c）。
 - 窄 1（基字符宽度）：窄基 + 任意组合符序列（例 01/02）、ExtPic + VS15（例 10）、a + ZWJ 聚簇（例 14 的断开侧）、Prepend 单发（例 15a）。
 - 续接不推进光标（例 01 光标 (0,1)）。
 - 可供 T3 归约的形态：聚簇含 emoji 表现（ZWJ 序列 / VS16 / keycap / RI / InCB 连字）→ 宽 2；否则保持基字符原宽。InCB 连字判宽与 RI 单发判宽是 contour 实测裁定，T3 须按表对齐，不得按"基宽"自推。
