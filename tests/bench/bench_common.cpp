@@ -78,6 +78,11 @@ std::vector<ZzLine> zzBenchMakeLines(std::uint64_t seed, std::size_t count, int 
             if (profile == ZzBenchProfile::Mixed && (c % 3) == 0) {
                 cell.setWidth(ZzCellWidth::WideLead);
                 cell.setCodePoint(static_cast<char32_t>(0x4E00 + (mix % 64)));
+            } else if (profile == ZzBenchProfile::Mixed && (c % 3) == 1) {
+                // 宽格配对：c%3==1 处放 WideContinuation，与前一格 WideLead 成对，
+                // 保证 Mixed 画像行布局良构（80 % 3 == 2，行尾不残留半对）。
+                cell.setWidth(ZzCellWidth::WideContinuation);
+                cell.setCodePoint(0);
             } else {
                 cell.setWidth(ZzCellWidth::Narrow);
                 cell.setCodePoint(static_cast<char32_t>(U'a' + (mix % 26)));
