@@ -332,7 +332,7 @@ Wrap / Reflow 章为准。
 -   [ ] \[Zz-Native\]\[Test\] Rapid Resize Stability
 -   [ ] \[Zz-Native\] Resize Event Coalescing
 -   [x] \[Zz-Native\]\[PASS-Native\] Linux PTY `TIOCSWINSZ`
--   [ ] \[Zz-Native\] macOS PTY `TIOCSWINSZ`（M5）
+-   [x] \[Zz-Native\]\[PASS-Native\] macOS PTY `TIOCSWINSZ`（M9a，CI macos-clang job 实测通过）
 -   [ ] \[Zz-Native\] Windows ConPTY Resize
 -   [x] \[Zz-Native\]\[Test\]\[PASS-Native\] Core and PTY Grid Size
     Consistency
