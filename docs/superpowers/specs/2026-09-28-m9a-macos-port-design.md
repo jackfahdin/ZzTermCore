@@ -18,7 +18,7 @@ ZzTermCore 核心库（src/parser、screen、history、unicode、input）为零�
 2. 根 `CMakeLists.txt`：`if(UNIX AND NOT APPLE)`（pty + examples 两处收编点）放宽为 `if(UNIX)`；Windows 仍排除（ConPTY 里程碑靠后）。既有 `find_library(util)` 找到才链接的逻辑天然兼容（macOS openpty 在 libSystem 内，无需显式库）。
 3. `tests/unit/test_pty.cpp`：编译守卫从 `__unix__ && !__APPLE__` 放宽为 `__unix__ || __APPLE__`（else 分支平凡 main 空跑通过的结构不动）。
 4. 根 `CMakeLists.txt` contour 选项：APPLE 上 `ZZTERM_WITH_CONTOUR` 默认 OFF（该选项要求 C++23 编译器且 configure 期联网拉第三方依赖，两大不确定源按 2B 归 M9b；Linux 默认 ON 不动，submodule 未初始化降级逻辑不动）。
-5. `.github/workflows/ci.yml`：push branches 加 `contour`（push 触发器原仅 main/master；M9 收尾后保留作分支常态防护）。
+5. `.github/workflows/ci.yml`：push branches 加 `contour`（push 触发器原仅 main/master；M9 收尾后保留作分支常态防护）。（实施期旁注：经用户 3B 决策演变为按平台拆分五文件 ci-ubuntu-clang/ci-ubuntu-gcc/ci-windows-msvc/ci-macos-clang/ci-docs，各文件均含 contour 触发；同 commit 按用户"官方托管 runner 用最新稳定 Major"规则将 actions/checkout 升至 v7。）
 
 ## 3. 本机预检（实施第一步）
 
@@ -35,7 +35,7 @@ ZzTermCore 核心库（src/parser、screen、history、unicode、input）为零�
 
 - macOS 门控：CI macos-clang job 全绿（configure + build + ctest 全量通过）。测试计数预期为 Linux OFF 配置减 bench 三档（bench 的 APPLE 排除本波维持），具体数字实施期实测如实记录（probe 式记录文档，见 §7）。
 - 本机基线不回归：linux-gcc-debug 50/50、m2-off-check 40/40、m2-shared-check 50/50、linux-clang-fuzz 2/2、doxygen exit 0 零警告。
-- 行为保持：core 公开 API 语义零变化；Linux 侧构建配置与测试断言零变化（contour 默认值改动仅作用 APPLE 分支）。
+- 行为保持：core 公开 API 语义零变化；Linux 侧构建配置与测试断言零变化（contour 默认值改动仅作用 APPLE 分支）。（实施期旁注：856d2ae 经用户 4A 裁定将 test_perf_scrollback reflow 门控 500ms 放宽至 1500ms——CI 共享 runner 噪声擦线，属用户中途批准的例外，三处留痕：commit message、测试注释、记录文档。）
 - 文档顺带更新：docs/VT-Xterm-Checklist.md 与 docs/VT-Xterm-Checklist-v2.md 的 macOS PTY TIOCSWINSZ 项勾选（实测通过后）。
 
 ## 6. 排除项（本里程碑不做）
