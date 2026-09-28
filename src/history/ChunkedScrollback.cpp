@@ -33,7 +33,10 @@ public:
             return;
         }
         for (auto& line : lines) {
-            if (chunks_.empty() || chunks_.back().size() >= kChunkLines)
+            // 偏移头块同时也是尾块（单块）时可用槽位只有 kChunkLines - headOffset_；
+            // 多块时尾块恒为完整 kChunkLines 槽位。
+            if (chunks_.empty() ||
+                chunks_.back().size() >= kChunkLines - (chunks_.size() == 1 ? headOffset_ : 0))
                 chunks_.emplace_back();
             approxBytes_ += sizeof(ZzLine) +
                             static_cast<std::size_t>(line.cellCount()) * sizeof(ZzCell);
@@ -122,7 +125,7 @@ public:
 private:
     static constexpr std::size_t kChunkLines = 256; ///< 每块行数（M0 经验值，待 benchmark 调优）。
 
-    /// @brief 从最旧一端裁剪至容量内（整块释放头部块）。
+    /// @brief 从最旧一端裁剪至容量内（可部分擦除头块，由 headOffset_ 维持定长寻址）。
     void trimToCapacity()
     {
         while (totalLines_ > capacity_ && !chunks_.empty()) {

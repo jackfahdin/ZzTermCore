@@ -162,6 +162,32 @@ static void testPartialTrimConsistency()
     }
 }
 
+// 7. 单块再填充回归（M8b T1 审查修复：容量 < 256 时头块同时是尾块，
+// 部分裁剪后继续 append 会"再填充"同一块，开块条件须计入 headOffset_，
+// 否则 lineAt 物理槽位超出唯一块而越界）。
+static void testSingleChunkRefillAfterTrim()
+{
+    char buf[8];
+    auto sb = zzCreateChunkedScrollback(100); // 容量 < 256：全程单块
+    std::vector<ZzLine> batch;
+    for (int i = 0; i < 200; ++i) {
+        std::snprintf(buf, sizeof(buf), "L%04d", i);
+        batch.push_back(makeLine(8, buf, false));
+    }
+    sb->append(std::move(batch)); // 200 进 100：部分裁 100，headOffset_=100
+    std::vector<ZzLine> more;
+    for (int i = 200; i < 300; ++i) {
+        std::snprintf(buf, sizeof(buf), "L%04d", i);
+        more.push_back(makeLine(8, buf, false));
+    }
+    sb->append(std::move(more)); // 再填充同一块，再裁 100
+    ZZ_TEST_EXPECT(sb->lineCount() == 100);
+    for (int i = 0; i < 100; ++i) {
+        std::snprintf(buf, sizeof(buf), "L%04d", 200 + i);
+        ZZ_TEST_EXPECT(lineText(sb->lineAt((std::size_t)i), 5) == buf);
+    }
+}
+
 int main()
 {
     testAppendAndTrim();
@@ -170,6 +196,7 @@ int main()
     testReflowWidenAndTrim();
     testClearKeepsCounters();
     testPartialTrimConsistency();
+    testSingleChunkRefillAfterTrim();
     if (g_failures == 0)
         std::printf("test_scrollback: all passed\n");
     return g_failures;
