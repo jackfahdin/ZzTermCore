@@ -34,7 +34,7 @@
 ### 第 4 轮（commit 856d2ae，run 36399893609）→ 四 job 转绿，macos 构建仍败
 
 - 修复：`pipe2` 改为 `pipe` + `fcntl`（O_NONBLOCK / FD_CLOEXEC）；windows preset 去钉死生成器交由 CMake 自选最新 VS；docs job 安装 graphviz；`test_perf_scrollback` 门控 500 放宽至 1500ms（用户 4A 裁定：CI 共享 runner 噪声，本机门控不动，留痕于测试注释）。
-- 结果：ubuntu-clang / ubuntu-gcc / windows-msvc / docs 转绿；macos 新错误 `main.cpp:410` `::sigemptyset`——macOS 上 sigemptyset 是宏，不能加 `::` 限定。
+- 结果：ubuntu-clang / ubuntu-gcc / windows-msvc / docs 转绿；macos 新错误 `main.cpp:410` 处 sigemptyset 的全局限定写法——macOS 上 sigemptyset 是宏，不能加双冒号全局限定。
 
 ### 第 5 轮（commit 0efa136，run 36400779655）→ 五 job 全绿
 
