@@ -261,6 +261,65 @@ static void testReflowChunkedAlignment()
     ZZ_TEST_EXPECT(sb->stats().lineCount == sb->lineCount());
 }
 
+// 9. finish 冲刷的 dangling 尾链产出同样按 256 精确切块回归（M8b T3 修复轮 2：
+// finish 产出原直接整块 push_back，超长 dangling 尾链 reflow 到窄列可产出
+// 超 256 行尾块，破坏定长槽位不变量）。末尾 dangling wrapped 链 300 物理行
+// 无后继，reflow 8->2 后链产出约 4 倍行数，lineAt 全扫精确期望校验。
+static void testReflowDanglingTailChain()
+{
+    char buf[8];
+    auto sb = zzCreateChunkedScrollback(4096); // 容量充足：reflow 不触发裁剪
+    std::vector<ZzLine> batch;
+    for (int i = 0; i < 300; ++i) {
+        std::snprintf(buf, sizeof(buf), "L%04d", i);
+        batch.push_back(makeLine(8, buf, false)); // 历史主体：300 行编号硬行
+    }
+    for (int i = 300; i < 600; ++i) {
+        std::snprintf(buf, sizeof(buf), "L%04d", i);
+        // 末尾 300 物理行为一条 dangling wrapped 链：最后一行 wrapped=true 无后继。
+        batch.push_back(makeLine(8, buf, true));
+    }
+    sb->append(std::move(batch));
+    ZZ_TEST_EXPECT(sb->lineCount() == 600);
+
+    // 链内容流（2397 格）：编号 5 字符 + 3 空白，末编号无尾空白（链尾裁空白）。
+    std::string chainStream;
+    for (int i = 300; i < 600; ++i) {
+        std::snprintf(buf, sizeof(buf), "L%04d", i);
+        chainStream += buf;
+        if (i < 599)
+            chainStream += "   ";
+    }
+
+    // 期望产出（8->2）：硬行截断为编号前 2 字符；链流按 2 列顺序切块
+    //（编号序列严格递增无缺无重），除链末行外 wrapped 全 true。
+    std::vector<std::pair<std::string, bool>> rows;
+    for (int i = 0; i < 300; ++i) {
+        std::snprintf(buf, sizeof(buf), "L%04d", i);
+        std::string t(buf);
+        t.resize(2);
+        rows.emplace_back(std::move(t), false);
+    }
+    for (std::size_t off = 0; off < chainStream.size(); off += 2)
+        rows.emplace_back(chainStream.substr(off, 2),
+                          off + 2 < chainStream.size());
+
+    sb->reflow(2);
+    ZZ_TEST_EXPECT(sb->lineCount() == rows.size());
+    const std::size_t n = sb->lineCount() < rows.size() ? sb->lineCount() : rows.size();
+    for (std::size_t i = 0; i < n; ++i) {
+        const ZzLine& line = sb->lineAt(i);
+        ZZ_TEST_EXPECT(line.cellCount() == 2); // 全历史同宽不变量
+        if (lineText(line, 2).substr(0, rows[i].first.size()) != rows[i].first
+            || line.wrapped() != rows[i].second) {
+            std::fprintf(stderr, "FAIL %s:%d: dangling-tail row %zu mismatch\n",
+                         __FILE__, __LINE__, i);
+            ++g_failures;
+        }
+    }
+    ZZ_TEST_EXPECT(sb->stats().lineCount == sb->lineCount());
+}
+
 int main()
 {
     testAppendAndTrim();
@@ -271,6 +330,7 @@ int main()
     testPartialTrimConsistency();
     testSingleChunkRefillAfterTrim();
     testReflowChunkedAlignment();
+    testReflowDanglingTailChain();
     if (g_failures == 0)
         std::printf("test_scrollback: all passed\n");
     return g_failures;

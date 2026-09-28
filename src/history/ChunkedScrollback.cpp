@@ -81,21 +81,25 @@ public:
         std::deque<std::vector<ZzLine>> rebuilt;
         std::vector<ZzLine> produced;
         produced.reserve(kChunkLines);
-        while (!chunks_.empty()) {
-            std::vector<ZzLine> chunk = std::move(chunks_.front());
-            chunks_.pop_front(); // 旧块即时释放，峰值不叠加
-            streamer.feed(chunk, produced);
-            // 精确 256 对齐切块（审查修复）：单次 feed 产出可跨多个 256，
-            // 必须 while 循环逐块切出，维持"除尾块外每块恰 256 行"的
-            // 定长槽位不变量（lineAt/trimToCapacity 依赖）。
+        // 精确 256 对齐切块（审查修复）：单次 feed/finish 产出可跨多个 256，
+        // 必须 while 循环逐块切出，维持"除尾块外每块恰 256 行"的
+        // 定长槽位不变量（lineAt/trimToCapacity 依赖）。
+        auto cutFullChunks = [&] {
             while (produced.size() >= kChunkLines) {
                 rebuilt.emplace_back(produced.begin(),
                                      produced.begin() + static_cast<std::ptrdiff_t>(kChunkLines));
                 produced.erase(produced.begin(),
                                produced.begin() + static_cast<std::ptrdiff_t>(kChunkLines));
             }
+        };
+        while (!chunks_.empty()) {
+            std::vector<ZzLine> chunk = std::move(chunks_.front());
+            chunks_.pop_front(); // 旧块即时释放，峰值不叠加
+            streamer.feed(chunk, produced);
+            cutFullChunks();
         }
         streamer.finish(produced);
+        cutFullChunks(); // dangling 尾链冲刷产出同样按 256 精确切块（修复轮 2）
         if (!produced.empty())
             rebuilt.push_back(std::move(produced));
         chunks_ = std::move(rebuilt);
