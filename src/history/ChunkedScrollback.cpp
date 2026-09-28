@@ -10,7 +10,7 @@
 // chunked RAM 历史后端（M0 实现骨架）。
 //
 // 分块策略：std::deque 按 chunk 管理行（每块 kChunkLines 行），追加只在
-// 尾部块上进行，裁剪从头部整块释放，避免单行分配与整体搬迁。
+// 尾部块上进行，裁剪从头部释放（可部分擦除头块，由 headOffset_ 维持定长寻址），避免单行分配与整体搬迁。
 // 未来 Hot/Warm/Cold 分层时，本实现对应 Hot 层，Warm(LZ4)/Cold(mmap)
 // 以新实现类接入同一 ZzScrollback 接口。
 
@@ -51,8 +51,11 @@ public:
     [[nodiscard]] const ZzLine& lineAt(std::size_t index) const override
     {
         // index 0 为最旧一行。调用方保证 index < lineCount()。
-        const std::size_t chunk = index / kChunkLines;
-        const std::size_t inner = index % kChunkLines;
+        // headOffset_（M8b）：部分裁剪后块 0 不再对齐 256 槽位边界，
+        // 物理槽位 = headOffset_ + index；块 0 的向量下标需再减 headOffset_。
+        const std::size_t phys  = headOffset_ + index;
+        const std::size_t chunk = phys / kChunkLines;
+        const std::size_t inner = (phys % kChunkLines) - (chunk == 0 ? headOffset_ : 0);
         return chunks_[chunk][inner];
     }
 
@@ -88,6 +91,7 @@ public:
             chunks_.back().push_back(std::move(line));
             ++totalLines_;
         }
+        headOffset_ = 0; // 重建后块 0 重新对齐槽位 0（T3 重写 reflow 时随函数体一并调整）
         trimToCapacity();
     }
 
@@ -101,6 +105,7 @@ public:
         chunks_.clear();
         totalLines_ = 0;
         approxBytes_ = 0;
+        headOffset_ = 0;
     }
 
     [[nodiscard]] ZzScrollbackStats stats() const override
@@ -129,8 +134,12 @@ private:
             head.erase(head.begin(), head.begin() + static_cast<std::ptrdiff_t>(removable));
             totalLines_ -= removable;
             totalDropped_ += removable;
-            if (head.empty())
+            if (head.empty()) {
                 chunks_.pop_front();
+                headOffset_ = 0; // 整块释放：新头块从槽位 0 起
+            } else {
+                headOffset_ += removable; // 部分擦除：块 0 向量位置 0 前移
+            }
         }
     }
 
@@ -138,6 +147,7 @@ private:
     std::size_t totalLines_  = 0;
     std::size_t capacity_    = 0;
     std::size_t approxBytes_ = 0;
+    std::size_t headOffset_ = 0; ///< 头部块被部分裁剪的槽位数（块 0 向量位置 0 对应定长槽位 headOffset_）。
     std::uint64_t totalAppended_ = 0; ///< 累计入库行数（clear 不复位）。
     std::uint64_t totalDropped_  = 0; ///< 累计裁剪丢弃行数（clear 不复位）。
 };

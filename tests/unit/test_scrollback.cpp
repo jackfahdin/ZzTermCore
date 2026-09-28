@@ -129,6 +129,39 @@ static void testClearKeepsCounters()
     ZZ_TEST_EXPECT(sb->stats().totalAppended == 1);
 }
 
+// 6. 部分裁剪后 lineAt 一致性（M8b 回归：trimToCapacity 头部块部分擦除曾破坏
+// "除尾块外每块恰 256 行"的定长寻址不变量——块对齐破坏导致越界/错位读）。
+static void testPartialTrimConsistency()
+{
+    char buf[8];
+    auto sb = zzCreateChunkedScrollback(300); // 容量非 256 整数倍
+    std::vector<ZzLine> batch;
+    for (int i = 0; i < 600; ++i) {
+        std::snprintf(buf, sizeof(buf), "L%04d", i);
+        batch.push_back(makeLine(8, buf, false));
+    }
+    sb->append(std::move(batch)); // 600 进 300：裁整块 256 + 部分 44
+    ZZ_TEST_EXPECT(sb->lineCount() == 300);
+    ZZ_TEST_EXPECT(sb->stats().totalDropped == 300);
+    for (int i = 0; i < 300; ++i) {
+        std::snprintf(buf, sizeof(buf), "L%04d", 300 + i);
+        ZZ_TEST_EXPECT(lineText(sb->lineAt((std::size_t)i), 5) == buf);
+    }
+
+    // 部分裁剪后继续 append 再触发一次部分裁剪，校验偏移记账持续正确
+    std::vector<ZzLine> more;
+    for (int i = 600; i < 700; ++i) {
+        std::snprintf(buf, sizeof(buf), "L%04d", i);
+        more.push_back(makeLine(8, buf, false));
+    }
+    sb->append(std::move(more)); // 再裁 100（head 块 212 -> 112）
+    ZZ_TEST_EXPECT(sb->lineCount() == 300);
+    for (int i = 0; i < 300; ++i) {
+        std::snprintf(buf, sizeof(buf), "L%04d", 400 + i);
+        ZZ_TEST_EXPECT(lineText(sb->lineAt((std::size_t)i), 5) == buf);
+    }
+}
+
 int main()
 {
     testAppendAndTrim();
@@ -136,6 +169,7 @@ int main()
     testReflowNarrow();
     testReflowWidenAndTrim();
     testClearKeepsCounters();
+    testPartialTrimConsistency();
     if (g_failures == 0)
         std::printf("test_scrollback: all passed\n");
     return g_failures;
