@@ -20,7 +20,13 @@ option(ZZTERM_BUILD_TESTS "构建 ZzTermCore 单元测试" ON)
 
 # Contour 后端集成（v2.1 双后端路线；设计见 docs/Architecture-v2.md）。
 # submodule 未初始化时自动降级为 OFF，保证 native-only 路径始终可构建。
-option(ZZTERM_WITH_CONTOUR "集成 Contour vtbackend/vtparser 作为终端后端（需要 C++23 编译器，configure 时需网络拉取第三方依赖）" ON)
+# M9a：APPLE 默认 OFF（C++23 + configure 期联网拉依赖两大不确定源归 M9b 验证），Linux 维持 ON。
+if(APPLE)
+    set(ZZTERM_WITH_CONTOUR_DEFAULT OFF)
+else()
+    set(ZZTERM_WITH_CONTOUR_DEFAULT ON)
+endif()
+option(ZZTERM_WITH_CONTOUR "集成 Contour vtbackend/vtparser 作为终端后端（需要 C++23 编译器，configure 时需网络拉取第三方依赖）" ${ZZTERM_WITH_CONTOUR_DEFAULT})
 if(ZZTERM_WITH_CONTOUR)
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/contour/src/vtparser/CMakeLists.txt")
         include(cmake/ContourBackend.cmake)
@@ -109,10 +115,10 @@ target_compile_options(ZzTermCore
     PUBLIC $<$<CXX_COMPILER_ID:MSVC>:/utf-8>)
 
 # ---------------------------------------------------------------------------
-# PTY 与示例（仅 Linux；macOS PTY 头文件差异 M5 处理，Windows ConPTY 里程碑靠后）。
+# PTY 与示例（Unix：Linux + macOS；Windows ConPTY 里程碑靠后）。
 # 必须在 tests 之前：tests/CMakeLists.txt 用 if(TARGET ZzTermPty) 决定是否链接。
 # ---------------------------------------------------------------------------
-if(UNIX AND NOT APPLE)
+if(UNIX)
     add_subdirectory(pty)
     add_subdirectory(examples)
 endif()
