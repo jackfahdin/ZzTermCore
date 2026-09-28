@@ -1,6 +1,7 @@
 // ZzScrollback（chunked 实现）行为测试：append/裁剪/reflow/stats 记账（M4）。
 #include <cstdio>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "ZzTerm/Scrollback.h"
@@ -188,6 +189,78 @@ static void testSingleChunkRefillAfterTrim()
     }
 }
 
+// 8. reflow 重建切块 256 对齐回归（M8b T3 审查修复：单次 feed 产出可跨多个
+// 256 槽位块，整块推送会破坏"除尾块外每块恰 256 行"的定长寻址不变量，
+// lineAt 越过首块边界即错位/越界）。600 行编号历史含跨块 wrapped 链，
+// 变窄/变宽往返后逐行校验精确期望文本与 wrapped 标记。
+static void testReflowChunkedAlignment()
+{
+    char buf[8];
+    auto sb = zzCreateChunkedScrollback(4096); // 容量充足：reflow 不触发裁剪
+    std::vector<ZzLine> batch;
+    for (int i = 0; i < 600; ++i) {
+        std::snprintf(buf, sizeof(buf), "L%04d", i);
+        // 行 250-260 为一条跨 256 块边界的 wrapped 链（11 物理行），其余硬行。
+        const bool inChain = (i >= 250 && i <= 260);
+        batch.push_back(makeLine(8, buf, inChain && i < 260));
+    }
+    sb->append(std::move(batch));
+    ZZ_TEST_EXPECT(sb->lineCount() == 600);
+
+    // 链内容流（85 格）：编号 5 字符 + 3 空白，末编号无尾空白；链跨块重组不丢格。
+    std::string chainStream;
+    for (int i = 250; i <= 260; ++i) {
+        std::snprintf(buf, sizeof(buf), "L%04d", i);
+        chainStream += buf;
+        if (i < 260)
+            chainStream += "   ";
+    }
+
+    // 期望产出：硬行文本 = 编号前 4 字符（8->4 截断，4->8 往返后内容不变），
+    // 链流按 newCols 顺序切块（编号序列严格递增无缺无重），除链末行外 wrapped 全 true。
+    auto expectedRows = [&](int newCols) {
+        std::vector<std::pair<std::string, bool>> rows;
+        for (int i = 0; i < 600; ++i) {
+            if (i >= 250 && i <= 260) {
+                if (i == 250)
+                    for (std::size_t off = 0; off < chainStream.size();
+                         off += (std::size_t)newCols)
+                        rows.emplace_back(chainStream.substr(off, (std::size_t)newCols),
+                                          off + (std::size_t)newCols < chainStream.size());
+                continue;
+            }
+            std::snprintf(buf, sizeof(buf), "L%04d", i);
+            std::string t(buf);
+            t.resize(4); // 变窄截断后内容，往返两阶段一致
+            rows.emplace_back(std::move(t), false);
+        }
+        return rows;
+    };
+
+    auto verifyAll = [&](const char* what, int newCols) {
+        const auto rows = expectedRows(newCols);
+        ZZ_TEST_EXPECT(sb->lineCount() == rows.size());
+        const std::size_t n =
+            sb->lineCount() < rows.size() ? sb->lineCount() : rows.size();
+        for (std::size_t i = 0; i < n; ++i) {
+            const ZzLine& line = sb->lineAt(i);
+            ZZ_TEST_EXPECT(line.cellCount() == newCols); // 全历史同宽不变量
+            if (lineText(line, newCols).substr(0, rows[i].first.size()) != rows[i].first
+                || line.wrapped() != rows[i].second) {
+                std::fprintf(stderr, "FAIL %s:%d: %s row %zu mismatch\n",
+                             __FILE__, __LINE__, what, i);
+                ++g_failures;
+            }
+        }
+    };
+
+    sb->reflow(4); // 变窄：单块 256 入 -> 远超 256 行出，产出跨多个 256 槽位块
+    verifyAll("narrow 8->4", 4);
+    sb->reflow(8); // 变宽往返：跨块链拼接 + 重建切块对齐
+    verifyAll("widen 4->8", 8);
+    ZZ_TEST_EXPECT(sb->stats().lineCount == sb->lineCount());
+}
+
 int main()
 {
     testAppendAndTrim();
@@ -197,6 +270,7 @@ int main()
     testClearKeepsCounters();
     testPartialTrimConsistency();
     testSingleChunkRefillAfterTrim();
+    testReflowChunkedAlignment();
     if (g_failures == 0)
         std::printf("test_scrollback: all passed\n");
     return g_failures;

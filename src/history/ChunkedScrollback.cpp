@@ -85,10 +85,14 @@ public:
             std::vector<ZzLine> chunk = std::move(chunks_.front());
             chunks_.pop_front(); // 旧块即时释放，峰值不叠加
             streamer.feed(chunk, produced);
-            if (produced.size() >= kChunkLines) {
-                rebuilt.push_back(std::move(produced));
-                produced.clear();
-                produced.reserve(kChunkLines);
+            // 精确 256 对齐切块（审查修复）：单次 feed 产出可跨多个 256，
+            // 必须 while 循环逐块切出，维持"除尾块外每块恰 256 行"的
+            // 定长槽位不变量（lineAt/trimToCapacity 依赖）。
+            while (produced.size() >= kChunkLines) {
+                rebuilt.emplace_back(produced.begin(),
+                                     produced.begin() + static_cast<std::ptrdiff_t>(kChunkLines));
+                produced.erase(produced.begin(),
+                               produced.begin() + static_cast<std::ptrdiff_t>(kChunkLines));
             }
         }
         streamer.finish(produced);
