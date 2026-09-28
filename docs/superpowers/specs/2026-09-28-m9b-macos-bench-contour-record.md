@@ -6,9 +6,9 @@
 
 ## 1. RSS 采样与 bench 解禁
 
-T1（20ddf2a）落地 mach task_info 实现：`tests/bench/bench_common.cpp` 在 `__APPLE__` 分支经 task_info 取 TASK_BASIC_INFO_64 的 resident_size 作为当前 RSS，peak 沿用 getrusage 的 ru_maxrss（macOS 上单位为字节，Linux 为 KB，条件编译换算）；接口形态与 M8 设计预留一致，两函数签名未变。同 commit 解除 `tests/CMakeLists.txt` 的 bench APPLE 排除，本机五项基线全绿，macOS 分支 CI-only 验证。
+T1（20ddf2a）落地 mach task_info 实现：`tests/bench/bench_common.cpp` 在 `__APPLE__` 分支经 task_info 取 TASK_VM_INFO 的 resident_size 作为当前 RSS，peak 沿用 getrusage 的 ru_maxrss（macOS 上单位为字节，Linux 为 KB，条件编译换算）；接口形态与 M8 设计预留一致，两函数签名未变。同 commit 解除 `tests/CMakeLists.txt` 的 bench APPLE 排除，本机五项基线全绿，macOS 分支 CI-only 验证。
 
-RSS 非 0 实证（artifact 入库 JSON 摘录，`tests/perf/records/2026-09-28-m9b-feed-ascii-1m.json`）：rss_bytes 1124007936、peak_rss_bytes 2742943744。九份 JSON RSS 全部非零，最小 13090816 B（feed-ascii-10k），最大 peak 2955116544 B（feed-mixed-1m），mach 采样确认生效。
+RSS 非 0 实证（artifact 入库 JSON 摘录，`tests/perf/records/2026-09-28-m9b-feed-ascii-1m.json`）：rss_bytes 1124007936、peak_rss_bytes 2742943744。九份 JSON RSS 全部非零，最小 13090816 B（feed-ascii-10k），最大 peak 3062759424 B（`tests/perf/records/2026-09-28-m9b-scrollback-1m.json`），mach 采样确认生效。
 
 macOS 测试计数前后对照（ci-macos-clang）：M9a 终态 36/36 → M9b 终态 40/40（36 + interactive 1 + bench 10k 短跑档 3）。
 
@@ -41,7 +41,7 @@ T3（8aee780 / a2e26c8）新建 `ci-macos-bench.yml`（workflow_dispatch 手动�
 | feed-ascii-1m peak RSS | 2742943744 B | 1589460992 B | 1.7x |
 | feed-mixed-1m peak RSS | 2955116544 B | 3256324096 B | 0.9x |
 
-量级简注：feed/search 主读数慢约 1.8–1.9 倍，属预期（GitHub 共享 runner + 虚拟化，且核心数远少于本机 28 核）；peak RSS 同数量级，无异常膨胀。按 4A 决策只记录不设性能门。
+量级简注：feed/search 四行主读数慢约 1.8–2.1 倍（ascii 1.8–1.9x、mixed 2.0–2.1x），属预期（GitHub 共享 runner + 虚拟化，且核心数远少于本机 28 核）；peak RSS 同数量级，无异常膨胀。按 4A 决策只记录不设性能门。
 
 ## 5. 最终结果
 
