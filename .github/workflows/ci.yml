@@ -19,7 +19,16 @@ jobs:
       - name: Build
         run: cmake --build --preset linux-clang-debug
       - name: Test
-        run: ctest --preset linux-clang-debug
+        shell: bash
+        run: |
+          set -o pipefail
+          ctest --preset linux-clang-debug 2>&1 | tee test.log
+      - name: 调试：失败时回传日志尾部（M9a 临时，无 token 环境下经 annotations 观察）
+        if: failure()
+        shell: bash
+        run: |
+          grep -E "Failed|Timeout" test.log | head -6 | while IFS= read -r l; do echo "::error::$l"; done
+          tail -n 6 test.log | while IFS= read -r l; do echo "::error::TAIL $l"; done
       - name: Fuzz Configure
         run: cmake --preset linux-clang-fuzz
       - name: Fuzz Build
@@ -47,7 +56,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Configure
-        run: cmake --preset windows-msvc-debug
+        shell: bash
+        run: |
+          set -o pipefail
+          cmake --preset windows-msvc-debug 2>&1 | tee cfg.log
+      - name: 调试：失败时回传日志尾部（M9a 临时，无 token 环境下经 annotations 观察）
+        if: failure()
+        shell: bash
+        run: tail -n 8 cfg.log | while IFS= read -r l; do echo "::error::$l"; done
       - name: Build
         run: cmake --build --preset windows-msvc-debug
       - name: Test
@@ -60,7 +76,16 @@ jobs:
       - name: Configure
         run: cmake --preset macos-clang-debug
       - name: Build
-        run: cmake --build --preset macos-clang-debug
+        shell: bash
+        run: |
+          set -o pipefail
+          cmake --build --preset macos-clang-debug 2>&1 | tee build.log
+      - name: 调试：失败时回传日志尾部（M9a 临时，无 token 环境下经 annotations 观察）
+        if: failure()
+        shell: bash
+        run: |
+          grep -iE "error" build.log | head -6 | while IFS= read -r l; do echo "::error::$l"; done
+          tail -n 6 build.log | while IFS= read -r l; do echo "::error::TAIL $l"; done
       - name: Test
         run: ctest --preset macos-clang-debug
 
@@ -73,4 +98,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y doxygen
       - name: 生成 API 文档（warning 即失败）
-        run: doxygen Doxyfile
+        shell: bash
+        run: |
+          set -o pipefail
+          doxygen Doxyfile 2>&1 | tee doxy.log
+      - name: 调试：失败时回传日志尾部（M9a 临时，无 token 环境下经 annotations 观察）
+        if: failure()
+        shell: bash
+        run: tail -n 8 doxy.log | while IFS= read -r l; do echo "::error::$l"; done
