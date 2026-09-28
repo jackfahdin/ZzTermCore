@@ -66,7 +66,7 @@ int main(int argc, char** argv)
     const std::string stream = zzBenchMakeVtStream(tier.lines, profile);
 
     // 容量保证全部负载行留存在历史区：Ascii 每逻辑行恰 1 行历史；
-    // Mixed 行长 111-117 列（CJK 尾巴 80 列），80 列屏 soft wrap 为 2 行历史，
+    // Mixed 行长 127-133 列（CJK 串 48 字 = 96 列），80 列屏 soft wrap 为 2 行历史，
     // 故 Mixed 容量需按 2 倍行数预留（+24 行屏幕余量）。容量仅是上限、不产生
     // 预分配，Ascii 走精确值，Mixed 走 2 倍值——否则历史裁剪触发后 matches
     // 断言必失败（裁剪行丢失 payload）。
