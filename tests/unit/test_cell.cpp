@@ -20,7 +20,7 @@ int main()
     // 布局不变量（Cell.h 文件头记录了当前尺寸基线）。
     static_assert(sizeof(ZzColor) == 4);
     static_assert(sizeof(ZzCellAttributes) == 2);
-    static_assert(sizeof(ZzCell) == 16);
+    static_assert(sizeof(ZzCell) == 12);
     static_assert(alignof(ZzCell) == 4);
 
     // 颜色模型：default / ANSI 16 / bright / 256 / RGB TrueColor。
@@ -84,6 +84,50 @@ int main()
     cell.reset();
     ZZ_TEST_EXPECT(cell.isEmpty());
     ZZ_TEST_EXPECT(cell.foreground().isDefault() && cell.background().isDefault());
+
+    // 位打包不变量（M8b 12B 布局）：属性嵌入色字高位，颜色/属性/宽度三路互不影响。
+    ZzCell packed;
+    packed.setForeground(ZzColor::Rgb(0x11, 0x22, 0x33));
+    packed.setBackground(ZzColor::Indexed(200));
+    ZzCellAttributes pa;
+    pa.setBold(true);
+    pa.setFaint(true);
+    pa.setItalic(true);
+    pa.setUnderline(ZzUnderlineStyle::Curly);
+    pa.setBlink(ZzBlinkStyle::Rapid);
+    pa.setInverse(true);
+    pa.setInvisible(true);
+    pa.setStrikethrough(true);
+    pa.setProtected(true);
+    packed.setAttributes(pa);
+    ZZ_TEST_EXPECT(packed.attributes().raw() == pa.raw());          // 12 位往返无损
+    ZZ_TEST_EXPECT(packed.foreground() == ZzColor::Rgb(0x11, 0x22, 0x33));
+    ZZ_TEST_EXPECT(packed.background() == ZzColor::Indexed(200));
+    packed.setForeground(ZzColor::Default());                       // 改色不动属性
+    ZZ_TEST_EXPECT(packed.attributes().raw() == pa.raw());
+    packed.setAttributes(ZzCellAttributes{});                       // 清属性不动色
+    ZZ_TEST_EXPECT(packed.attributes().raw() == 0);
+    ZZ_TEST_EXPECT(packed.background() == ZzColor::Indexed(200));
+
+    // 宽度跨文本操作保持（width 驻 text_ bits[25:24]，文本读写不得触碰）。
+    packed.setWidth(ZzCellWidth::WideLead);
+    packed.setCodePoint(0x4E2D);
+    ZZ_TEST_EXPECT(packed.width() == ZzCellWidth::WideLead && packed.codePoint() == 0x4E2D);
+    packed.setCluster(7);
+    ZZ_TEST_EXPECT(packed.width() == ZzCellWidth::WideLead);
+    ZZ_TEST_EXPECT(packed.isCluster() && packed.clusterIndex() == 7);
+    packed.clearText();
+    ZZ_TEST_EXPECT(packed.width() == ZzCellWidth::WideLead);
+    ZZ_TEST_EXPECT(!packed.isCluster() && packed.codePoint() == 0);
+
+    // 相等比较逐字等价（裸字比较 = 字段逐项比较）。
+    const ZzCell qc = packed;
+    ZZ_TEST_EXPECT(qc == packed);
+    ZzCell q2 = packed;
+    ZzCellAttributes qa;
+    qa.setBold(true);
+    q2.setAttributes(qa);
+    ZZ_TEST_EXPECT(q2 != packed);
 
     if (g_failures == 0) {
         std::fprintf(stderr, "test_cell: PASS\n");
