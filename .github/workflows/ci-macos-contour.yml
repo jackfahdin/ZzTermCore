@@ -1,4 +1,4 @@
-name: CI macos-clang
+name: CI macos-contour
 
 on:
   push:
@@ -6,14 +6,14 @@ on:
   pull_request:
 
 jobs:
-  macos-clang:
+  macos-contour:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
-      - name: 安装 Python 依赖（pexpect/pyte 供 ZzTermSmokeInteractive 交互测试）
-        run: python3 -m pip install --break-system-packages pexpect pyte
-      - name: Configure
-        run: cmake --preset macos-clang-debug
+        with:
+          submodules: true
+      - name: Configure（显式开启 Contour 后端，默认 OFF 不动）
+        run: cmake --preset macos-clang-debug -DZZTERM_WITH_CONTOUR=ON
       - name: Build
         run: cmake --build --preset macos-clang-debug
       - name: Test

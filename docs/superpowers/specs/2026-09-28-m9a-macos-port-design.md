@@ -40,8 +40,8 @@ ZzTermCore 核心库（src/parser、screen、history、unicode、input）为零�
 
 ## 6. 排除项（本里程碑不做）
 
-- bench RSS macOS 采样（mach task_info / proc_pid_info）与 tests/CMakeLists.txt 的 bench APPLE 排除解除 → M9b；
-- contour ON macOS 构建验证（C++23 + 联网拉依赖）→ M9b；
+- ~~bench RSS macOS 采样（mach task_info / proc_pid_info）与 tests/CMakeLists.txt 的 bench APPLE 排除解除~~ → 已完成于 M9b；
+- ~~contour ON macOS 构建验证（C++23 + 联网拉依赖）~~ → 已完成于 M9b（默认 OFF 维持，验证经 ci-macos-contour）；
 - fuzz macOS job（3B：维持 Linux 专属）；
 - macOS 性能门控（4A：只记录不设门，且 bench 未解禁本波无数据）；
 - master 推送（1A：后置，用户另行决策）；

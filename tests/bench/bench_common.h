@@ -22,11 +22,12 @@ struct ZzBenchTier {
 /// 解析 --tier=10k|100k|1m，无参默认 10k；未知参数打印用法并 exit(2)。
 ZzBenchTier zzBenchTierFromArgs(int argc, char** argv);
 
-/// 当前 RSS（字节）。Linux 经 /proc/self/status 的 VmRSS；解析失败或非 Linux 返回 0
-///（macOS 采样适配属 M9，接口形态已预留）。
+/// 当前 RSS（字节）。Linux 经 /proc/self/status 的 VmRSS，macOS 经 mach task_info
+///（TASK_VM_INFO resident_size）；解析/采样失败或未实现平台返回 0。
 std::size_t zzBenchRssCurrentBytes();
 
-/// 峰值 RSS（字节）。Linux 经 getrusage(RUSAGE_SELF) 的 ru_maxrss；非 Linux 返回 0。
+/// 峰值 RSS（字节）。经 getrusage(RUSAGE_SELF) 的 ru_maxrss（Linux 单位 KB、macOS
+/// 单位字节，实现内换算）；未实现平台返回 0。
 std::size_t zzBenchRssPeakBytes();
 
 /// t0 至今的毫秒数。

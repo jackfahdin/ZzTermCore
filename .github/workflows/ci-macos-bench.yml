@@ -1,0 +1,23 @@
+name: CI macos-bench（手动触发采集）
+
+on:
+  workflow_dispatch:
+
+jobs:
+  macos-bench:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Configure
+        run: cmake --preset macos-clang-debug
+      - name: Build
+        run: cmake --build --preset macos-clang-debug
+      - name: 短跑档（10k 三份）
+        run: ctest --preset macos-clang-debug -R zz_bench
+      - name: 长跑档（100k/1m 六份）
+        run: cmake --build build/macos-clang-debug --target bench-long
+      - name: 上传 bench JSON
+        uses: actions/upload-artifact@v7
+        with:
+          name: m9b-bench-macos
+          path: build/macos-clang-debug/tests/zzterm-bench-*.json

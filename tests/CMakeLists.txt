@@ -199,8 +199,8 @@ endif()
 # 短跑档（10k）注册默认 ctest；长跑档（100k/1M）经 bench-long 自定义目标手动触发
 #（cmake --build <dir> --target bench-long），不进默认 ctest——ctest 无单测试默认
 # 排除机制，label 方案需改动既有 ctest --preset 基线命令，故用构建目标。
-# RSS 采样为 Linux 实现，非 Linux 返回 0（macOS 适配属 M9，届时解除 APPLE 排除）。
-if(UNIX AND NOT APPLE)
+# RSS 采样：Linux 与 macOS 均有实现（M9b 补齐 mach task_info 路径），其他平台返回 0。
+if(UNIX)
     add_executable(zz_bench_scrollback bench/zz_bench_scrollback.cpp bench/bench_common.cpp)
     target_link_libraries(zz_bench_scrollback PRIVATE ZzTermCore)
     add_test(NAME zz_bench_scrollback COMMAND zz_bench_scrollback)
