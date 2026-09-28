@@ -31,3 +31,35 @@ struct ZzReflowCursor {
  */
 std::vector<ZzLine> zzReflowLines(std::vector<ZzLine> lines, int oldCols, int newCols,
                                   ZzReflowCursor* cursor = nullptr);
+
+/**
+ * @brief 流式 reflow 器（M8b）：逐批喂入物理行、产出重组后物理行。
+ *
+ * 跨批只携带未完成链，峰值内存 O(链长)——zzReflowLines 全量进/出为
+ * O(全历史)，百万行下产生约 2 倍瞬时峰值。语义与 zzReflowLines 逐字节
+ * 一致（共用 zzReflowChain 核）；不支持光标跟踪（scrollback 路径不需要，
+ * screen 路径继续走 zzReflowLines）。
+ *
+ * 前置约定（调用方保证，debug 断言看护）：oldCols/newCols 均大于 0 且不相等
+ *（恒等与非法路径由调用方前置过滤，对齐 zzReflowLines 早退分支语义）；
+ * 喂入行均为 oldCols 列（全历史同宽不变量）。
+ */
+class ZzReflowStreamer {
+public:
+    /// @brief 构造。oldCols/newCols 语义同 zzReflowLines。
+    ZzReflowStreamer(int oldCols, int newCols);
+
+    /// @brief 喂入一批物理行（move 消费，返回后 lines 处于移后状态），产出追加到 out。
+    /// @param lines 一批物理行（按 wrapped 链序）。
+    /// @param out 重组产出行（追加写，调用方持有）。
+    void feed(std::vector<ZzLine>& lines, std::vector<ZzLine>& out);
+
+    /// @brief 收尾：冲刷最后一条未完成链（无暂存时为空操作）。
+    /// @param out 重组产出行（追加写）。
+    void finish(std::vector<ZzLine>& out);
+
+private:
+    int oldCols_;
+    int newCols_;
+    std::vector<ZzLine> pending_; ///< 未完成链暂存（复用缓冲，避免逐链分配）。
+};

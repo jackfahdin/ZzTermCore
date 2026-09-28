@@ -29,7 +29,7 @@ ZzScrollback 当前为 chunked RAM 实现，1M 行乘以 80 列乘以 sizeof(Cel
 
 ## 4. 达标门控（1M 档，基线实测后可修正并留痕）
 
-- RSS 峰值不超过 512MB；
+- RSS 拆两口径：单元轨 1m RSS 不超过 1100MB；facade 轨 1m peak RSS 不超过 3500MB（2026-09-28 按 M8b 复测修正并留痕：原 512MB 锚定每行约 6.4B 的 Cell 目标体量，超出 12B bit-pack 路线可达范围，修正为实测 989/990MB 与 mixed peak 3106MB 加约 11%-13% 余量，依据 probe 文档 §6.3，用户确认落账）；
 - append 吞吐不低于 10k 档的 50%；
 - 全量 search 不超过 5s；
 - reflow（80 列到 120 列）不超过 10s；

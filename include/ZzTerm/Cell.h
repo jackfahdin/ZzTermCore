@@ -17,9 +17,9 @@
  *   invisible、strikethrough、protected；
  * - 持续关注 sizeof(ZzCell)。
  *
- * 当前布局：sizeof(ZzCell) == 16 字节，alignof(ZzCell) == 4，
+ * 当前布局：sizeof(ZzCell) == 12 字节，alignof(ZzCell) == 4，
  * 由文件末尾 static_assert 保证。任何字段调整都必须同步更新此处记录并评估
- * 对 scrollback 内存占用的影响（10 万行 × 80 列 × 16 B ≈ 128 MB 上限量级）。
+ * 对 scrollback 内存占用的影响（10 万行 × 80 列 × 12 B ≈ 96 MB 上限量级）。
  */
 
 /**
@@ -125,6 +125,9 @@ public:
 
     /// @brief 相等比较（比较 32 位编码值）。
     friend constexpr bool operator==(ZzColor, ZzColor) noexcept = default;
+
+    // ZzCell 12B 打包（M8b）需读写 32 位编码原值（attrs 嵌入色字高位）。
+    friend struct ZzCell;
 
 private:
     static constexpr std::uint32_t kKindDefault = 0u << 30;
@@ -281,6 +284,10 @@ private:
                   : static_cast<std::uint16_t>(bits_ & ~flag);
     }
 
+    // ZzCell 12B 打包（M8b）重建属性位用；bits[12:15] 无 setter 可达，恒为 0。
+    constexpr void zzSetRaw(std::uint16_t v) noexcept { bits_ = v; }
+    friend struct ZzCell;
+
     std::uint16_t bits_ = 0;
 };
 
@@ -295,7 +302,7 @@ enum class ZzCellWidth : std::uint8_t {
 };
 
 /**
- * @brief 终端单元格：文本载荷 + 颜色 + 显示属性 + 宽度类别。
+ * @brief 终端单元格：文本载荷 + 颜色 + 显示属性 + 宽度类别（12 字节位打包）。
  *
  * 文本载荷（text_，32 位）编码：
  * - bit 30 = 0：bits [20:0] 为单个 Unicode 码位（0 表示无文本，
@@ -304,28 +311,36 @@ enum class ZzCellWidth : std::uint8_t {
  * - bit 30 = 1：bits [23:0] 为 grapheme cluster 索引，指向所属 ZzLine
  *   的 cluster 侧表（ZzLine::internCluster / ZzLine::clusterText），
  *   用于多码位 cluster（combining marks、variation selector、emoji ZWJ
- *   序列等）。
+ *   序列等）；
+ * - bits [25:24] = width（ZzCellWidth，两模式均空闲——cluster 索引
+ *   最高位是 bit 23）；bit 26 预留（未来稀疏扩展）；
+ *   bits [29:27]、bit 31 空闲。
  *
  * 取舍说明（Architecture.md 允许的两种方案权衡）：
  * - 未采用 per-cell SSO 小字符串：即使 8 字节 SSO 也会让 sizeof(ZzCell)
- *   从 16 涨到 24 字节，scrollback 内存放大 50%，而多码位 cluster
+ *   从 12 涨到 20 字节，scrollback 内存放大 67%，而多码位 cluster
  *   在实际输出中占比极低；
- * - 采用 per-line interning 侧表：Cell 固定 16 字节，cluster 只付出
+ * - 采用 per-line interning 侧表：Cell 固定 12 字节，cluster 只付出
  *   一次间接索引；代价是跨行移动/复制 Cell 时必须随带所属行的 cluster
  *   侧表（由 ZzLine/ZzScreen 内部保证一致性），且索引空间 2^24 足够
  *   单行使用。
  *
- * 内存布局记录（见文件头注释）：text_(4) + fg_(4) + bg_(4) + attrs_(2)
- * + width_(1) + reserved_(1) = 16 字节，对齐 4。
- * reserved_ 预留给未来的 hyperlink id / decoration 标记等稀疏扩展，
- * 当前必须为 0。
+ * 内存布局记录（见文件头注释）：text_(4) + fgWord_(4) + bgWord_(4) = 12
+ * 字节，对齐 4。ZzCellAttributes 已用位恰好 12，拆嵌两色字高位
+ * bits[29:24]（fgWord_ 承载低 6 位、bgWord_ 承载高 6 位）——ZzColor
+ * 编码 bits[29:24] 恒为 0（kind 占 [31:30]、数据最多 [23:0]），该区间
+ * 天然空闲。原 reserved_ 字段删除：hyperlink id / decoration 标记等
+ * 稀疏扩展点改由 text_ bit 26 或行级稀疏侧表承担。
  */
 struct ZzCell {
     /**
      * @brief 返回宽度类别。
      * @return 单元格宽度类别。
      */
-    [[nodiscard]] constexpr ZzCellWidth width() const noexcept { return width_; }
+    [[nodiscard]] constexpr ZzCellWidth width() const noexcept
+    {
+        return static_cast<ZzCellWidth>((text_ & kWidthMask) >> kWidthShift);
+    }
 
     /**
      * @brief 是否为空单元格（无文本）。Empty 与 Narrow(码位 0) 均视为无文本。
@@ -333,7 +348,7 @@ struct ZzCell {
      */
     [[nodiscard]] constexpr bool isEmpty() const noexcept
     {
-        return width_ == ZzCellWidth::Empty ||
+        return width() == ZzCellWidth::Empty ||
                (!isCluster() && codePoint() == 0);
     }
 
@@ -368,7 +383,10 @@ struct ZzCell {
      * @brief 设置宽度类别。
      * @param w 新的宽度类别。
      */
-    constexpr void setWidth(ZzCellWidth w) noexcept { width_ = w; }
+    constexpr void setWidth(ZzCellWidth w) noexcept
+    {
+        text_ = (text_ & ~kWidthMask) | (static_cast<std::uint32_t>(w) << kWidthShift);
+    }
 
     /**
      * @brief 设置为单码位窄/宽字符文本。
@@ -378,7 +396,7 @@ struct ZzCell {
      */
     constexpr void setCodePoint(char32_t cp) noexcept
     {
-        text_ = static_cast<std::uint32_t>(cp) & kCodePointMask;
+        text_ = (text_ & kWidthMask) | (static_cast<std::uint32_t>(cp) & kCodePointMask);
     }
 
     /**
@@ -387,51 +405,80 @@ struct ZzCell {
      */
     constexpr void setCluster(std::uint32_t index) noexcept
     {
-        text_ = kClusterFlag | (index & kClusterIndexMask);
+        text_ = (text_ & kWidthMask) | kClusterFlag | (index & kClusterIndexMask);
     }
 
     /// @brief 清除文本载荷（不改动颜色/属性/宽度）。
-    constexpr void clearText() noexcept { text_ = 0; }
+    constexpr void clearText() noexcept { text_ &= kWidthMask; }
 
     /// @brief 前景色。
     /// @return 当前前景色。
-    [[nodiscard]] constexpr ZzColor foreground() const noexcept { return fg_; }
+    [[nodiscard]] constexpr ZzColor foreground() const noexcept
+    {
+        return ZzColor{fgWord_ & kColorMask};
+    }
     /// @brief 背景色。
     /// @return 当前背景色。
-    [[nodiscard]] constexpr ZzColor background() const noexcept { return bg_; }
+    [[nodiscard]] constexpr ZzColor background() const noexcept
+    {
+        return ZzColor{bgWord_ & kColorMask};
+    }
     /// @brief 显示属性。
     /// @return 当前显示属性位集。
-    [[nodiscard]] constexpr ZzCellAttributes attributes() const noexcept { return attrs_; }
+    [[nodiscard]] constexpr ZzCellAttributes attributes() const noexcept
+    {
+        ZzCellAttributes a;
+        a.zzSetRaw(static_cast<std::uint16_t>(
+            ((fgWord_ >> kAttrsEmbedShift) & kAttrsEmbedMask)
+            | (((bgWord_ >> kAttrsEmbedShift) & kAttrsEmbedMask) << 6)));
+        return a;
+    }
 
     /// @brief 设置前景色。
     /// @param c 新前景色。
-    constexpr void setForeground(ZzColor c) noexcept { fg_ = c; }
+    constexpr void setForeground(ZzColor c) noexcept
+    {
+        // ZzColor 编码 bits[29:24] 恒 0，直接或运算保住嵌入属性位。
+        fgWord_ = (fgWord_ & ~kColorMask) | c.value_;
+    }
     /// @brief 设置背景色。
     /// @param c 新背景色。
-    constexpr void setBackground(ZzColor c) noexcept { bg_ = c; }
+    constexpr void setBackground(ZzColor c) noexcept
+    {
+        bgWord_ = (bgWord_ & ~kColorMask) | c.value_;
+    }
     /// @brief 设置显示属性。
     /// @param a 新显示属性位集。
-    constexpr void setAttributes(ZzCellAttributes a) noexcept { attrs_ = a; }
+    constexpr void setAttributes(ZzCellAttributes a) noexcept
+    {
+        const std::uint32_t raw = a.raw(); // bits[12:15] 恒 0（无 setter 可达）
+        fgWord_ = (fgWord_ & ~(kAttrsEmbedMask << kAttrsEmbedShift))
+                  | ((raw & kAttrsEmbedMask) << kAttrsEmbedShift);
+        bgWord_ = (bgWord_ & ~(kAttrsEmbedMask << kAttrsEmbedShift))
+                  | (((raw >> 6) & kAttrsEmbedMask) << kAttrsEmbedShift);
+    }
 
     /// @brief 复位为空白单元格（默认色、无属性、Empty、无文本）。
     constexpr void reset() noexcept { *this = ZzCell{}; }
 
-    /// @brief 相等比较（全部字段逐项比较，含 reserved_）。
+    /// @brief 相等比较（全部字段逐项比较）。
     friend constexpr bool operator==(const ZzCell&, const ZzCell&) noexcept = default;
 
 private:
     static constexpr std::uint32_t kClusterFlag      = 1u << 30;
     static constexpr std::uint32_t kCodePointMask    = 0x1FFFFFu;   ///< 21 位，覆盖 U+10FFFF
     static constexpr std::uint32_t kClusterIndexMask = 0xFFFFFFu;   ///< 24 位索引空间
+    static constexpr int           kWidthShift       = 24;          ///< width 驻 text_ bits[25:24]
+    static constexpr std::uint32_t kWidthMask        = 0x3u << kWidthShift;
+    static constexpr std::uint32_t kColorMask        = 0xC0FFFFFFu; ///< kind[31:30] + 数据[23:0]
+    static constexpr int           kAttrsEmbedShift  = 24;          ///< attrs 嵌色字 bits[29:24]
+    static constexpr std::uint32_t kAttrsEmbedMask   = 0x3Fu;       ///< 每色字承载 6 位
 
-    std::uint32_t     text_ = 0;
-    ZzColor           fg_   = ZzColor::Default();
-    ZzColor           bg_   = ZzColor::Default();
-    ZzCellAttributes  attrs_;
-    ZzCellWidth       width_    = ZzCellWidth::Empty;
-    std::uint8_t      reserved_ = 0; ///< 预留字段，必须为 0（见类注释）。
+    std::uint32_t text_   = 0; ///< 文本载荷 + width（位分配见类注释）。
+    std::uint32_t fgWord_ = 0; ///< 前景色编码 + attrs 低 6 位。
+    std::uint32_t bgWord_ = 0; ///< 背景色编码 + attrs 高 6 位。
 };
 
-static_assert(sizeof(ZzCell) == 16,
-              "sizeof(ZzCell) 应为 16 字节；若失败请重新评估字段布局并更新文件头注释");
+static_assert(sizeof(ZzCell) == 12,
+              "sizeof(ZzCell) 应为 12 字节；若失败请重新评估字段布局并更新文件头注释");
 static_assert(alignof(ZzCell) == 4, "ZzCell 对齐应为 4 字节");

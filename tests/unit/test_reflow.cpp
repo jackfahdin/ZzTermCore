@@ -1,4 +1,5 @@
 // zzReflowLines 纯函数测试矩阵（M4 resize reflow）。
+#include <algorithm>
 #include <cstdio>
 #include <string>
 #include <vector>
@@ -237,6 +238,140 @@ static void testHardLineWideCharAtBoundary()
         ZZ_TEST_EXPECT(out[0].cellAt(i).width() != ZzCellWidth::WideContinuation); // 无续格泄漏
 }
 
+// 12. 流式与一次性等价（M8b）：同一输入经 zzReflowLines 与 ZzReflowStreamer
+//（整批 / 逐行 / 不规则分批三种喂法）产出必须逐行逐格一致。
+// 覆盖：硬行、多长度 wrapped 链、宽字符跨边界、空链尾、dangling wrapped 尾链。
+
+// 构造等价性用例输入：单行硬行 + 两条 2-3 物理行 wrapped 链（其一含宽字符
+// 与颜色/属性格）+ dangling wrapped 尾链。所有行均为 cols 列。
+static std::vector<ZzLine> makeStreamInput(int cols)
+{
+    std::vector<ZzLine> lines;
+    // 单行硬行。
+    lines.push_back(makeLine(cols, "hi", false));
+    // wrapped 链 A：3 物理行，中间行含前景/背景/粗体格（非默认空白，不可裁）。
+    lines.push_back(makeLine(cols, "ab", true));
+    {
+        ZzLine mid(cols);
+        ZzCell c;
+        c.setWidth(ZzCellWidth::Narrow);
+        c.setCodePoint(U'Q');
+        c.setForeground(ZzColor::Indexed(5));
+        c.setBackground(ZzColor::Rgb(10, 20, 30));
+        ZzCellAttributes attr;
+        attr.setBold(true);
+        c.setAttributes(attr);
+        mid.setCell(0, c);
+        mid.setWrapped(true);
+        lines.push_back(std::move(mid));
+    }
+    lines.push_back(makeLine(cols, "cd", false));
+    // wrapped 链 B：宽字符（WideLead 带颜色，续格随 lead 再生）+ 窄字符收尾。
+    {
+        ZzLine w0(cols);
+        ZzCell lead;
+        lead.setWidth(ZzCellWidth::WideLead);
+        lead.setCodePoint(0x4E2D);
+        lead.setForeground(ZzColor::Indexed(2));
+        lead.setBackground(ZzColor::Indexed(7));
+        w0.setCell(0, lead);
+        if (cols >= 2) {
+            ZzCell cont;
+            cont.setWidth(ZzCellWidth::WideContinuation);
+            cont.setForeground(ZzColor::Indexed(2));
+            cont.setBackground(ZzColor::Indexed(7));
+            w0.setCell(1, cont);
+        }
+        w0.setWrapped(true);
+        lines.push_back(std::move(w0));
+        lines.push_back(makeLine(cols, "z", false));
+    }
+    // dangling wrapped 尾链（最后一行 wrapped=true，无链尾）。
+    lines.push_back(makeLine(cols, "xy", true));
+    lines.push_back(makeLine(cols, "pq", true));
+    return lines;
+}
+
+// 逐行逐格比较两组产出行：cellCount/wrapped/逐格 codePoint/width/
+// foreground/background/attributes().raw()。
+static void expectSameLines(const std::vector<ZzLine>& expected,
+                            const std::vector<ZzLine>& actual, const char* what)
+{
+    ZZ_TEST_EXPECT(expected.size() == actual.size());
+    const std::size_t n = std::min(expected.size(), actual.size());
+    for (std::size_t i = 0; i < n; ++i) {
+        const ZzLine& e = expected[i];
+        const ZzLine& a = actual[i];
+        ZZ_TEST_EXPECT(a.cellCount() == e.cellCount());
+        ZZ_TEST_EXPECT(a.wrapped() == e.wrapped());
+        const int cols = std::min(e.cellCount(), a.cellCount());
+        for (int j = 0; j < cols; ++j) {
+            const ZzCell& ec = e.cellAt(j);
+            const ZzCell& ac = a.cellAt(j);
+            if (ac.codePoint() != ec.codePoint() || ac.width() != ec.width()
+                || !(ac.foreground() == ec.foreground())
+                || !(ac.background() == ec.background())
+                || ac.attributes().raw() != ec.attributes().raw()) {
+                std::fprintf(stderr, "FAIL %s:%d: %s row %zu col %d mismatch\n",
+                             __FILE__, __LINE__, what, i, j);
+                ++g_failures;
+            }
+        }
+    }
+}
+
+static void testStreamEquivalence()
+{
+    const int pairs[][2] = {{4, 2}, {2, 4}, {5, 3}};
+    for (const auto& p : pairs) {
+        const int oldCols = p[0];
+        const int newCols = p[1];
+        const std::vector<ZzLine> expected =
+            zzReflowLines(makeStreamInput(oldCols), oldCols, newCols);
+        // 喂法 1：整批一次喂入。
+        {
+            ZzReflowStreamer streamer(oldCols, newCols);
+            std::vector<ZzLine> in = makeStreamInput(oldCols);
+            std::vector<ZzLine> out;
+            streamer.feed(in, out);
+            streamer.finish(out);
+            expectSameLines(expected, out, "whole-batch");
+        }
+        // 喂法 2：逐行喂入。
+        {
+            ZzReflowStreamer streamer(oldCols, newCols);
+            std::vector<ZzLine> in = makeStreamInput(oldCols);
+            std::vector<ZzLine> out;
+            for (auto& line : in) {
+                std::vector<ZzLine> one;
+                one.push_back(std::move(line));
+                streamer.feed(one, out);
+            }
+            streamer.finish(out);
+            expectSameLines(expected, out, "line-by-line");
+        }
+        // 喂法 3：不规则分批（2/1/3 循环切片）。
+        {
+            ZzReflowStreamer streamer(oldCols, newCols);
+            std::vector<ZzLine> in = makeStreamInput(oldCols);
+            std::vector<ZzLine> out;
+            const std::size_t pat[] = {2, 1, 3};
+            std::size_t pos = 0;
+            std::size_t pi = 0;
+            while (pos < in.size()) {
+                const std::size_t n = std::min(pat[pi++ % 3], in.size() - pos);
+                std::vector<ZzLine> batch;
+                for (std::size_t k = 0; k < n; ++k)
+                    batch.push_back(std::move(in[pos + k]));
+                pos += n;
+                streamer.feed(batch, out);
+            }
+            streamer.finish(out);
+            expectSameLines(expected, out, "irregular-batches");
+        }
+    }
+}
+
 int main()
 {
     testWidenMergesChain();
@@ -250,6 +385,7 @@ int main()
     testClusterReintern();
     testCursorInTrimmedBlanks();
     testHardLineWideCharAtBoundary();
+    testStreamEquivalence();
     if (g_failures == 0)
         std::printf("test_reflow: all passed\n");
     return g_failures;
