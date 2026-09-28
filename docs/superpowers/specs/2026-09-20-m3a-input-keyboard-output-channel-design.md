@@ -63,8 +63,8 @@ M3a 目标：打通键盘输入方向（前端按键 → 编码字节 → PTY）
 
 - `setOutputHandler` 实存 handler（替换 no-op，原注释删除）；
 - dispatchCsi 新增：
-  - `case 'c'`（DA1，无参数）：emit `\x1b[?1;2c`（VT102 级，xterm 兼容最小集）；带参数/intermediate 的 DA 变体安全忽略；
-  - `case 'n'`（DSR）：参数 5 → emit `\x1b[0n`；参数 6（CPR）→ emit `\x1b[{行+1};{列+1}R`（真实光标位置，0 起始转 1 起始）；其余参数安全忽略；
+  - `case 'c'`（DA1，无参数）：emit `ESC[?1;2c`（VT102 级，xterm 兼容最小集）；带参数/intermediate 的 DA 变体安全忽略；
+  - `case 'n'`（DSR）：参数 5 → emit `ESC[0n`；参数 6（CPR）→ emit `ESC[{行+1};{列+1}R`（真实光标位置，0 起始转 1 起始）；其余参数安全忽略；
   - 回传不标脏（屏幕无变化）；
 - Contour 侧这些应答它自己发出（通道 M1b 已通），零工作量。
 

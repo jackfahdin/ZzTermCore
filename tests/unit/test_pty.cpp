@@ -1,5 +1,5 @@
 // ZzTermPty（Unix PTY 封装）测试。
-#if defined(__unix__) && !defined(__APPLE__)
+#if defined(__unix__) || defined(__APPLE__)
 
 #include <cerrno>
 #include <cstddef>

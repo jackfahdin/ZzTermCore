@@ -396,14 +396,19 @@ int run(ZzBackendKind backend, const std::vector<std::string>& command)
 
     // O_NONBLOCK 两端都要：读端供主循环排空（否则排空循环在管道读空后阻塞，
     // demo 在首个 SIGWINCH 后永久挂起）；写端防止信号处理器在管道写满时阻塞。
-    if (::pipe2(g_winchPipe, O_NONBLOCK | O_CLOEXEC) != 0) {
+    // pipe2 为 Linux 专属，macOS 用 pipe + fcntl 分两步设置（M9a）。
+    if (::pipe(g_winchPipe) != 0) {
         std::fprintf(stderr, "ZzTermSmoke: pipe 失败：%s\n", std::strerror(errno));
         return 1;
     }
+    for (int fd : { g_winchPipe[0], g_winchPipe[1] }) {
+        (void)::fcntl(fd, F_SETFL, ::fcntl(fd, F_GETFL) | O_NONBLOCK);
+        (void)::fcntl(fd, F_SETFD, ::fcntl(fd, F_GETFD) | FD_CLOEXEC);
+    }
     struct sigaction sa {};
     sa.sa_handler = &onSigWinch;
-    ::sigemptyset(&sa.sa_mask);
-    (void)::sigaction(SIGWINCH, &sa, nullptr);
+    sigemptyset(&sa.sa_mask); // macOS 上 sigemptyset 是宏，不能加 :: 限定（M9a）
+    (void)sigaction(SIGWINCH, &sa, nullptr);
 
     bool watchStdin = true; // stdin EOF（管道场景）后停止监听，避免 poll 忙转
     std::optional<int> childExit;

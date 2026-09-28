@@ -1,0 +1,18 @@
+name: CI docs
+
+on:
+  push:
+    branches: [main, master, contour]
+  pull_request:
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: 安装 Doxygen 与 Graphviz（dot 供依赖图渲染，缺失在 WARN_AS_ERROR 下即失败）
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y doxygen graphviz
+      - name: 生成 API 文档（warning 即失败）
+        run: doxygen Doxyfile

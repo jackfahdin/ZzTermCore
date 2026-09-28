@@ -302,7 +302,7 @@
 -   [ ] Rapid Resize Stability
 -   [ ] Resize Event Coalescing
 -   [x] Linux PTY `TIOCSWINSZ`
--   [ ] macOS PTY `TIOCSWINSZ`（M5）
+-   [x] macOS PTY `TIOCSWINSZ`（M9a，CI macos-clang job 实测通过）
 -   [ ] Windows ConPTY Resize
 -   [x] Core and PTY Grid Size Consistency
 

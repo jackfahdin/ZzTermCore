@@ -1,0 +1,22 @@
+name: CI ubuntu-gcc
+
+on:
+  push:
+    branches: [main, master, contour]
+  pull_request:
+
+jobs:
+  ubuntu-gcc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: 安装工具链（GCC + Ninja）
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++ ninja-build
+      - name: Configure
+        run: cmake --preset linux-gcc-debug
+      - name: Build
+        run: cmake --build --preset linux-gcc-debug
+      - name: Test
+        run: ctest --preset linux-gcc-debug

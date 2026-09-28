@@ -868,4 +868,4 @@ git commit -m "docs(probe): M8 百万行全矩阵基线与门控判定"
 
 - 规格覆盖：§2 组件 → T1/T2/T3；§3 矩阵（三档 × 指标 × 双画像）→ T2/T3/T4；§4 门控 → T4 步骤 3；§5 流程（测量波 → 决策点 → 条件优化波）→ T4 步骤 5 + 计划头部执行边界；§6 健壮性（生成器自检/RSS 失败处理/长跑异常记录）→ T1 步骤 3、T2/T3 自检段、harness 只测量不判决设计；§8 DoD → T4 全步骤；§9 任务划分 → 本计划 T1-T4（T5 按规格为条件触发，另立计划）。
 - 占位符：probe 文档表格留空是 T4 执行期填数项（测量产物，非计划缺陷）；其余步骤均含完整代码/命令。
-- 类型一致：zzBenchTier{lines,name}、zzBenchMakeLines(seed,count,cols,profile)、zzBenchMakeVtStream(lineCount,profile)、zzBenchLinesChecksum/zzBenchStreamChecksum、zzBenchRssCurrentBytes/zzBenchRssPeakBytes/zzBenchMillisSince、ZzBenchProfile::Ascii/Mixed——T1 定义与 T2/T3 使用一致；CMake target 名 zz_bench_scrollback/zz_bench_feed/bench-long 三处一致。
+- 类型一致：zzBenchTier{lines,name}、zzBenchMakeLines(seed,count,cols,profile)、zzBenchMakeVtStream(lineCount,profile)、zzBenchLinesChecksum/zzBenchStreamChecksum、zzBenchRssCurrentBytes/zzBenchRssPeakBytes/zzBenchMillisSince、ZzBenchProfile 的 Ascii/Mixed——T1 定义与 T2/T3 使用一致；CMake target 名 zz_bench_scrollback/zz_bench_feed/bench-long 三处一致。

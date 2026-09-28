@@ -1,0 +1,18 @@
+name: CI macos-clang
+
+on:
+  push:
+    branches: [main, master, contour]
+  pull_request:
+
+jobs:
+  macos-clang:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Configure
+        run: cmake --preset macos-clang-debug
+      - name: Build
+        run: cmake --build --preset macos-clang-debug
+      - name: Test
+        run: ctest --preset macos-clang-debug

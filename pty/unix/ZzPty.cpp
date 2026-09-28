@@ -5,7 +5,11 @@
 #include <vector>
 
 #include <fcntl.h>
-#include <pty.h> // openpty（Linux；macOS 为 <util.h>，M5 处理）
+#if defined(__APPLE__)
+#include <util.h> // openpty（macOS）
+#else
+#include <pty.h> // openpty（Linux 等 glibc 平台）
+#endif
 #include <sys/ioctl.h>
 #include <sys/wait.h>
 #include <termios.h>

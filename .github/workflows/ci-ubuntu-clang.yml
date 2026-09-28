@@ -1,0 +1,28 @@
+name: CI ubuntu-clang
+
+on:
+  push:
+    branches: [main, master, contour]
+  pull_request:
+
+jobs:
+  ubuntu-clang:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: 安装工具链（Clang + Ninja）
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang ninja-build
+      - name: Configure
+        run: cmake --preset linux-clang-debug
+      - name: Build
+        run: cmake --build --preset linux-clang-debug
+      - name: Test
+        run: ctest --preset linux-clang-debug
+      - name: Fuzz Configure
+        run: cmake --preset linux-clang-fuzz
+      - name: Fuzz Build
+        run: cmake --build --preset linux-clang-fuzz
+      - name: Fuzz Smoke（双 harness 各 30 秒）
+        run: ctest --preset linux-clang-fuzz -R fuzz
