@@ -14,7 +14,7 @@ M4/M5 的 benchmark 与终审台账量化出三笔性能债，本里程碑定向
 
 1. **搜索分配**：zzSearchLines 每条逻辑行新建 LineTextMap（text + byteToCell + byteToCellEnd，不敏感模式另有 folded），每物理行另有 lineAt 值快照的 cells vector 重分配；10 万行搜索实测 503ms（-O0，tests/perf/records/2026-09-21-m5b-search.json），T2 审查与 M5b 终审均标记此因；
 2. **重复计数**：facade 的 setSelection/extendSelection/resize clamp 三处各自调用 zzLogicalLineCount（O(R) 全扫描），extendSelection 在鼠标拖动场景为高频路径（M5a 终审 Minor M3）；
-3. **快照拷贝**：ZzIPhysicalLineSource::lineAt 按值返回 ZzLine——native 侧本可复用调用方缓冲（scrollback/screen 返回 const 引用，拷贝仅为满足值语义），contour 侧 SoA 转换也可复用调用方缓冲避免反复分配；搜索与提取两条热路径都按行支付。
+3. **快照拷贝**：ZzIPhysicalLineSource 的 lineAt 按值返回 ZzLine——native 侧本可复用调用方缓冲（scrollback/screen 返回 const 引用，拷贝仅为满足值语义），contour 侧 SoA 转换也可复用调用方缓冲避免反复分配；搜索与提取两条热路径都按行支付。
 
 ## 3. 范围
 

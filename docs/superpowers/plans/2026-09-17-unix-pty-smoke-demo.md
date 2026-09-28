@@ -42,8 +42,8 @@
 3. **非 tty 场景（CTest 管道）**：demo 必须能在 stdin/stdout 为管道时工作——`isatty(STDIN_FILENO)` 为假时 TermiosGuard 不生效；TIOCGWINSZ 失败回退 80x24；stdin 读到 EOF 后停止监听（否则 poll 忙转）。冒烟测试 `ZzTermSmoke -- bash -c 'echo zz-smoke-ok'` 即在此场景下运行。
 4. **demo 读 master 必须非阻塞**：poll 报告可读后要循环读到 EAGAIN 为止（一次 POLLIN 可能对应多段数据；若只读一次，剩余数据要等下一事件，EOF 场景会卡住）。spawn 后用 `fcntl(O_NONBLOCK)` 设置 masterFd。因此 `ZzPty::read` 返回 -1 时 errno 可能是 EAGAIN（暂不可读），demo 按"回到 poll"处理。
 5. **退出顺序**：子进程退出（tryWait 命中）后立即非阻塞排空 master 残余输出 → 最后渲染一次 → 退出。不等待 slave 引用全部关闭（子进程的子进程可能持有 slave，等 EOF 会挂死）。
-6. **raw 语义**：demo 对外层 stdin 终端 `cfmakeraw`（关 OPOST），因此渲染输出换行必须显式 `\r\n`；PTY slave 由 ZzPty 默认置 raw，交互程序（bash readline/vim/less）会自行重设 termios，不受影响。
-7. **构建门槛**：PTY 与 demo 是 Linux 专属（本里程碑），根 CMake 用 `if(UNIX AND NOT APPLE)` 包裹（macOS 同为 UNIX 会误入 `if(UNIX)`，其 PTY 头文件差异 M5 处理）；`tests/unit/test_pty.cpp` 全文以 `#if defined(__unix__) && !defined(__APPLE__)` 守卫（Windows 上 ZzTermPty 目标不存在，`if(TARGET)` 只保护链接不保护编译），`#else` 分支提供平凡 main 空跑通过。openpty 在部分平台位于 libutil（glibc ≥ 2.34 已并入 libc），用 `find_library(util)` 找到才链接。（执行后经最终审查修正，原 `if(UNIX)` 方案对 macOS/Windows 均有漏洞。）
+6. **raw 语义**：demo 对外层 stdin 终端 `cfmakeraw`（关 OPOST），因此渲染输出换行必须显式输出回车加换行（CR LF）；PTY slave 由 ZzPty 默认置 raw，交互程序（bash readline/vim/less）会自行重设 termios，不受影响。
+7. **构建门槛**：PTY 与 demo 是 Linux 专属（本里程碑），根 CMake 用 `if(UNIX AND NOT APPLE)` 包裹（macOS 同为 UNIX 会误入 `if(UNIX)`，其 PTY 头文件差异 M5 处理）；`tests/unit/test_pty.cpp` 全文以预处理条件 `defined(__unix__) && !defined(__APPLE__)` 守卫（Windows 上 ZzTermPty 目标不存在，`if(TARGET)` 只保护链接不保护编译），否则分支提供平凡 main 空跑通过。openpty 在部分平台位于 libutil（glibc ≥ 2.34 已并入 libc），用 `find_library(util)` 找到才链接。（执行后经最终审查修正，原 `if(UNIX)` 方案对 macOS/Windows 均有漏洞。）
 
 ---
 

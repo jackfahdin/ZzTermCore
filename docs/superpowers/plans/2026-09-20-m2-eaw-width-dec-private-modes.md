@@ -1228,7 +1228,7 @@ doxygen Doxyfile
 
 - `less <file>` / `vim` 进出：备用屏切换、退出后 shell 原内容恢复；
 - CJK 文本（如 `echo 中文混排ABC`）：对齐无错位、光标位置正确；
-- `printf '\e[?25l'` / `printf '\e[?25h'`：光标隐藏/恢复。
+- `printf 'ESC[?25l'` / `printf 'ESC[?25h'`：光标隐藏/恢复。
 
 实测异常先对照 compat 用例定位后端归属，再按规格 5 风险节处理。
 

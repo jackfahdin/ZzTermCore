@@ -27,7 +27,7 @@ ZzTermCore 已确认双后端路线（v2.1）：Contour `vtbackend`/`vtparser` �
 -   最小 target 集（全 STATIC）：`crispy-core` → `vtpty` → `vtparser` → `vtbackend`。
 -   第三方依赖闭包（均 PUBLIC 链接）：Microsoft.GSL、libunicode ≥ 0.9.3
     （CPM `contour-terminal/libunicode` v0.9.3，target `unicode::unicode`）、
-    boxed-cpp（`boxed-cpp::boxed-cpp`）、reflection-cpp（`reflection-cpp::reflection-cpp`）、
+    boxed-cpp（target 同名 `boxed-cpp`）、reflection-cpp（target 同名 `reflection-cpp`）、
     `Threads::Threads`；另有 `contour::tracy` INTERFACE（`CONTOUR_TRACY=OFF` 时
     用 `src/crispy/tracy-stub/` 空实现头）。
 -   不需要：net、OpenSSL、libssh2（系统不装即自动禁用）、Qt、freetype、harfbuzz、

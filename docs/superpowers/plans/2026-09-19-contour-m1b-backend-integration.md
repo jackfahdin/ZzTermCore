@@ -17,7 +17,7 @@
 3. **ZzCellView.text 用 UTF-8 std::string**（非 u32string）：native cluster 本就 UTF-8 interned，demo 消费 UTF-8，双后端比对天然一致；Contour 侧 u32→UTF-8 在转换层编码。
 4. **ZzCursorState 从 Screen.h 移至 Types.h**（Screen.h 继续经 Types.h 可见，源兼容），使重写后的 RenderView.h 不必 include native 的 Screen.h。
 5. **统一视图契约砍掉旧 ZzRenderView 的 scrollback 访问**（scrollbackOffset/scrollbackLineCount/dirtyRows/cellAt(row,col) 便捷形式）——scrollback 按规格不进统一契约；demo 与测试均未使用这些入口。
-6. **ZzTerminal::screen()/scrollback() 保留但限定 Native**（全仓库仅 3 处测试消费 screen() 设模式位，scrollback() 零消费）：facade 内经 dynamic_cast 到 ZzNativeBackend 实现，Contour 后端调用抛 std::logic_error。
+6. **ZzTerminal 的 screen()/scrollback() 保留但限定 Native**（全仓库仅 3 处测试消费 screen() 设模式位，scrollback() 零消费）：facade 内经 dynamic_cast 到 ZzNativeBackend 实现，Contour 后端调用抛 std::logic_error。
 
 **通用约束（每个任务都必须遵守）：**
 
