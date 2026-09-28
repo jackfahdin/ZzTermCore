@@ -1,0 +1,37 @@
+name: CI ubuntu-clang
+
+on:
+  push:
+    branches: [main, master, contour]
+  pull_request:
+
+jobs:
+  ubuntu-clang:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: 安装工具链（Clang + Ninja）
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang ninja-build
+      - name: Configure
+        run: cmake --preset linux-clang-debug
+      - name: Build
+        run: cmake --build --preset linux-clang-debug
+      - name: Test
+        shell: bash
+        run: |
+          set -o pipefail
+          ctest --preset linux-clang-debug 2>&1 | tee test.log
+      - name: 调试：失败时回传日志尾部（M9a 临时，无 token 环境下经 annotations 观察）
+        if: failure()
+        shell: bash
+        run: |
+          grep -E "FAIL |Failed|Timeout" test.log | head -6 | while IFS= read -r l; do echo "::error::$l"; done
+          tail -n 6 test.log | while IFS= read -r l; do echo "::error::TAIL $l"; done
+      - name: Fuzz Configure
+        run: cmake --preset linux-clang-fuzz
+      - name: Fuzz Build
+        run: cmake --build --preset linux-clang-fuzz
+      - name: Fuzz Smoke（双 harness 各 30 秒）
+        run: ctest --preset linux-clang-fuzz -R fuzz
