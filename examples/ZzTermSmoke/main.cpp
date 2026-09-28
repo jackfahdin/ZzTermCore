@@ -407,8 +407,8 @@ int run(ZzBackendKind backend, const std::vector<std::string>& command)
     }
     struct sigaction sa {};
     sa.sa_handler = &onSigWinch;
-    ::sigemptyset(&sa.sa_mask);
-    (void)::sigaction(SIGWINCH, &sa, nullptr);
+    sigemptyset(&sa.sa_mask); // macOS 上 sigemptyset 是宏，不能加 :: 限定（M9a）
+    (void)sigaction(SIGWINCH, &sa, nullptr);
 
     bool watchStdin = true; // stdin EOF（管道场景）后停止监听，避免 poll 忙转
     std::optional<int> childExit;
