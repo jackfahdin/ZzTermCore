@@ -9,6 +9,9 @@
 #if defined(__linux__)
 #include <fstream>
 #include <sys/resource.h>
+#elif defined(__APPLE__)
+#include <mach/mach.h>
+#include <sys/resource.h>
 #endif
 
 ZzBenchTier zzBenchTierFromArgs(int argc, char** argv)
@@ -42,20 +45,32 @@ std::size_t zzBenchRssCurrentBytes()
         in.ignore(4096, '\n');
     }
     return 0; // 解析失败：按 0 处理（调用方仅记录，不断言非零）
+#elif defined(__APPLE__)
+    task_vm_info_data_t    info{};
+    mach_msg_type_number_t count = TASK_VM_INFO_COUNT;
+    if (task_info(mach_task_self(), TASK_VM_INFO,
+                  reinterpret_cast<task_info_t>(&info), &count) == KERN_SUCCESS)
+        return static_cast<std::size_t>(info.resident_size);
+    return 0; // 采样失败：按 0 处理（约定同上）
 #else
-    return 0; // macOS 适配属 M9
+    return 0; // 其他平台未实现
 #endif
 }
 
 std::size_t zzBenchRssPeakBytes()
 {
-#if defined(__linux__)
+#if defined(__linux__) || defined(__APPLE__)
     struct rusage ru {};
-    if (getrusage(RUSAGE_SELF, &ru) == 0)
+    if (getrusage(RUSAGE_SELF, &ru) == 0) {
+#if defined(__APPLE__)
+        return static_cast<std::size_t>(ru.ru_maxrss); // macOS ru_maxrss 单位字节
+#else
         return static_cast<std::size_t>(ru.ru_maxrss) * 1024; // Linux ru_maxrss 单位 KB
+#endif
+    }
     return 0;
 #else
-    return 0; // macOS 适配属 M9
+    return 0; // 其他平台未实现
 #endif
 }
 
