@@ -1,0 +1,10 @@
+{
+  "milestone": "M4",
+  "lines": 100000,
+  "cols": 80,
+  "append_ms": 148.926,
+  "lineat_ms": 8.16724,
+  "reflow_widen_ms": 183.552,
+  "reflow_narrow_ms": 185.502,
+  "approx_bytes": 133600000
+}
