@@ -24,4 +24,14 @@ jobs:
           grep -iE "error" build.log | head -6 | while IFS= read -r l; do echo "::error::$l"; done
           tail -n 6 build.log | while IFS= read -r l; do echo "::error::TAIL $l"; done
       - name: Test
-        run: ctest --preset macos-clang-debug
+        shell: bash
+        run: |
+          set -o pipefail
+          ctest --preset macos-clang-debug 2>&1 | tee test.log
+      - name: 观察：回传 ctest 计数（M9a 临时，任务 4 记录用，收敛后随插桩一并移除）
+        if: always()
+        shell: bash
+        run: |
+          if [ -f test.log ]; then
+            grep -E "tests passed|tests failed" test.log | while IFS= read -r l; do echo "::notice::$l"; done
+          fi
