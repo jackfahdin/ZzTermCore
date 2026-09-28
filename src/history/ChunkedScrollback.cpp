@@ -75,26 +75,35 @@ public:
         const int oldCols = chunks_.front().front().cellCount(); // 不变量：全历史同宽
         if (oldCols == newCols)
             return;
-        std::vector<ZzLine> all;
-        all.reserve(totalLines_);
-        for (auto& chunk : chunks_)
-            for (auto& line : chunk) {
-                assert(line.cellCount() == oldCols); // debug 断言：全历史同宽不变量
-                all.push_back(std::move(line));
+        // 流式重组（M8b）：逐块喂入、旧块即时释放，峰值 O(全历史 + 链长)
+        // 而非全量 vector 进/出的约 2 倍峰值。
+        ZzReflowStreamer streamer(oldCols, newCols);
+        std::deque<std::vector<ZzLine>> rebuilt;
+        std::vector<ZzLine> produced;
+        produced.reserve(kChunkLines);
+        while (!chunks_.empty()) {
+            std::vector<ZzLine> chunk = std::move(chunks_.front());
+            chunks_.pop_front(); // 旧块即时释放，峰值不叠加
+            streamer.feed(chunk, produced);
+            if (produced.size() >= kChunkLines) {
+                rebuilt.push_back(std::move(produced));
+                produced.clear();
+                produced.reserve(kChunkLines);
             }
-        all = zzReflowLines(std::move(all), oldCols, newCols);
-        chunks_.clear();
+        }
+        streamer.finish(produced);
+        if (!produced.empty())
+            rebuilt.push_back(std::move(produced));
+        chunks_ = std::move(rebuilt);
+        headOffset_ = 0;
         totalLines_ = 0;
         approxBytes_ = 0;
-        for (auto& line : all) {
-            if (chunks_.empty() || chunks_.back().size() >= kChunkLines)
-                chunks_.emplace_back();
-            approxBytes_ += sizeof(ZzLine) +
-                            static_cast<std::size_t>(line.cellCount()) * sizeof(ZzCell);
-            chunks_.back().push_back(std::move(line));
-            ++totalLines_;
-        }
-        headOffset_ = 0; // 重建后块 0 重新对齐槽位 0（T3 重写 reflow 时随函数体一并调整）
+        for (const auto& chunk : chunks_)
+            for (const auto& line : chunk) {
+                ++totalLines_;
+                approxBytes_ += sizeof(ZzLine) +
+                                static_cast<std::size_t>(line.cellCount()) * sizeof(ZzCell);
+            }
         trimToCapacity();
     }
 
