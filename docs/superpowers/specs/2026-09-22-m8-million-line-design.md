@@ -17,7 +17,7 @@ ZzScrollback 当前为 chunked RAM 实现，1M 行乘以 80 列乘以 sizeof(Cel
 - `bench_common.h/.cpp`——共享件：RSS 采样（Linux /proc/self/status 的 VmRSS 当前值 + getrusage 的 ru_maxrss 峰值）、计时段封装、确定性负载生成器（固定种子，产出合成行批与合成 VT 字节流，可控 wrapped 链比例与 CJK 混合比）；
 - `zz_bench_scrollback.cpp`——单元轨：直接驱动 ZzScrollback，测 append 吞吐（lines/s）、lineAt 顺序/随机访问（ns/op）、reflow 80 列到 120 列耗时、RSS；
 - `zz_bench_feed.cpp`——facade 轨：Terminal + native 后端经 feed() 灌合成 VT 流，测端到端 feed 吞吐（MB/s）、1M 行后的全量 search 耗时、reflow 耗时、RSS/peak；
-- CMake 走 tests 现有 GLOB+CONFIGURE_DEPENDS 收编惯例；ctest 注册 10k 短跑档（单档耗时小于 2s，随默认 ctest 运行，测试总数随惯例自然增长）；100k/1M 长跑档经 bench-long 自定义构建目标手动触发（cmake --build --target bench-long），不进默认 ctest（ctest 无单测试默认排除机制，label 方案需改动既有 preset 基线命令，实施期改裁定）；
+- CMake 收编方式为显式 add_executable 列出两个 harness 源文件与 bench_common.cpp（bench/ 目录不进单测 GLOB，显式列举即收编方式）；ctest 注册 10k 短跑档（单档耗时小于 2s，随默认 ctest 运行，测试总数随惯例自然增长）；100k/1M 长跑档经 bench-long 自定义构建目标手动触发（cmake --build --target bench-long），不进默认 ctest（ctest 无单测试默认排除机制，label 方案需改动既有 preset 基线命令，实施期改裁定）；
 - 平台边界：RSS 采样为 Linux 专属实现，macOS 适配（M9 移植 bench 时）以条件编译预留接口形态，本里程碑不实现。
 
 ## 3. 测量矩阵
@@ -47,7 +47,7 @@ ZzScrollback 当前为 chunked RAM 实现，1M 行乘以 80 列乘以 sizeof(Cel
 
 ## 6. 错误处理与测试策略
 
-- harness 健壮性：负载生成器确定性自检（同种子同输出，进短跑档断言）；RSS 解析失败显式报错退出非零；长跑档 OOM 或异常时记录已得数据非崩溃退出；
+- harness 健壮性：负载生成器确定性自检（同种子同输出，进短跑档断言）；RSS 解析失败返回 0，经产物 JSON 的 rss_bytes:0 可观测（bench 工具内部件，风险为零，实施期改裁定：原方案显式报错退出非零对测量工具过重）；长跑档不设 OOM 防护，内存不足按进程失败处理并如实记录现象（实施期改裁定：原方案记录已得数据非崩溃退出需额外防护逻辑，超出测量工具价值）；
 - 行为保持：测量波零触碰 src/ 与既有测试断言；优化波（若触发）适用全部门控——47/47（含新增短跑档后的自然计数）、OFF/shared 配置、doxygen 零警告、fuzz 双 smoke、既有 perf 门控；
 - 本里程碑不新增公开 API（harness 全部在 tests/bench/ 内部，经既有公开接口与 target_sources 先例驱动内部件）；若优化波确需公开 API 增量，回报用户批准后走规格修正（M7c 先例）。
 
@@ -61,7 +61,7 @@ ZzScrollback 当前为 chunked RAM 实现，1M 行乘以 80 列乘以 sizeof(Cel
 
 ## 8. 验收（DoD）
 
-- tests/bench/ 两 harness + 共享件落地，ctest 短跑档随默认跑通过，长跑档 label 可手动触发；
+- tests/bench/ 两 harness + 共享件落地，ctest 短跑档随默认跑通过，长跑档经 bench-long 自定义构建目标手动触发（cmake --build --target bench-long），不进默认 ctest；
 - probe 文档记录完整矩阵数据（档位 × 指标 × 画像），门控逐项判定留痕；
 - 全达标：里程碑以纯测量收尾；不达标：优化波前后对照数据入库，复测达标；
 - 全回归绿（测量波结束时与优化波结束时各一轮）；
@@ -69,7 +69,7 @@ ZzScrollback 当前为 chunked RAM 实现，1M 行乘以 80 列乘以 sizeof(Cel
 
 ## 9. 任务划分
 
-- T1：bench 基建（bench_common 共享件 + CMake 收编 + ctest 注册与 label 分层）；
+- T1：bench 基建（bench_common 共享件 + CMake 收编 + ctest 短跑注册与 bench-long 长跑目标分层）；
 - T2：单元轨 harness（zz_bench_scrollback）+ 短跑档自检；
 - T3：facade 轨 harness（zz_bench_feed）；
 - T4：全矩阵测量 + probe 文档 + 门控判定（决策点，回报用户）；
