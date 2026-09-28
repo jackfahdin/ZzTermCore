@@ -172,8 +172,8 @@ ctest --test-dir build/m9a-libcxx-precheck --output-on-failure
 - [ ] **步骤 4：若有修复则 Commit**
 
 ```bash
-git add <修复文件>
-git commit -m "fix(libc++): M9a 预检修复<具体问题>"
+git add 〈修复文件〉
+git commit -m "fix(libc++): M9a 预检修复〈具体问题〉"
 ```
 
 若无修复，跳过本步并在任务回执注明"预检零修复通过"。
@@ -183,12 +183,12 @@ git commit -m "fix(libc++): M9a 预检修复<具体问题>"
 ### 任务 3：CI 触发与 macOS 迭代
 
 **文件：**
-- 修改：`.github/workflows/ci.yml:3-5`
+- 修改：.github/workflows/ci.yml :3-5（行内 code span 以点开头触发 doxygen 陷阱，此处用纯文本）
 - 迭代期可能修改：任意 CI 报错指向的源码文件（最小修复）
 
 - [ ] **步骤 1：ci.yml push branches 加 contour**
 
-`.github/workflows/ci.yml` 现状：
+.github/workflows/ci.yml 现状（纯文本引用，避开 doxygen 陷阱）：
 
 ```yaml
 on:
@@ -223,14 +223,14 @@ git push -u origin contour
 
 ```bash
 gh run list --branch contour --limit 5
-gh run watch <run-id>
+gh run watch 〈run-id〉
 ```
 
 若 `gh` 未安装或未登录，停下回报用户改用 GitHub 网页观察，不擅自安装/登录。
 
 - [ ] **步骤 4：迭代修复至绿**
 
-每个失败：读 job 日志 → 最小修复 → 本机基线回归（至少 linux-gcc-debug 50/50 与 doxygen）→ commit（`fix(macos): <具体问题>`，CI-only 验证的在 message 标注）→ push → 复观。
+每个失败：读 job 日志 → 最小修复 → 本机基线回归（至少 linux-gcc-debug 50/50 与 doxygen）→ commit（`fix(macos): 〈具体问题〉`，CI-only 验证的在 message 标注）→ push → 复观。
 
 红线：任何需要修改 `third_party/contour` 才能通过的情况，立即停下回报用户，不擅自绕过（规格 §4）。
 
@@ -261,13 +261,13 @@ macos job 绿后，从 CI 日志摘录 ctest 通过计数（预期为 Linux OFF 
 - runner：macos-latest（Apple Silicon / Apple Clang / libc++）
 
 ## 1. 本机 libc++ 预检发现
-<任务 2 的问题清单；零修复则写"零修复通过">
+〈任务 2 的问题清单；零修复则写"零修复通过"〉
 
 ## 2. CI 迭代轮次
-<每轮：失败现象 -> 修复 commit -> 结果；一轮过则如实写一轮过>
+〈每轮：失败现象 -> 修复 commit -> 结果；一轮过则如实写一轮过〉
 
 ## 3. 最终结果
-- macos-clang job：绿（ctest 计数 N/N，run 链接 <url>）
+- macos-clang job：绿（ctest 计数 N/N，run 链接 〈url〉）
 - 其余四 job：绿
 - 本机基线：50/50、40/40、50/50、fuzz 2/2、doxygen 零警告
 ```
