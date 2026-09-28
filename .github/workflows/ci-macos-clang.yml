@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: 安装 Python 依赖（pexpect/pyte 供 ZzTermSmokeInteractive 交互测试）
-        run: pip3 install pexpect pyte
+        run: python3 -m pip install --break-system-packages pexpect pyte
       - name: Configure
         run: cmake --preset macos-clang-debug
       - name: Build
