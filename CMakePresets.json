@@ -48,7 +48,6 @@
     },
     {
       "name": "windows-msvc-debug",
-      "hidden": true,
       "generator": "Visual Studio 17 2022",
       "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": { "ZZTERM_BUILD_TESTS": "ON" }
