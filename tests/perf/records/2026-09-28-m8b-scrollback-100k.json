@@ -1,0 +1,26 @@
+{
+  "milestone": "M8",
+  "track": "unit-scrollback",
+  "tier": "100k",
+  "lines": 100000,
+  "cols": 80,
+  "ascii": {
+    "append_ms": 11.8018,
+    "lineat_seq_ms": 3.25494,
+    "lineat_rnd_ms": 5.60476,
+    "reflow_widen_ms": 186.231,
+    "reflow_narrow_ms": 228.949,
+    "rss_bytes": 107450368,
+    "approx_bytes": 101600000
+  },
+  "mixed": {
+    "append_ms": 9.71704,
+    "lineat_seq_ms": 3.17919,
+    "lineat_rnd_ms": 5.06604,
+    "reflow_widen_ms": 171.045,
+    "reflow_narrow_ms": 229.645,
+    "rss_bytes": 107560960,
+    "approx_bytes": 101600000
+  },
+  "peak_rss_bytes": 155287552
+}
