@@ -40,6 +40,12 @@ cmake --build build/shared
 # 安装后下游可通过 find_package 使用
 cmake --install build/shared --prefix <prefix>
 # find_package(ZzTermCore) -> target_link_libraries(app PRIVATE ZzTerm::ZzTermCore)
+# 可选 PTY 组件：target_link_libraries(app PRIVATE ZzTerm::Pty)
+#
+# 消费形态约束（M13 下游验证实证）：静态库形态（BUILD_SHARED_LIBS=OFF）消费时
+# 需以 -DZZTERM_WITH_CONTOUR=OFF 构建——Contour 后端为纯内部实现（不进导出集），
+# contour ON 的静态库对下游留有未解析符号；动态库形态两配置均可（私有依赖
+# 已被共享库内部吸收）。安装态消费验证见 tests/downstream/ 与 ci-downstream。
 ```
 
 生成 API 文档：

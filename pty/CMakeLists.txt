@@ -31,3 +31,17 @@ if(NOT WIN32)
         target_link_libraries(ZzTermPty PRIVATE ${ZZTERM_UTIL_LIBRARY})
     endif()
 endif()
+
+# 安装与导出：随根 CMake 的 ZzTermCoreTargets 导出集（find_package(ZzTermCore)
+# 下游经 ZzTerm::Pty 消费；M13 下游打包验证补齐——此前仅 ZzTermCore 进 install）。
+set_target_properties(ZzTermPty PROPERTIES EXPORT_NAME Pty)
+
+install(TARGETS ZzTermPty
+    EXPORT ZzTermCoreTargets
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ZzTermPty)
+
+install(FILES ZzPty.h ZzPtyExport.h
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ZzTermPty)

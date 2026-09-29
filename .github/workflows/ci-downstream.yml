@@ -1,0 +1,34 @@
+name: CI downstream（安装态消费验证）
+
+on:
+  push:
+    branches: [main, master, contour]
+  pull_request:
+
+jobs:
+  downstream:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+      - name: 安装工具链（GCC + Ninja）
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++ ninja-build
+      - name: 静态库形态（BUILD_SHARED_LIBS=OFF + contour OFF）
+        run: |
+          cmake -S . -B build/ds-static -G Ninja -DCMAKE_BUILD_TYPE=Release -DZZTERM_BUILD_TESTS=OFF -DBUILD_SHARED_LIBS=OFF -DZZTERM_WITH_CONTOUR=OFF
+          cmake --build build/ds-static
+          cmake --install build/ds-static --prefix /tmp/zz-prefix-static
+          cmake -S tests/downstream -B build/ds-consumer-static -G Ninja -DCMAKE_PREFIX_PATH=/tmp/zz-prefix-static
+          cmake --build build/ds-consumer-static
+          timeout 30 ./build/ds-consumer-static/check
+      - name: 动态库形态（BUILD_SHARED_LIBS=ON + contour 默认 ON）
+        run: |
+          cmake -S . -B build/ds-shared -G Ninja -DCMAKE_BUILD_TYPE=Release -DZZTERM_BUILD_TESTS=OFF -DBUILD_SHARED_LIBS=ON
+          cmake --build build/ds-shared
+          cmake --install build/ds-shared --prefix /tmp/zz-prefix-shared
+          cmake -S tests/downstream -B build/ds-consumer-shared -G Ninja -DCMAKE_PREFIX_PATH=/tmp/zz-prefix-shared
+          cmake --build build/ds-consumer-shared
+          LD_LIBRARY_PATH=/tmp/zz-prefix-shared/lib timeout 30 ./build/ds-consumer-shared/check
