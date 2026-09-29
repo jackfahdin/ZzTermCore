@@ -104,8 +104,13 @@ static void testCatRoundTrip()
         if (n > 0) {
             got.append(reinterpret_cast<const char*>(buf), static_cast<std::size_t>(n));
             quietPolls = 0;
-        } else if (n == 0 && code && ++quietPolls >= 10) {
-            break; // EOF 稳定 2s 且退出码已收——尾部转发已尽
+        } else if (n == 0) {
+            // EOF 候选复询：EOF 时 readWithTimeout 瞬时返回（睡眠只作用于
+            // EAGAIN 路径），grace 必须显式 Sleep 才是真实时间窗口——上一版
+            // 十轮瞬时复询零耗时，渲染线程仍未获得转发时间（实证再败）。
+            if (code && ++quietPolls >= 10)
+                break; // EOF 稳定约 1s（10 x 100ms）且退出码已收——尾部转发已尽
+            ::Sleep(100);
         }
         if (!code)
             code = pty->tryWait();
