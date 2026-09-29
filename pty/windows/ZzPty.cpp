@@ -154,6 +154,12 @@ std::unique_ptr<ZzPty> ZzPty::spawn(const ZzPtyConfig& cfg)
 
     STARTUPINFOEXW si {};
     si.StartupInfo.cb  = sizeof(si);
+    // STARTF_USESTDHANDLES + 空 std 句柄：阻止内核把父进程的标准句柄复制给
+    // 子进程。父进程 std 被重定向时（如 ctest 管道），缺省行为会让子进程绕过
+    // 伪控制台直接读写父进程管道——表现为子进程横幅泄漏到父进程 stdout、
+    // 读控制台输入的子进程启动即得 EOF 退出（microsoft/terminal 讨论 15814，
+    // Vim PR 19589 同款修复；M12 CI 迭代 R1-R6 六轮实证定位）。
+    si.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
     si.lpAttributeList = attrList;
     PROCESS_INFORMATION pi {};
     const BOOL created = ::CreateProcessW(nullptr, cmdline.data(), nullptr, nullptr, FALSE,

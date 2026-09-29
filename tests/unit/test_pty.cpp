@@ -69,14 +69,11 @@ static void testCatRoundTrip()
 {
     ZzPtyConfig cfg;
 #if defined(_WIN32)
-    // Windows：cmd 交互会话——写入 echo 命令，读回输出即完成写入->读取往返。
-    // findstr 方案三轮实证不可行：cmd 元字符层吞裸 caret（R1 FINDSTR: Bad
-    // command line）、强制引用后 ^ 转义反斜杠失真（R2）、直跑 findstr.exe
-    // 在 ConPTY 控制台 stdin 下立即退出（R3）。R5 探针：cmd 附着成功（标题
-    // 序列到）却立即 exit 0，疑似"读控制台输入的进程即得 EOF"。
-    // R6 探针：延迟 2s 待 cmd 就绪 + echo 与 exit 43 复合命令，区分
-    // "输入路径完好但写入时机竞争"（应见 marker 且退出码 43）与
-    // "控制台输入即 EOF 与时机无关"（exit 0、无 marker）。
+    // Windows：cmd 交互会话——写入 echo 与 exit 复合命令，读回 marker 且
+    // 退出码 43 即完成 写入->执行->输出->读取 全链路往返（退出码同时证明
+    // 输入确实送达 cmd）。findstr 方案三轮实证不可行：cmd 元字符层吞裸
+    // caret（R1 FINDSTR: Bad command line）、强制引用后 ^ 转义反斜杠失真
+    //（R2）、findstr 在父进程重定向句柄泄漏下读管道 stdin 即 EOF 退出（R3）。
     cfg.argv = {"cmd.exe"};
     const std::string msg = "echo zz-pty-roundtrip & exit 43\r";
 #else
@@ -87,14 +84,22 @@ static void testCatRoundTrip()
     ZZ_TEST_EXPECT(pty != nullptr);
     if (!pty) return;
 
+    std::string got;
+    std::byte buf[256];
 #if defined(_WIN32)
-    ::Sleep(2000); // R6 探针：待 cmd 完成启动，排除早期写入竞争
+    // 先读到会话就绪标记（ConPTY 初始化序列含标题设置）再写入，避免与伪
+    // 控制台启动竞争（R5-R6 探针轮校准）；标题含可执行名，大小写不敏感。
+    for (int i = 0; i < 100 && got.find("cmd.exe") == std::string::npos; ++i) {
+        const std::ptrdiff_t n = readWithTimeout(*pty, buf, 100);
+        if (n > 0) {
+            got.append(reinterpret_cast<const char*>(buf), static_cast<std::size_t>(n));
+        }
+    }
+    ZZ_TEST_EXPECT(got.find("cmd.exe") != std::string::npos);
 #endif
     ZZ_TEST_EXPECT(pty->writeAll(std::span<const std::byte>(
         reinterpret_cast<const std::byte*>(msg.data()), msg.size())));
 
-    std::string got;
-    std::byte buf[256];
 #if defined(_WIN32)
     for (;;) {
         const std::ptrdiff_t n = readWithTimeout(*pty, buf);
@@ -106,8 +111,6 @@ static void testCatRoundTrip()
         code = pty->tryWait();
         if (!code) ::Sleep(50);
     }
-    std::fprintf(stderr, "DIAG roundtrip exit=%d got(%zu)=[%s]\n", code.value_or(-1),
-                 got.size(), got.c_str());
     ZZ_TEST_EXPECT(got.find("zz-pty-roundtrip") != std::string::npos);
     ZZ_TEST_EXPECT(code.value_or(-1) == 43);
 #else
