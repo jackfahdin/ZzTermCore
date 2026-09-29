@@ -72,6 +72,10 @@ endif()
 # 遵循 BUILD_SHARED_LIBS：未显式指定类型时由它决定静态/动态。
 add_library(ZzTermCore ${ZZTERM_PUBLIC_HEADERS} ${ZZTERM_SOURCES})
 add_library(ZzTerm::Core ALIAS ZzTermCore)
+# M13 T1 审查：build-tree（add_subdirectory 消费）补文档名别名，与 install-tree
+# （find_package 经 EXPORT_NAME 导出的 ZzTerm::ZzTermCore，README 与 tests/downstream
+#  现行名）统一；既有 ZzTerm::Core 别名保留兼容。
+add_library(ZzTerm::ZzTermCore ALIAS ZzTermCore)
 
 target_compile_features(ZzTermCore PUBLIC cxx_std_20)
 
