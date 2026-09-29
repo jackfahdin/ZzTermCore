@@ -115,11 +115,12 @@ target_compile_options(ZzTermCore
     PUBLIC $<$<CXX_COMPILER_ID:MSVC>:/utf-8>)
 
 # ---------------------------------------------------------------------------
-# PTY 与示例（Unix：Linux + macOS；Windows ConPTY 里程碑靠后）。
-# 必须在 tests 之前：tests/CMakeLists.txt 用 if(TARGET ZzTermPty) 决定是否链接。
+# PTY 与示例（PTY 全平台：Unix openpty / Windows ConPTY；示例仅 Unix，
+# Windows 分支属 M12 任务 3。必须在 tests 之前：tests/CMakeLists.txt 用
+# if(TARGET ZzTermPty) 决定是否链接。）
 # ---------------------------------------------------------------------------
+add_subdirectory(pty)
 if(UNIX)
-    add_subdirectory(pty)
     add_subdirectory(examples)
 endif()
 
