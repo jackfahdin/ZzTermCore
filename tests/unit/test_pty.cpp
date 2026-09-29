@@ -86,30 +86,29 @@ static void testCatRoundTrip()
 
     std::string got;
     std::byte buf[256];
-#if defined(_WIN32)
-    // 先读到会话就绪标记（ConPTY 初始化序列含标题设置）再写入，避免与伪
-    // 控制台启动竞争（R5-R6 探针轮校准）；标题含可执行名，大小写不敏感。
-    for (int i = 0; i < 100 && got.find("cmd.exe") == std::string::npos; ++i) {
-        const std::ptrdiff_t n = readWithTimeout(*pty, buf, 100);
-        if (n > 0) {
-            got.append(reinterpret_cast<const char*>(buf), static_cast<std::size_t>(n));
-        }
-    }
-    ZZ_TEST_EXPECT(got.find("cmd.exe") != std::string::npos);
-#endif
     ZZ_TEST_EXPECT(pty->writeAll(std::span<const std::byte>(
         reinterpret_cast<const std::byte*>(msg.data()), msg.size())));
 
 #if defined(_WIN32)
-    for (;;) {
-        const std::ptrdiff_t n = readWithTimeout(*pty, buf);
-        if (n <= 0) break; // EOF（cmd 执行 exit 43 后会话结束）或超时
-        got.append(reinterpret_cast<const char*>(buf), static_cast<std::size_t>(n));
-    }
+    // 读取终止条件只有"子进程退出且管道排空"（ZzPty::read 归一的 EOF）——
+    // 就绪标记（标题依赖）与固定静默窗口均已移除：输入在 spawn 后即写入
+    //（管道缓冲持有，cmd 就绪后自然消费，无启动竞争）；静默超时在 runner
+    // 负载下会误判流结束（flake 根因，根治）。30s 全局截止仅作兜底，
+    // 异常形态走断言失败而非挂死。
+    const DWORD deadline = ::GetTickCount() + 30000;
     std::optional<int> code;
-    for (int i = 0; i < 100 && !code; ++i) {
-        code = pty->tryWait();
-        if (!code) ::Sleep(50);
+    bool              eof = false;
+    while (!eof || !code) {
+        const std::ptrdiff_t n = readWithTimeout(*pty, buf, 1000);
+        if (n > 0) {
+            got.append(reinterpret_cast<const char*>(buf), static_cast<std::size_t>(n));
+        } else if (n == 0) {
+            eof = true;
+        }
+        if (!code)
+            code = pty->tryWait();
+        if (static_cast<int>(::GetTickCount() - deadline) >= 0)
+            break; // 兜底
     }
     ZZ_TEST_EXPECT(got.find("zz-pty-roundtrip") != std::string::npos);
     ZZ_TEST_EXPECT(code.value_or(-1) == 43);
