@@ -147,15 +147,21 @@ if(TARGET ZzTermContourBackend)
     add_test(NAME test_cluster_compat COMMAND test_cluster_compat)
 endif()
 
-# 脚本化冒烟：PTY 驱动 Core 全链路——真实 bash 输出经 ZzTerminal 渲染回 stdout，
-# 断言标记串出现且以子进程退出码 0 退出（仅 Unix 构建存在 demo 目标时）。
+# 脚本化冒烟：PTY 驱动 Core 全链路——真实 shell 输出经 ZzTerminal 渲染回 stdout，
+# 断言标记串出现且以子进程退出码 0 退出（demo 目标存在的平台即注册；
+# Unix 驱动 bash，Windows 驱动 cmd——M12 examples 全平台收编后首登 Windows）。
 if(TARGET ZzTermSmoke)
+    if(WIN32)
+        set(ZZTERM_SMOKE_CMD cmd.exe /c echo zz-smoke-ok)
+    else()
+        set(ZZTERM_SMOKE_CMD bash -c "echo zz-smoke-ok")
+    endif()
     foreach(ZZTERM_SMOKE_BACKEND IN ITEMS native contour)
         if(ZZTERM_SMOKE_BACKEND STREQUAL "contour" AND NOT TARGET ZzTermContourBackend)
             continue() # OFF 构建无 Contour 后端
         endif()
         add_test(NAME ZzTermSmokeEcho_${ZZTERM_SMOKE_BACKEND}
-            COMMAND ZzTermSmoke --backend=${ZZTERM_SMOKE_BACKEND} -- bash -c "echo zz-smoke-ok")
+            COMMAND ZzTermSmoke --backend=${ZZTERM_SMOKE_BACKEND} -- ${ZZTERM_SMOKE_CMD})
         set_tests_properties(ZzTermSmokeEcho_${ZZTERM_SMOKE_BACKEND} PROPERTIES
             PASS_REGULAR_EXPRESSION "zz-smoke-ok"
             TIMEOUT 30)
