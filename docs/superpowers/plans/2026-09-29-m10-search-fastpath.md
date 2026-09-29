@@ -255,8 +255,96 @@ gh run list --branch contour --limit 6
 
 ---
 
+### 任务 3：慢路批量化 + 回映惰性化（方案 A，规格 §7 修正后插入；任务 2 在本任务完成后续跑）
+
+背景：任务 2 首次执行命中规格 §4 回退分支——行级快路对 mixed 画像命中率 0%（负载生成器每逻辑行含 CJK），mixed 1M 10191.0ms 仍超门。用户裁定方案 A 先行（规格 §7 修正记录）。本任务把行级双路径改为单一路径：段批量 + 惰性回映。
+
+**文件：**
+- 修改：`src/terminal/ZzSearch.cpp`（LineTextMap、buildLineText、zzSearchLines，即任务 1 刚改过的三处）
+
+- [ ] **步骤 1：LineTextMap 精简**
+
+删除 byteToCell / byteToCellEnd / fastIdentity 三个成员，只留 text 与 folded：
+
+```cpp
+struct LineTextMap {
+    std::string text;   // 行尾空白已修剪
+    std::string folded; // ASCII 折叠副本（仅不敏感模式构建）
+};
+```
+
+- [ ] **步骤 2：buildLineText 单一路径化（段批量）**
+
+移除任务 1 加入的行级预检与快路分支（含 fastIdentity 置位与提前 return）。慢路主体改造：逐 cell 循环内，当前 cell 满足段条件（宽度 Empty，或宽度 Narrow 且非聚簇且码点不超过 127）时进入**段批量内循环**——连续消费满足条件的 cell，text/folded 直接下标写入（先按 cols*rowCount 上限 resize，结束截断），Empty 与码点 0 窄格写空格；遇到不满足的 cell 落回原 emit 分支（宽格/聚簇/多字节码点逐字处理）。行尾修剪沿用原规则（text/folded 同步 pop）。两路格步进规则与原慢路一致（宽格 lead 计 2 格、续格跳过、聚簇整串 1 格）——但注意：格偏移信息不再入表，buildLineText 只产文本；**不再维护任何回映数据**。
+
+实现要点：emit lambda 不再需要 byteToCell/byteToCellEnd 的 push（只写 text/folded）；ZzLine line 声明位置维持任务 1 现状；函数注释更新（说明段批量与惰性回映的新约定）。
+
+- [ ] **步骤 3：命中换算惰性化**
+
+zzSearchLines 的命中构造改为调用新 helper（匿名命名空间内）：
+
+```cpp
+// 惰性回映（M10 方案 A）：命中后遍历该逻辑行的 cells 同步累计字节数，
+// 定位 pos 所在单元的格偏移（cellStart）与末字节所在单元末格之后一格（cellEnd）。
+// 格步进规则与文本构建完全一致：续格跳过（无字节）、聚簇整串 1 格、
+// WideLead 2 格、其余 1 格；Empty 与码点 0 窄格贡献 1 字节空格。
+void zzCellRangeForMatch(const ZzIPhysicalLineSource& src,
+                         std::size_t firstRow, std::size_t rowCount,
+                         std::size_t pos, std::size_t needleLen,
+                         std::int32_t& cellStart, std::int32_t& cellEnd);
+```
+
+语义必须与任务 1 前两表逐点一致：cellStart = pos 字节所在单元的起始格偏移；cellEnd = pos+needleLen-1 字节所在单元的"末格之后一格"（宽格 lead 为 +2、其余 +1、聚簇 +1）；多字节码点的中段字节归属其所在单元（即同一 cellStart）。命中区间不得为零宽。
+
+zzSearchLines 命中循环改为：
+
+```cpp
+        while ((pos = hay.find(needle, pos)) != std::string::npos) {
+            std::int32_t cellStart = 0;
+            std::int32_t cellEnd   = 0;
+            zzCellRangeForMatch(src, row, count, pos, needle.size(), cellStart, cellEnd);
+            out.push_back(ZzLogicalRange{{logicalLine, cellStart}, {logicalLine, cellEnd}});
+            pos += needle.size(); // 命中不重叠：从 match 末尾继续
+        }
+```
+
+（原快路/慢路双分支换算整体删除。）
+
+- [ ] **步骤 4：全量单测 + 基线回归**
+
+```bash
+cmake --build --preset linux-gcc-debug && ctest --preset linux-gcc-debug
+ctest --preset linux-gcc-debug -R "search|Search" --output-on-failure
+ctest --test-dir build/m2-off-check
+ctest --test-dir build/m2-shared-check
+ctest --preset linux-clang-fuzz -R fuzz
+doxygen Doxyfile
+```
+
+预期：50/50、40/40、50/50、2/2、exit 0 零警告。搜索语义用例全绿即惰性换算与原两表等价的回归证据；任何红停下修复。
+
+- [ ] **步骤 5：双画像粗测（防呆）**
+
+```bash
+./build/linux-gcc-debug/tests/zz_bench_feed --profile=ascii --tier=100k
+./build/linux-gcc-debug/tests/zz_bench_feed --profile=mixed --tier=100k
+```
+
+预期与判据：mixed 100k 的 search_ms 较 M8b 基准（970.51ms）**显著下降**（段批量与免建表对 mixed 全行生效；若几乎不变说明段批量未命中，停下排查）；ascii 100k 较任务 1 的 337.8ms 不明显退化（段批量对纯 ASCII 行应等价覆盖行级快路收益，且省掉预检第二遍扫描）。两档 search_matches==lines 自洽。
+
+- [ ] **步骤 6：Commit**
+
+```bash
+git add src/terminal/ZzSearch.cpp
+git commit -m "perf(search): M10 方案 A 慢路批量化 + 命中回映惰性化（单一路径替代行级双路径，规格 §7 修正）"
+```
+
+完成后回到任务 2 从步骤 1 续跑（复测矩阵 -> 门控判定 -> 入库 -> probe 续表 -> CI）。
+
+---
+
 ## 自检结论
 
-- 规格覆盖：§2 改动点 1/2 = 任务 1 步骤 2/3，改动点 3（零公开头零 CMake）= 任务 1 文件面；§3 门控与复测入库 = 任务 2 步骤 1-4，CI 绿 = 任务 2 步骤 5；§4 回退路径 = 任务 2 步骤 2 分支；§6 记录 = 任务 2 步骤 4，finishing 不在计划内（收尾另行）。
+- 规格覆盖：§2 改动点 1/2 = 任务 1 步骤 2/3，改动点 3（零公开头零 CMake）= 任务 1 文件面；§3 门控与复测入库 = 任务 2 步骤 1-4，CI 绿 = 任务 2 步骤 5；§4 回退路径 = 任务 2 步骤 2 分支（已触发一次，产出任务 3）；§7 修正记录（方案 A）= 任务 3；§6 记录 = 任务 2 步骤 4，finishing 不在计划内（收尾另行）。
 - 占位符：任务 2 步骤 4 的 〈〉 段为实测填充指令，非实现缺口。
-- 类型一致性：LineTextMap 加 fastIdentity 字段（内部匿名命名空间结构，非公开类型）；zzSearchLines 与 buildLineText 对该字段的生产/消费在计划内一致定义。
+- 类型一致性：任务 3 将 LineTextMap 精简为 text/folded 两成员（任务 1 引入的 fastIdentity 与两表随之移除），zzCellRangeForMatch 的参数与语义在步骤 3 定义、zzSearchLines 在同步骤消费，一致。
