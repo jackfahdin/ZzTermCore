@@ -105,3 +105,52 @@
 - **search 复测结论：仍不达标**。facade 1m ascii 5550.92ms / mixed 9691.16ms 对 5s 阈值，较基线仅改善 2.6% / 1.9%，Cell 瘦身不解决扫描比对瓶颈，§4 归因维持成立；建议维持阈值并将不达标项移交搜索增量索引里程碑（见 6.3，已确认）。
 - **回归证据**：linux-gcc-debug 50/50、m2-off-check 40/40、m2-shared-check 50/50、linux-clang-fuzz 2/2、doxygen 零警告；复测矩阵九条 bench 全部 exit 0，九份 JSON 入库 tests/perf/records/2026-09-28-m8b-*.json。
 - **遗留项**：search 不达标项（待搜索增量索引里程碑）；ascii append 小幅回退 108.63 -> 116.17ms（+6.9%，-O0 噪声范围，append 吞吐门控 99.4% 达标不受影响）；mixed 画像 1m feed 21.7s 仍为重头（只记录项）。
+
+## 7. M10 搜索优化复测对照（2026-09-29，contour 分支）
+
+- 变更（两波演进）：T1 buildLineText 行级 ASCII 快路（2edb4c1，预检批量提取 + 恒等回映免建表）；T3 方案 A 慢路批量化 + 命中回映惰性化（21abc03，单一路径替代行级双路径，演进缘由见 M10 规格 §7 修正记录）。最终复测在方案 A 上进行（其上有纯注释 commit 8e40554，不影响数值）。
+- preset 与机器：同文件头（linux-gcc-debug -O0，同机）
+- 数据源：tests/perf/records/2026-09-29-m10-*.json（九份；JSON 内 milestone 字段为 harness 硬编码 M8，以文件名前缀区分波次）
+- 对照基准：§6 M8b 复测（tests/perf/records/2026-09-28-m8b-*.json 九份）
+
+### 7.1 门控项前后对照（1m 档 search ms）
+
+| 画像 | M8b | T1 行级快路（过渡，未入库） | M10 方案 A（入库） | M8b -> M10 总降幅 |
+|---|---|---|---|---|
+| ascii | 5550.92 | 3394.37 | 2356.18 | -57.6% |
+| mixed | 9691.16 | 10191.00 | 4192.81 | -56.7% |
+
+T1 过渡值为 2026-09-29 同机同 preset 复测（产物未入库，mixed 复跑 10159.70ms 确认稳定；留痕于 M10 任务 2 报告）。演进关键：T1 行级预检对 facade mixed 画像结构性无效（负载生成器给每条逻辑行追加 CJK 尾巴，每个物理行均含码点超 127 的 cell，预检命中率 0% 而非预估约三分之二），mixed 反承担 +5.2% 预检空转；方案 A 单一路径段批量使双画像同获约 -57%（M10 规格 §7 修正记录，用户裁定）。
+
+### 7.2 门控判定
+
+| 门控项 | 阈值（M8b 修正后口径） | 实测（取值口径） | 判定 |
+|---|---|---|---|
+| RSS 单元轨 1m | 不超过 1100MB | ascii 989.0MB / mixed 990.2MB | 达标 |
+| RSS facade 1m peak | 不超过 3500MB | ascii 1515.8MB / mixed 3105.7MB | 达标 |
+| append 吞吐 | 不低于 10k 档的 50% | ascii 106.1%、mixed 100.0% | 达标 |
+| 全量 search | 不超过 5s | facade 1m ascii 2356.18ms / mixed 4192.81ms | 达标（双画像） |
+| reflow 80->120 | 不超过 10s | facade 1m mixed widen 3855.70ms | 达标 |
+| feed 吞吐 | 只记录不设门 | facade 1m ascii 4.7 MB/s、mixed 8.2 MB/s | 记录 |
+
+search 双画像对 5s 门均达标（mixed 由 M8b 的 1.94 倍超门转为 0.84 倍门内）。M8 规格 §4 门控五项（RSS 两口径、append、search、reflow、feed 记录项）至此全部达标/记录落账；M8b 移交的 search 不达标项由 M10 方案 A 关闭，增量索引候补不再启动。
+
+### 7.3 全矩阵对照（facade 轨 search ms，M8b -> M10）
+
+| 档位 | 画像 | search ms 前 -> 后 | 降幅 |
+|---|---|---|---|
+| 10k | ascii | 57.00 -> 23.22 | -59.3% |
+| 10k | mixed | 97.70 -> 41.72 | -57.3% |
+| 100k | ascii | 557.97 -> 235.08 | -57.9% |
+| 100k | mixed | 970.51 -> 417.56 | -57.0% |
+| 1m | ascii | 5550.92 -> 2356.18 | -57.6% |
+| 1m | mixed | 9691.16 -> 4192.81 | -56.7% |
+
+顺带变化（改动只在搜索路径，其余项预期不变，实测符合）：
+
+- feed ms：100k/1m 各档在 -2.1% ~ +0.4% 内持平；10k ascii 70.94 -> 77.45（+9.2%，小档 -O0 噪声，1m 口径持平不受影响）。
+- reflow widen ms：1m ascii 2344.12 -> 2284.20（-2.6%）、mixed 3880.51 -> 3855.70（-0.6%），持平。
+- RSS/peak：各档持平（facade 1m RSS ascii 1034.4 -> 1034.5MB、mixed 2163.7 -> 2163.7MB；peak 1515.8/3105.5 -> 1515.8/3105.7MB）。
+- 单元轨（无 search 项）：append 1m ascii 116.17 -> 117.39ms、mixed 95.90 -> 96.06ms；reflow widen 1m ascii 1799.31 -> 1800.36ms、mixed 1714.26 -> 1674.28ms；RSS 各档持平；均在噪声范围。
+
+回归佐证：linux-gcc-debug zz_bench 短跑 3/3、bench-long 六长跑全部 exit 0 且 search_matches == lines 自洽；T3 审查结论（50 测试族全绿、等价性）见方案 A commit（21abc03）；doxygen 零警告。
