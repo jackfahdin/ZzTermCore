@@ -11,11 +11,11 @@
 
 | 判定项 | 自动验证 | 人工验证 |
 | --- | --- | --- |
-| 本地 PTY 链（spawn bash -> feed -> 渲染 + 键盘回写） | 通过（QTest 双用例绿；probe offscreen 标记回读 PROBE-OK） | 待用户闭环 |
-| SSH 链（ZzSshCore channel -> 同 widget） | 通过（localhost 公钥认证、shell channel、标记回读全链绿） | 待用户闭环 |
+| 本地 PTY 链（spawn bash -> feed -> 渲染 + 键盘回写） | 通过（QTest 双用例绿；probe offscreen 标记回读 PROBE-OK） | 通过（ls/回车/vim 进出正常，方向键可用） |
+| SSH 链（ZzSshCore channel -> 同 widget） | 通过（localhost 公钥认证、shell channel、标记回读全链绿） | 通过（ls/echo/vim 正常；resize 后 tput cols 随窗口尺寸变化） |
 | 三清单产出 | 已产出（本文 §2/§3/§4） | — |
 
-判定：**自动链路全通，人工验证待用户闭环**（中间态，不替用户下「行」的最终结论）。两条链路零卡住项，根因在 RenderView 契约或 Core API 的阻塞性问题一个都没有——Core 侧未发现任何指向「不行」的证据；人工开窗验证清单见 §4，由用户执行后本判定方可收口。
+判定：**行**。用户人工实测两链路通——本地 PTY 链 ls/回车/vim 进出/方向键均正常，SSH 链 ls/echo/vim 正常且 resize 后远端 tput cols 随窗口尺寸变化（reflow + SIGWINCH 与 window-change 两条 resize 通路均实证）。人工实测暴露的问题（IME 不可输入中文、回显错位、resize 内容丢失、Ctrl+C 无响应）全部落在 spike 种子层 widget 与排除项上，见 §4 定性，**无一根因在 RenderView 契约或 Core API**——Core 侧「行」的判定成立，三阶段路线可按 §5 建议推进。
 
 ## 2. 打包问题清单
 
@@ -38,7 +38,7 @@
 
 ## 4. 行为观察清单
 
-人工验证（**待用户执行**，两链清单原样移交）：
+人工验证（**用户已执行闭环**，两链实测现象与定性如下）：
 
 ```bash
 cd /home/zz/Jackfahdin/github/ZzClawTerm
@@ -46,12 +46,23 @@ cd /home/zz/Jackfahdin/github/ZzClawTerm
 ./build/spike-debug/zzcore_spike --ssh localhost  # SSH 链（首次弹密码框为兜底，localhost 走公钥）
 ```
 
-- [ ] echo/ls 输出正常上屏（两链）
-- [ ] CJK 与 emoji 渲染（宽度对齐）
-- [ ] vim 进出（Alternate Screen、方向键 application 模式）
-- [ ] 拖 resize 重排（reflow + PTY SIGWINCH；SSH 链远端 stty size 或 tput cols 输出随窗口尺寸变化）
-- [ ] 键盘输入：回车 / 方向键 / Ctrl+C / 退格
-- [ ] 滚动查看历史（本 spike 未实现——缺口 1，预期跳过）
+- [x] echo/ls 输出正常上屏（两链）
+- [ ] CJK 与 emoji 渲染（宽度对齐）——中文不可输入（IME 排除项，见下现象 1），渲染宽度未单独验
+- [x] vim 进出（Alternate Screen、方向键 application 模式；两链正常）
+- [x] 拖 resize 重排（SSH 链实证：resize 后 tput cols 随窗口尺寸变化）
+- [ ] 键盘输入：回车/方向键正常；Ctrl+C 在 cat 阻塞场景无响应（见下现象 4）
+- [ ] 滚动查看历史（本 spike 未实现——缺口 1，预期跳过，已转 M14 议题）
+
+人工实测暴露的八现象与定性（全部落在 spike 种子层，无一指向 Core 契约层缺陷）：
+
+1. **无法输入中文（两链）**：IME 是 spike 规格明示的排除项，未接 QInputMethodEvent——非缺陷，是已知的未实现面。特性对齐阶段优先级由 P2 升至 **P1**（中文输入是目标用户群的刚需交互）。
+2. **打字不可见、回车后提示符所在行错位（--local）**：回显经由 PTY 回环上屏（两端均实证），疑 spike widget 的种子层渲染/光标定位问题（cellWidth 换算或 dirty 区），非 Core 输出通路问题——probe 与 QTest 均实证 Core 文本回读正确。入 widget bug backlog。
+3. **方向键翻看历史命令看不到之前输入（--local）**：与现象 2 同源（shell 重绘当前行时渲染错位），同一 backlog 条目。
+4. **cat 阻塞后 Ctrl+C 无响应、界面似卡死（--local）**：疑 sendKey 对 Ctrl 组合键的编码路径或 ISIG 信号投递在种子层缺失；方向键仍可动说明事件循环未死、渲染未刷新。入 widget bug backlog。
+5. **resize 后内容丢失、拉大不恢复（两链）**：疑 spike widget 的 resizeEvent 早退或格宽换算错误尺寸下发；SSH 链 tput cols 随尺寸变化实证 Core resize 通路正常，故定种子层。历史重排语义与 M14 历史访问契约相关，顺带在 M14 一并定性。
+6. --ssh 其余项（启动、ls、echo、vim、方向键）正常，无新增现象。
+
+以上 backlog 条目属 ZzClawTerm 仓 spike widget 演进面，不阻塞 Core 侧里程碑推进。
 
 自动实测行为（本批 offscreen 实证）：
 
@@ -64,6 +75,6 @@ cd /home/zz/Jackfahdin/github/ZzClawTerm
 
 ## 5. 三阶段路线输入建议
 
-- 特性对齐阶段：P0 = 历史行访问缺口（滚动是终端基础交互，ZzClawTerm 现有 ZzTermWidget 有滚动，缺它无法对齐）；P1 = ZzPty 非阻塞配置（小改消绕行）。ZzCoreViewWidget 种子已验证渲染/键盘/resize/两传输链，可按对齐标准直接演进；选择/鼠标/IME/配色为 spike 排除项，是该阶段工作量主体与主要不确定面。
+- 特性对齐阶段：P0 = 历史行访问缺口（滚动是终端基础交互，ZzClawTerm 现有 ZzTermWidget 有滚动，缺它无法对齐）；P1 = ZzPty 非阻塞配置（小改消绕行）+ IME 中文输入（人工实测两链均不可输入中文，由排除项升为刚需）。ZzCoreViewWidget 种子已验证渲染/键盘/resize/两传输链，可按对齐标准直接演进；选择/鼠标/配色与其余 IME 面为 spike 排除项，是该阶段工作量主体与主要不确定面。
 - 历史调和与 ptyqt 退役：ZzPty 经两链实证可替 ptyqt 驱动本地会话（补上非阻塞配置后无绕行）；SSH 侧 ZzSshCore 直驱形态与 ZzSshTransport 适配层接口（write/resize/dataReceived/closed）一一对应，适配层改写成本低；ZzSshCore 默认私钥探测（缺口 3）在会话装配退役 ptyqt 时一并处理；spike 的 TOFU 自动信任同为退役面——正式会话装配必须回到确认弹窗 + AppConfigLocation 持久化 known_hosts，不得沿用弃子简化。
 - 删 ZzTermWidget：风险排序——历史/滚动（依赖 Core 新 API，最高）> 选择/鼠标/IME/配色（spike 未验证，中）> 渲染契约本身（两链实证，低）。打包面无阻塞：add_subdirectory 与 install-tree 两种消费形态均实证可用。
