@@ -15,7 +15,7 @@ M7a 建成 fuzz 基建（fuzz_parser / fuzz_feed 双 harness、ASan、CI 30s smo
 1. 新建 `tests/fuzz/fuzz_utf8.cpp`：直接驱动 ZzUtf8Decoder——整喂 decodeAll；任意切点分段 feed（切点由输入字节导出）后 finish；逐字节 feed 后 finish。三路输出码点流两两断言一致（续接不变量，decoder 文档承诺）。不变量断言：输出码点数不超过输入字节数加一（finish 收尾至多一个 U+FFFD）；输出码点不落在代理区（U+D800-U+DFFF）且不超过 U+10FFFF。断言失败即 abort（libFuzzer 捕获为 crash，artifact 落盘）。
 2. `tests/fuzz/CMakeLists.txt`：收编 fuzz_utf8 第三 target（既有 foreach 列表加名）；corpus-work 复制与 smoke 注册同款追加（30s，TIMEOUT 60，ASAN_OPTIONS 同款）。本机基线 fuzz 计数 2/2 自然增长为 3/3。
 3. 新建 `tests/fuzz/corpus/utf8/` 种子目录：overlong 编码、代理区编码、超 U+10FFFF、5/6 字节序列、截断的多字节序列、CJK/组合符合法样本、与 ASCII 混合流等边界种子（约 6-10 条，每条附一行注释说明覆盖意图）。
-4. 新建 `.github/workflows/ci-fuzz-deep.yml`：触发为 workflow_dispatch + schedule（每周日 07:13 UTC，避整点）；三 harness 各 -max_total_time=1800（30 分钟），linux-clang-fuzz preset 构建（configure 显式 `-D CMAKE_CXX_COMPILER=clang++`，runner 的 clang 元包）；crash 即红，artifact（崩溃单元 + 最终语料）经 actions/upload-artifact 上传（版本取最新稳定 Major，执行期查 releases 页核）。push 不触发。
+4. 新建 `.github/workflows/ci-fuzz-deep.yml`：触发为 workflow_dispatch + schedule（每周日 07:13 UTC，避整点）；三 harness 各 -max_total_time=1800（30 分钟），linux-clang-fuzz preset 构建（编译器经 preset 缓存变量固定 clang++，runner 装 clang 元包）；crash 即红，artifact（崩溃单元 + 最终语料）经 actions/upload-artifact 上传（版本取最新稳定 Major，执行期查 releases 页核）。push 不触发。
 5. feed/parser 种子顺手扩充数条（深化不是扩面）：parser 补 DEC 私有模式组合、OSC 超长串、CSI 参数溢出形态；feed 补 resize 高频抖动 + 大 historyCap 混合流。
 
 ## 3. 验证策略
