@@ -3,7 +3,7 @@
 #   - 每个 fuzz_*.cpp 使用 libFuzzer 提供的 main（-fsanitize=fuzzer），
 #     独立于 tests/unit 的 GLOB 体系，命名空间不冲突；
 #   - ASan 由根 CMakeLists 全局注入，本文件只追加 fuzzer。
-foreach(fuzz_target IN ITEMS fuzz_parser fuzz_feed)
+foreach(fuzz_target IN ITEMS fuzz_parser fuzz_feed fuzz_utf8)
     add_executable(${fuzz_target} ${fuzz_target}.cpp)
     target_link_libraries(${fuzz_target} PRIVATE ZzTermCore)
     target_compile_options(${fuzz_target} PRIVATE -fsanitize=fuzzer)
@@ -22,6 +22,8 @@ file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/fuzz-artifacts")
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/corpus/parser"
     DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/corpus-work")
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/corpus/feed"
+    DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/corpus-work")
+file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/corpus/utf8"
     DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/corpus-work")
 
 # ctest smoke：seed corpus 起步各跑 30 秒，TIMEOUT 60。
@@ -44,5 +46,13 @@ add_test(NAME fuzz_feed_smoke
             -max_total_time=30 -print_final_stats=1
             "-artifact_prefix=${CMAKE_CURRENT_BINARY_DIR}/fuzz-artifacts/")
 set_tests_properties(fuzz_feed_smoke PROPERTIES
+    TIMEOUT 60
+    ENVIRONMENT "ASAN_OPTIONS=symbolize=0")
+add_test(NAME fuzz_utf8_smoke
+    COMMAND fuzz_utf8 "${CMAKE_CURRENT_BINARY_DIR}/corpus-work/utf8"
+            "${CMAKE_CURRENT_SOURCE_DIR}/corpus/utf8"
+            -max_total_time=30 -print_final_stats=1
+            "-artifact_prefix=${CMAKE_CURRENT_BINARY_DIR}/fuzz-artifacts/")
+set_tests_properties(fuzz_utf8_smoke PROPERTIES
     TIMEOUT 60
     ENVIRONMENT "ASAN_OPTIONS=symbolize=0")
