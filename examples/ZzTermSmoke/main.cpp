@@ -7,9 +7,10 @@
 //       SIGWINCH 自管道同步 PTY 与 Terminal 尺寸。
 // 非 tty 场景（CTest 管道）：termios guard 不生效、尺寸回退 80x24、
 // stdin EOF 后停止监听，仍可完整跑通（脚本化冒烟依赖此行为）。
+// Windows 分支（M12）：PeekNamedPipe 轮询替代 poll，无 SIGWINCH 等价物，
+// demo 不监听 resize；仅面向脚本化冒烟（stdin 为管道），交互控制台输入不支持。
 #include <cerrno>
 #include <cctype>
-#include <csignal>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -19,16 +20,27 @@
 #include <string_view>
 #include <vector>
 
+#if defined(_WIN32)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#else
+#include <csignal>
+
 #include <fcntl.h>
 #include <poll.h>
 #include <sys/ioctl.h>
 #include <termios.h>
 #include <unistd.h>
+#endif
 
 #include "ZzTerm/Terminal.h"
 #include "ZzPty.h"
 
 namespace {
+
+#if !defined(_WIN32)
 
 /// SIGWINCH 自管道：信号处理器只写字节，poll 循环消费（async-signal-safe）。
 int g_winchPipe[2] = {-1, -1};
@@ -67,6 +79,8 @@ private:
     struct termios saved_ {};
     bool active_ = false;
 };
+
+#endif // !defined(_WIN32)
 
 /// 输入翻译器（demo 本地）：stdin 字节流 → sendText / sendKey / sendMouse。
 /// 功能键按 xterm 编码识别（CSI/SS3），鼠标按经典 X10 与 SGR 1006 两种
@@ -240,6 +254,38 @@ private:
     std::string  buf_;
 };
 
+#if defined(_WIN32)
+
+/// 查询当前控制台窗口尺寸；失败回退 80x24（含 stdout 被重定向的 CTest 场景）。
+ZzSize queryTerminalSize() noexcept
+{
+    CONSOLE_SCREEN_BUFFER_INFO info {};
+    if (::GetConsoleScreenBufferInfo(::GetStdHandle(STD_OUTPUT_HANDLE), &info)) {
+        const int cols = info.srWindow.Right - info.srWindow.Left + 1;
+        const int rows = info.srWindow.Bottom - info.srWindow.Top + 1;
+        if (cols > 0 && rows > 0) {
+            return ZzSize{cols, rows};
+        }
+    }
+    return ZzSize{80, 24};
+}
+
+/// 尽力写满 stdout（错误静默丢弃——渲染输出不可失败退出）。
+void writeStdout(std::string_view data) noexcept
+{
+    const HANDLE hOut = ::GetStdHandle(STD_OUTPUT_HANDLE);
+    while (!data.empty()) {
+        DWORD n = 0;
+        if (!::WriteFile(hOut, data.data(), static_cast<DWORD>(data.size()), &n, nullptr)
+            || n == 0) {
+            break;
+        }
+        data.remove_prefix(static_cast<std::size_t>(n));
+    }
+}
+
+#else
+
 /// 查询当前终端尺寸；失败回退 80x24（含 stdin/stdout 为管道的 CTest 场景）。
 ZzSize queryTerminalSize() noexcept
 {
@@ -266,6 +312,8 @@ void writeFd(int fd, std::string_view data) noexcept
         break;
     }
 }
+
+#endif // defined(_WIN32)
 
 /// ZzColor -> SGR 参数片段（不含前后缀），isFg 区分前景/背景。
 void appendColorSgr(std::string& out, ZzColor color, bool isFg)
@@ -358,6 +406,119 @@ void renderScreen(const ZzTerminal& term, std::string& out)
         out += cup;
     }
 }
+
+#if defined(_WIN32)
+
+int run(ZzBackendKind backend, const std::vector<std::string>& command)
+{
+    const ZzSize termSize = queryTerminalSize();
+
+    // 让控制台解释渲染输出的 ANSI 转义（Windows 10 1607+；失败则原样输出，不致命）。
+    const HANDLE hStdout = ::GetStdHandle(STD_OUTPUT_HANDLE);
+    DWORD outMode = 0;
+    if (::GetConsoleMode(hStdout, &outMode)) {
+        (void)::SetConsoleMode(hStdout, outMode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+    }
+
+    ZzPtyConfig cfg;
+    cfg.argv = command;
+    cfg.cols = termSize.cols;
+    cfg.rows = termSize.rows;
+    // Windows 忽略 rawMode（ConPTY 无终端行 discipline 概念，见 ZzPty.h 配置注释）。
+    cfg.rawMode = false;
+    auto pty = ZzPty::spawn(cfg);
+    if (!pty) {
+        std::fprintf(stderr, "ZzTermSmoke: spawn 失败：GetLastError=%lu\n",
+                     static_cast<unsigned long>(::GetLastError()));
+        return 1;
+    }
+
+    ZzTerminal term(termSize.cols, termSize.rows, backend, 1000);
+    // output 通道回传字节（DA 响应等）写回 PTY，供子进程读取应答。
+    term.setOutputHandler([&pty](std::string_view bytes) {
+        pty->writeAll(std::span<const std::byte>(
+            reinterpret_cast<const std::byte*>(bytes.data()), bytes.size()));
+    });
+
+    InputTranslator translator(term);
+
+    // 主循环：stdin 与 PTY 输出统一 PeekNamedPipe 轮询，10ms Sleep 节拍。
+    // 无 SIGWINCH 等价物——控制台尺寸事件需窗口消息处理器，demo 不监听 resize。
+    // stdin 为交互控制台句柄时 PeekNamedPipe 不支持（ERROR_INVALID_FUNCTION），
+    // 与 EOF 同等处理：停止监听（Windows 侧本 demo 仅面向脚本化冒烟）。
+    const HANDLE hStdin   = ::GetStdHandle(STD_INPUT_HANDLE);
+    const HANDLE hPtyRead = static_cast<HANDLE>(pty->readHandle());
+    bool watchStdin = true;
+    bool ptyEof     = false;
+    std::optional<int> childExit;
+
+    std::string renderBuf;
+    renderBuf.reserve(64 * 1024);
+    std::byte ioBuf[16 * 1024];
+
+    for (;;) {
+        // stdin -> InputTranslator -> Core 输入链路 -> output 通道 -> PTY
+        if (watchStdin) {
+            DWORD avail = 0;
+            if (!::PeekNamedPipe(hStdin, nullptr, 0, nullptr, &avail, nullptr)) {
+                watchStdin = false; // 管道 EOF 或不支持的句柄：停止监听
+            } else if (avail > 0) {
+                DWORD n = 0;
+                if (::ReadFile(hStdin, ioBuf, sizeof(ioBuf), &n, nullptr) && n > 0) {
+                    translator.feed(std::string_view(
+                        reinterpret_cast<const char*>(ioBuf), static_cast<std::size_t>(n)));
+                }
+            }
+        }
+
+        // PTY -> Core -> 渲染（PeekNamedPipe 命中后排空式读取）
+        DWORD ptyAvail = 0;
+        if (::PeekNamedPipe(hPtyRead, nullptr, 0, nullptr, &ptyAvail, nullptr)
+            && ptyAvail > 0) {
+            for (;;) {
+                const std::ptrdiff_t n = pty->read(ioBuf);
+                if (n > 0) {
+                    (void)term.feed(std::span<const std::byte>(
+                        ioBuf, static_cast<std::size_t>(n)));
+                    continue;
+                }
+                ptyEof = (n == 0); // 0 = EOF：退出循环
+                break;             // -1 = 暂不可读：回到轮询
+            }
+            renderBuf.clear();
+            renderScreen(term, renderBuf);
+            writeStdout(renderBuf);
+        }
+        if (ptyEof) break;
+
+        // 子进程退出收集
+        if (!childExit) {
+            childExit = pty->tryWait();
+        }
+        if (childExit) {
+            // 子进程已退出：排空残余输出后退出。
+            for (;;) {
+                const std::ptrdiff_t n = pty->read(ioBuf);
+                if (n <= 0) break;
+                (void)term.feed(std::span<const std::byte>(
+                    ioBuf, static_cast<std::size_t>(n)));
+            }
+            renderBuf.clear();
+            renderScreen(term, renderBuf);
+            writeStdout(renderBuf);
+            break;
+        }
+
+        ::Sleep(10);
+    }
+
+    if (!childExit) {
+        childExit = pty->tryWait();
+    }
+    return childExit.value_or(1);
+}
+
+#else
 
 int run(ZzBackendKind backend, const std::vector<std::string>& command)
 {
@@ -496,6 +657,8 @@ int run(ZzBackendKind backend, const std::vector<std::string>& command)
     g_winchPipe[0] = g_winchPipe[1] = -1;
     return childExit.value_or(1);
 }
+
+#endif // defined(_WIN32)
 
 } // namespace
 

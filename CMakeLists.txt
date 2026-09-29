@@ -115,14 +115,13 @@ target_compile_options(ZzTermCore
     PUBLIC $<$<CXX_COMPILER_ID:MSVC>:/utf-8>)
 
 # ---------------------------------------------------------------------------
-# PTY 与示例（PTY 全平台：Unix openpty / Windows ConPTY；示例仅 Unix，
-# Windows 分支属 M12 任务 3。必须在 tests 之前：tests/CMakeLists.txt 用
-# if(TARGET ZzTermPty) 决定是否链接。）
+# PTY 与示例（PTY 全平台：Unix openpty / Windows ConPTY；示例 Windows 分支
+# M12 已落地，全平台收编。interactive 冒烟测试仍由 tests/ 内 pexpect 探测
+# 控制，Windows 无 pexpect 自动不注册。必须在 tests 之前：
+# tests/CMakeLists.txt 用 if(TARGET ZzTermPty) 决定是否链接。）
 # ---------------------------------------------------------------------------
 add_subdirectory(pty)
-if(UNIX)
-    add_subdirectory(examples)
-endif()
+add_subdirectory(examples)
 
 # ---------------------------------------------------------------------------
 # 测试
