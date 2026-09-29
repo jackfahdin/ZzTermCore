@@ -46,8 +46,10 @@ class ZZTERM_PTY_API ZzPty {
 public:
     /**
      * @brief 启动子进程并挂到新的 PTY。
-     * @param cfg 启动配置（argv 非空、cols/rows > 0，否则失败 errno = EINVAL）。
-     * @return 成功返回 PTY 会话；失败返回 nullptr（含子进程 exec 失败），errno 保留供诊断。
+     * @param cfg 启动配置（argv 非空、cols/rows > 0，否则失败：Unix errno = EINVAL，
+     *        Windows GetLastError 留诊断码）。
+     * @return 成功返回 PTY 会话；失败返回 nullptr（含子进程 exec 失败），
+     *         Unix errno 保留供诊断，Windows GetLastError 保留供诊断。
      */
     static std::unique_ptr<ZzPty> spawn(const ZzPtyConfig& cfg);
 
@@ -80,22 +82,26 @@ public:
 #endif
 
     /**
-     * @brief 从 master 读取子进程输出。
+     * @brief 从 master（Windows 为输出管道读取端）读取子进程输出。
      * @param buf 读取缓冲。
-     * @return > 0 读取字节数；0 = EOF（子进程退出后 Linux 返回 EIO，归一为 EOF）；
-     *         -1 = 错误，errno 保留（fd 非阻塞时可能为 EAGAIN，表示暂不可读）。
+     * @return > 0 读取字节数；0 = EOF（子进程退出后 Unix 归一 EIO、Windows 归一
+     *         管道断裂为 EOF）；-1 = 错误，Unix errno 保留（fd 非阻塞时可能为
+     *         EAGAIN，表示暂不可读），Windows GetLastError 保留（暂无可读数据
+     *         时为 ERROR_NO_DATA，语义等价 EAGAIN）。
      */
     std::ptrdiff_t read(std::span<std::byte> buf) noexcept;
 
     /**
-     * @brief 循环写入直到全部写完或出错（处理部分写入与 EINTR）。
+     * @brief 循环写入直到全部写完或出错（Unix 处理部分写入与 EINTR，
+     *        Windows 处理部分写入）。
      * @param data 待写入数据。
-     * @return true 全部写完；false 出错（errno 保留）。
+     * @return true 全部写完；false 出错（Unix errno 保留，Windows GetLastError 保留）。
      */
     bool writeAll(std::span<const std::byte> data) noexcept;
 
     /**
-     * @brief 调整 PTY 窗口尺寸（TIOCSWINSZ，触发子进程 SIGWINCH）。
+     * @brief 调整 PTY 窗口尺寸（Unix TIOCSWINSZ 触发子进程 SIGWINCH；
+     *        Windows ResizePseudoConsole 直接生效）。
      * @param cols 新列数（> 0）。
      * @param rows 新行数（> 0）。
      * @return true 成功。
@@ -103,9 +109,10 @@ public:
     bool resize(int cols, int rows) noexcept;
 
     /**
-     * @brief 非阻塞收集子进程退出码（WNOHANG waitpid）。
+     * @brief 非阻塞收集子进程退出码（Unix WNOHANG waitpid；Windows GetExitCodeProcess）。
      * @return 子进程仍在运行返回 std::nullopt；已退出返回退出码
-     *         （被信号杀死为 128 + 信号号）。已回收后重复调用返回同一退出码。
+     *         （Unix 被信号杀死为 128 + 信号号；Windows 无信号概念，为纯进程退出码）。
+     *         已回收后重复调用返回同一退出码。
      */
     std::optional<int> tryWait() noexcept;
 

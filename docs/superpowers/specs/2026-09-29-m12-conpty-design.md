@@ -28,7 +28,7 @@ PTY 层（pty/）目前 Unix-only（Linux + macOS 经 M9a 打通），Windows �
 
 - ConPTY API 细节（attribute list 尺寸计算、句柄关闭顺序、子进程退出后管道 EOF 形态、PeekNamedPipe 在写入端关闭后的返回值）以 CI 实证为准，本机不可运行验证的标注 CI-only。
 - 红线：third_party/contour 永不改；若撞出必须改 third_party 的情况立即停下回报。
-- 运行时版本契约（4A）：Windows 10 1809+ 为 ZzPty Windows 版最低要求；旧系统 CreatePseudoConsole 不存在导致 spawn 失败返回 nullptr，GetLastError 留诊断，不做版本探测。
+- 运行时版本契约（4A）：Windows 10 1809+ 为 ZzPty Windows 版最低要求，不做版本探测。受支持系统上 spawn 失败返回 nullptr 且 GetLastError 留诊断；pre-1809 系统因静态导入缺失在二进制加载期即失败（走不到 spawn），属不支持平台的自然拒绝形态，契约措辞仅约束受支持场景。
 - 已知风险排序：ConPTY spawn 序列细节（最高，CI 迭代消化）> 管道非阻塞读语义对齐 > mingw/MSVC 头文件差异 > 头文件上移对下游 include 的影响（仓库内引用全部经 CMake include 根，无硬编码相对路径——实施期确认）。
 
 ## 5. 排除项（本里程碑不做）
