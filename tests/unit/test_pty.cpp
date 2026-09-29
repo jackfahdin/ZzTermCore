@@ -69,12 +69,12 @@ static void testCatRoundTrip()
 {
     ZzPtyConfig cfg;
 #if defined(_WIN32)
-    // Windows：findstr "^" 逐行回显 stdin；ConPTY 输入流以 \r 为回车。
-    // 直跑 findstr.exe 绕开 cmd：cmd 元字符层与引号转义交互，裸 caret 被吞
-    //（R1 FINDSTR: Bad command line）、强制引用后 ^ 转义反斜杠同样失真（R2）；
-    // CreateProcessW 不经 shell，裸 caret 原样进入 findstr argv。
-    cfg.argv = {"findstr.exe", "^"};
-    const std::string msg = "zz-pty-roundtrip\r";
+    // Windows：cmd 交互会话——写入 echo 命令，读回输出即完成写入->读取往返。
+    // findstr 方案三轮实证不可行：cmd 元字符层吞裸 caret（R1 FINDSTR: Bad
+    // command line）、强制引用后 ^ 转义反斜杠失真（R2）、直跑 findstr.exe
+    // 在 ConPTY 控制台 stdin 下立即退出（R3）。
+    cfg.argv = {"cmd.exe"};
+    const std::string msg = "echo zz-pty-roundtrip\r";
 #else
     cfg.argv = {"/bin/cat"};
     const std::string msg = "zz-pty-roundtrip\n";
@@ -88,7 +88,12 @@ static void testCatRoundTrip()
 
     std::string got;
     std::byte buf[256];
+    // 退出条件：Unix 为读够写入长度；Windows 为见到回写标记（cmd 横幅先行到达）。
+#if defined(_WIN32)
+    while (got.find("zz-pty-roundtrip") == std::string::npos) {
+#else
     while (got.size() < msg.size()) {
+#endif
         const std::ptrdiff_t n = readWithTimeout(*pty, buf);
         ZZ_TEST_EXPECT(n > 0);
         if (n <= 0) break;
