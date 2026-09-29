@@ -69,10 +69,11 @@ static void testCatRoundTrip()
 {
     ZzPtyConfig cfg;
 #if defined(_WIN32)
-    // Windows：cmd /c findstr "^" 逐行回显 stdin；ConPTY 输入流以 \r 为回车。
-    // pattern 强制引用：裸 caret 会被 cmd 元字符解析吞掉（R1 实证 FINDSTR:
-    // Bad command line）；引用后 findstr 自行剥离引号得到 pattern ^。
-    cfg.argv = {"cmd.exe", "/c", "findstr", "\"^\""};
+    // Windows：findstr "^" 逐行回显 stdin；ConPTY 输入流以 \r 为回车。
+    // 直跑 findstr.exe 绕开 cmd：cmd 元字符层与引号转义交互，裸 caret 被吞
+    //（R1 FINDSTR: Bad command line）、强制引用后 ^ 转义反斜杠同样失真（R2）；
+    // CreateProcessW 不经 shell，裸 caret 原样进入 findstr argv。
+    cfg.argv = {"findstr.exe", "^"};
     const std::string msg = "zz-pty-roundtrip\r";
 #else
     cfg.argv = {"/bin/cat"};
