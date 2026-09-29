@@ -72,9 +72,13 @@ static void testCatRoundTrip()
     // Windows：cmd 交互会话——写入 echo 命令，读回输出即完成写入->读取往返。
     // findstr 方案三轮实证不可行：cmd 元字符层吞裸 caret（R1 FINDSTR: Bad
     // command line）、强制引用后 ^ 转义反斜杠失真（R2）、直跑 findstr.exe
-    // 在 ConPTY 控制台 stdin 下立即退出（R3）。
+    // 在 ConPTY 控制台 stdin 下立即退出（R3）。R5 探针：cmd 附着成功（标题
+    // 序列到）却立即 exit 0，疑似"读控制台输入的进程即得 EOF"。
+    // R6 探针：延迟 2s 待 cmd 就绪 + echo 与 exit 43 复合命令，区分
+    // "输入路径完好但写入时机竞争"（应见 marker 且退出码 43）与
+    // "控制台输入即 EOF 与时机无关"（exit 0、无 marker）。
     cfg.argv = {"cmd.exe"};
-    const std::string msg = "echo zz-pty-roundtrip\r";
+    const std::string msg = "echo zz-pty-roundtrip & exit 43\r";
 #else
     cfg.argv = {"/bin/cat"};
     const std::string msg = "zz-pty-roundtrip\n";
@@ -83,37 +87,37 @@ static void testCatRoundTrip()
     ZZ_TEST_EXPECT(pty != nullptr);
     if (!pty) return;
 
+#if defined(_WIN32)
+    ::Sleep(2000); // R6 探针：待 cmd 完成启动，排除早期写入竞争
+#endif
     ZZ_TEST_EXPECT(pty->writeAll(std::span<const std::byte>(
         reinterpret_cast<const std::byte*>(msg.data()), msg.size())));
 
     std::string got;
     std::byte buf[256];
-    // 退出条件：Unix 为读够写入长度；Windows 为见到回写标记（cmd 横幅先行到达）。
 #if defined(_WIN32)
-    while (got.find("zz-pty-roundtrip") == std::string::npos) {
+    for (;;) {
         const std::ptrdiff_t n = readWithTimeout(*pty, buf);
-        if (n <= 0) {
-            // CI 诊断探针（R5）：EOF/超时时打子进程退出码与已读内容，定位会话死亡形态。
-            const std::optional<int> code = pty->tryWait();
-            std::fprintf(stderr, "DIAG roundtrip n=%td exit=%d got(%zu)=[%s]\n", n,
-                         code.value_or(-1), got.size(), got.c_str());
-        }
-        ZZ_TEST_EXPECT(n > 0);
-        if (n <= 0) break;
+        if (n <= 0) break; // EOF（cmd 执行 exit 43 后会话结束）或超时
         got.append(reinterpret_cast<const char*>(buf), static_cast<std::size_t>(n));
     }
+    std::optional<int> code;
+    for (int i = 0; i < 100 && !code; ++i) {
+        code = pty->tryWait();
+        if (!code) ::Sleep(50);
+    }
+    std::fprintf(stderr, "DIAG roundtrip exit=%d got(%zu)=[%s]\n", code.value_or(-1),
+                 got.size(), got.c_str());
+    ZZ_TEST_EXPECT(got.find("zz-pty-roundtrip") != std::string::npos);
+    ZZ_TEST_EXPECT(code.value_or(-1) == 43);
 #else
+    // 退出条件：读够写入长度（raw 模式无横幅干扰）。
     while (got.size() < msg.size()) {
         const std::ptrdiff_t n = readWithTimeout(*pty, buf);
         ZZ_TEST_EXPECT(n > 0);
         if (n <= 0) break;
         got.append(reinterpret_cast<const char*>(buf), static_cast<std::size_t>(n));
     }
-#endif
-#if defined(_WIN32)
-    // 确定性断言：能读到回写内容即可（ConPTY 输入 echo 与 CRLF 行尾的精确行为留 CI 校准）。
-    ZZ_TEST_EXPECT(got.find("zz-pty-roundtrip") != std::string::npos);
-#else
     ZZ_TEST_EXPECT(got == msg); // raw 模式：写入什么读回什么（无 echo/规范模式干扰）
 #endif
 }
