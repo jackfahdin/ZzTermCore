@@ -85,7 +85,7 @@ static void testCatRoundTrip()
 
     std::string got;
     std::byte buf[256];
-    while (got.find("zz-pty-roundtrip") == std::string::npos) {
+    while (got.size() < msg.size()) {
         const std::ptrdiff_t n = readWithTimeout(*pty, buf);
         ZZ_TEST_EXPECT(n > 0);
         if (n <= 0) break;
@@ -134,7 +134,7 @@ static void testExitCode()
     ZZ_TEST_EXPECT(pty != nullptr);
     if (!pty) return;
 
-    (void)readAll(*pty); // 排空输出直到 EOF（Unix EIO 归 EOF；Windows 管道断裂归 EOF）
+    (void)readAll(*pty); // 排空输出直到 EOF（EIO 归 EOF）
 
     std::optional<int> code;
     for (int i = 0; i < 100 && !code; ++i) { // 最多等约 5 秒
