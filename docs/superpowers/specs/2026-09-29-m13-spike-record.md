@@ -58,12 +58,12 @@ cd /home/zz/Jackfahdin/github/ZzClawTerm
 - probe 自检（--probe 配合 offscreen，两链通用）：链路就绪后写 echo 标记，100ms 轮询 renderView 文本命中即 PROBE-OK 退出 0，15s 超时退出 3。实测 --local 与 --ssh localhost 均秒级 PROBE-OK；带用户与端口的完整目标形式解析正常；缺目标参数退出码 2。
 - SSH 建连计时实测：DNS 0-1ms、libssh2 握手 9-12ms、公钥认证 14ms、shell channel 打开 61ms，总计 24-27ms（localhost）。
 - 认证顺序实证：agent 失败 -> 公钥成功（ZzSshAuthConfig 固定顺序如实工作）；probe 模式密码请求直接取消，无人值守可跑。
-- TOFU 实证：首轮自动信任、打印指纹并落临时目录 known_hosts，次轮静默校验通过（不再打印信任行）——ZzSshHostKeyStore 存取行为正常。
+- TOFU 实证：首轮自动信任、打印指纹并落临时目录 known_hosts，次轮静默校验通过（不再打印信任行）——ZzSshHostKeyStore 存取行为正常。**注意：自动信任是 spike 弃子简化（无人值守自检所需），不可沿用——正式集成必须回到 ZzSshTransport 形态：hostKeyUnknown/hostKeyChanged 确认弹窗 + AppConfigLocation 持久化 known_hosts。**
 - 渲染契约层（T1 观察沿用并复验）：光标反色矩形、全量重绘无增量、resize 按格宽换算调终端 resize 并发 gridResized——同一信号 PTY 侧转 SIGWINCH、SSH 侧转 window-change（库侧尾随去抖 150ms），两传输链接法完全同形。
 - 键盘编码经终端 output 通道（sendText/sendKey），application cursor 等模式位与 feed 联动同步（T1 钉住路径，SSH 链同 widget 直接继承）。
 
 ## 5. 三阶段路线输入建议
 
 - 特性对齐阶段：P0 = 历史行访问缺口（滚动是终端基础交互，ZzClawTerm 现有 ZzTermWidget 有滚动，缺它无法对齐）；P1 = ZzPty 非阻塞配置（小改消绕行）。ZzCoreViewWidget 种子已验证渲染/键盘/resize/两传输链，可按对齐标准直接演进；选择/鼠标/IME/配色为 spike 排除项，是该阶段工作量主体与主要不确定面。
-- 历史调和与 ptyqt 退役：ZzPty 经两链实证可替 ptyqt 驱动本地会话（补上非阻塞配置后无绕行）；SSH 侧 ZzSshCore 直驱形态与 ZzSshTransport 适配层接口（write/resize/dataReceived/closed）一一对应，适配层改写成本低；ZzSshCore 默认私钥探测（缺口 3）在会话装配退役 ptyqt 时一并处理。
+- 历史调和与 ptyqt 退役：ZzPty 经两链实证可替 ptyqt 驱动本地会话（补上非阻塞配置后无绕行）；SSH 侧 ZzSshCore 直驱形态与 ZzSshTransport 适配层接口（write/resize/dataReceived/closed）一一对应，适配层改写成本低；ZzSshCore 默认私钥探测（缺口 3）在会话装配退役 ptyqt 时一并处理；spike 的 TOFU 自动信任同为退役面——正式会话装配必须回到确认弹窗 + AppConfigLocation 持久化 known_hosts，不得沿用弃子简化。
 - 删 ZzTermWidget：风险排序——历史/滚动（依赖 Core 新 API，最高）> 选择/鼠标/IME/配色（spike 未验证，中）> 渲染契约本身（两链实证，低）。打包面无阻塞：add_subdirectory 与 install-tree 两种消费形态均实证可用。
