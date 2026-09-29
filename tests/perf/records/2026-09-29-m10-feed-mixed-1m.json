@@ -1,0 +1,15 @@
+{
+  "milestone": "M8",
+  "track": "facade-feed",
+  "profile": "mixed",
+  "tier": "1m",
+  "lines": 1000000,
+  "stream_bytes": 181888890,
+  "feed_ms": 21251.7,
+  "search_ms": 4192.81,
+  "search_matches": 1000000,
+  "reflow_widen_ms": 3855.7,
+  "reflow_narrow_ms": 4716.81,
+  "rss_bytes": 2268954624,
+  "peak_rss_bytes": 3256504320
+}
