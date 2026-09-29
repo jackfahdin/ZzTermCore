@@ -23,8 +23,10 @@
  * - Windows 侧 accessor 为 readHandle/writeHandle（HANDLE），事件模型同样由调用方决定；
  * - 无线程、无回调；所有方法必须在同一线程调用（非线程安全）。
  *
- * ownership：ZzPty 独占拥有 master fd 与子进程 pid；析构时 SIGHUP 子进程、
- * 关闭 fd 并回收僵尸。
+ * ownership：ZzPty 独占拥有会话资源与子进程——Unix 为 master fd 与 pid，
+ * Windows 为管道句柄、伪控制台与进程/线程句柄；析构时 Unix 侧 SIGHUP 子进程
+ * （兜底 SIGKILL）、关闭 fd 并回收僵尸，Windows 侧 ClosePseudoConsole、
+ * 兜底 TerminateProcess 并关闭全部句柄。
  */
 
 /**
@@ -38,7 +40,7 @@ struct ZzPtyConfig {
 };
 
 /**
- * @brief Unix PTY 会话（master 侧）。
+ * @brief PTY 会话（Unix：master 侧；Windows：ConPTY 管道侧）。
  */
 class ZZTERM_PTY_API ZzPty {
 public:
@@ -49,7 +51,9 @@ public:
      */
     static std::unique_ptr<ZzPty> spawn(const ZzPtyConfig& cfg);
 
-    /// @brief 析构：SIGHUP 子进程（不退出则短暂等待后 SIGKILL）、关闭 master fd、回收僵尸。
+    /// @brief 析构：Unix 为 SIGHUP 子进程（不退出则短暂等待后 SIGKILL）、关闭 master fd、
+    ///        回收僵尸；Windows 为 ClosePseudoConsole、短暂宽限后 TerminateProcess 兜底、
+    ///        收尾退出码并关闭全部句柄。
     ~ZzPty();
 
     ZzPty(const ZzPty&)            = delete;
