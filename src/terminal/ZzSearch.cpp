@@ -29,6 +29,7 @@ struct LineTextMap {
     std::string folded;                      // ASCII 折叠副本（仅不敏感模式构建）
     std::vector<std::int32_t> byteToCell;    // text.size()+1 项：字节位置 → 格偏移
     std::vector<std::int32_t> byteToCellEnd; // text.size() 项：字节位置 → 所在单元末格之后一格
+    bool fastIdentity = false;               // 快路：回映恒等（i -> i / i+1），两表未构建
 };
 
 // 组建一条逻辑行的纯文本与位置回映表到 m（规则同 ZzSelectionText 提取：
@@ -44,6 +45,53 @@ void buildLineText(const ZzIPhysicalLineSource& src,
     m.folded.clear();
     m.byteToCell.clear();
     m.byteToCellEnd.clear();
+    m.fastIdentity = false;
+
+    // 预检：全物理行均为"窄格非聚簇码点不超过 127，或 Empty"时走快路
+    //（M10：ascii 画像全部行、mixed 画像约三分之二行命中，批量提取免建回映表）。
+    ZzLine line;
+    bool      fastPath = true;
+    for (std::size_t r = 0; fastPath && r < rowCount; ++r) {
+        src.lineAt(firstRow + r, line);
+        for (int c = 0; c < cols; ++c) {
+            const ZzCell& zc = line.cellAt(c);
+            if (zc.width() == ZzCellWidth::Empty)
+                continue;
+            if (zc.width() != ZzCellWidth::Narrow || zc.isCluster() || zc.codePoint() > 127) {
+                fastPath = false;
+                break;
+            }
+        }
+    }
+    if (fastPath) {
+        // 快路：text/folded 紧凑填充（Empty 与码点 0 的窄格输出空格，与慢路同规则）。
+        const std::size_t totalCells = static_cast<std::size_t>(cols) * rowCount;
+        m.text.resize(totalCells);
+        if (needFolded)
+            m.folded.resize(totalCells);
+        std::size_t w = 0;
+        for (std::size_t r = 0; r < rowCount; ++r) {
+            src.lineAt(firstRow + r, line);
+            for (int c = 0; c < cols; ++c, ++w) {
+                const ZzCell& zc = line.cellAt(c);
+                const char ch = (zc.width() == ZzCellWidth::Empty || zc.codePoint() == 0)
+                                    ? ' '
+                                    : static_cast<char>(zc.codePoint());
+                m.text[w] = ch;
+                if (needFolded)
+                    m.folded[w] = foldByte(ch);
+            }
+        }
+        // 行尾空白修剪（与慢路同规则；回映恒等无需维护表）。
+        while (!m.text.empty() && m.text.back() == ' ') {
+            m.text.pop_back();
+            if (needFolded)
+                m.folded.pop_back();
+        }
+        m.fastIdentity = true;
+        return;
+    }
+
     std::int32_t cell = 0;
     auto emit = [&](std::string_view bytes, std::int32_t cellCount) {
         for (char c : bytes) {
@@ -55,7 +103,6 @@ void buildLineText(const ZzIPhysicalLineSource& src,
         }
         cell += cellCount;
     };
-    ZzLine line;
     for (std::size_t r = 0; r < rowCount; ++r) {
         src.lineAt(firstRow + r, line);
         for (int c = 0; c < cols; ++c) {
@@ -122,11 +169,20 @@ std::vector<ZzLogicalRange> zzSearchLines(const ZzIPhysicalLineSource& src,
         const std::string& hay = options.caseSensitive ? m.text : m.folded;
         std::size_t pos = 0;
         while ((pos = hay.find(needle, pos)) != std::string::npos) {
-            const auto cellStart = m.byteToCell[pos];
-            // 末字节所在单元的末格之后一格：命中尾落在单元字节中段时
-            // 同样归并整格（规格 5.2），不产零宽区间；match 末尾恰好
-            // 对齐单元边界时等价于 byteToCell[pos + needle.size()]。
-            const auto cellEnd = m.byteToCellEnd[pos + needle.size() - 1];
+            std::int32_t cellStart;
+            std::int32_t cellEnd;
+            if (m.fastIdentity) {
+                // 快路恒等回映：字节位置即格偏移；命中尾末格之后一格即 pos+needle.size()，
+                // 与慢路 byteToCellEnd 末项语义一致（慢路注释的等价关系在此成为定义）。
+                cellStart = static_cast<std::int32_t>(pos);
+                cellEnd   = static_cast<std::int32_t>(pos + needle.size());
+            } else {
+                // 末字节所在单元的末格之后一格：命中尾落在单元字节中段时
+                // 同样归并整格（规格 5.2），不产零宽区间；match 末尾恰好
+                // 对齐单元边界时等价于 byteToCell[pos + needle.size()]。
+                cellStart = m.byteToCell[pos];
+                cellEnd   = m.byteToCellEnd[pos + needle.size() - 1];
+            }
             out.push_back(ZzLogicalRange{{logicalLine, cellStart}, {logicalLine, cellEnd}});
             pos += needle.size(); // 命中不重叠：从 match 末尾继续
         }
