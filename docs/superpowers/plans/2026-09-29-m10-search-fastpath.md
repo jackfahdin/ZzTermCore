@@ -4,7 +4,7 @@
 
 **目标：** facade 轨 1M 档全量 search 双画像搜进 5s 门（当前 ascii 5550.92ms / mixed 9691.16ms，-O0），search 公开 API 与行为零变化。
 
-**架构：** 仅改 src/terminal/ZzSearch.cpp：buildLineText 加"全行窄格 ASCII/Empty"预检与批量提取快路（text/folded 紧凑填充、回映恒等免建表），zzSearchLines 对快路行直接换算命中位置；任一 cell 不满足回退原慢路。
+**架构：** 仅改 src/terminal/ZzSearch.cpp：buildLineText 加"全行窄格 ASCII/Empty"预检与批量提取快路（text/folded 紧凑填充、回映恒等免建表），zzSearchLines 对快路行直接换算命中位置；任一 cell 不满足回退原慢路。（superseded：本行为任务 1 原始方案；经规格 §7 修正由任务 3 替代为单一路径——慢路段批量 + 命中惰性回映，以任务 3 与规格 §7 为准。）
 
 **技术栈：** C++20、ctest、M8 bench 双 harness、tests/perf/records 归档惯例。
 
