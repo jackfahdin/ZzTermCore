@@ -90,20 +90,22 @@ static void testCatRoundTrip()
         reinterpret_cast<const std::byte*>(msg.data()), msg.size())));
 
 #if defined(_WIN32)
-    // 读取终止条件只有"子进程退出且管道排空"（ZzPty::read 归一的 EOF）——
-    // 就绪标记（标题依赖）与固定静默窗口均已移除：输入在 spawn 后即写入
-    //（管道缓冲持有，cmd 就绪后自然消费，无启动竞争）；静默超时在 runner
-    // 负载下会误判流结束（flake 根因，根治）。30s 全局截止仅作兜底，
-    // 异常形态走断言失败而非挂死。
+    // 读取终止条件为"稳定 EOF + 退出码已收"——首次 EOF（ZzPty::read 归一：
+    // 子进程退出且瞬时管空）不能直接接受：ConPTY 渲染线程异步转发输出，
+    // 热 runner 上 cmd 0.2s 级完成启动-执行-退出时，进程死亡会跑赢尾部
+    // 输出的转发（实测 marker 全丢的必发竞态）。EOF 后复询 grace 窗口，
+    // 尾部数据到了继续读；连续 10 轮（2s）无新数据且退出码已收才结束。
+    // 30s 全局截止仅作兜底，异常形态走断言失败而非挂死。
     const DWORD deadline = ::GetTickCount() + 30000;
     std::optional<int> code;
-    bool              eof = false;
-    while (!eof || !code) {
-        const std::ptrdiff_t n = readWithTimeout(*pty, buf, 1000);
+    int              quietPolls = 0; // 连续 EOF 轮次（稳定性判据）
+    for (;;) {
+        const std::ptrdiff_t n = readWithTimeout(*pty, buf, 200);
         if (n > 0) {
             got.append(reinterpret_cast<const char*>(buf), static_cast<std::size_t>(n));
-        } else if (n == 0) {
-            eof = true;
+            quietPolls = 0;
+        } else if (n == 0 && code && ++quietPolls >= 10) {
+            break; // EOF 稳定 2s 且退出码已收——尾部转发已尽
         }
         if (!code)
             code = pty->tryWait();
