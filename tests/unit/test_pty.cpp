@@ -91,14 +91,25 @@ static void testCatRoundTrip()
     // 退出条件：Unix 为读够写入长度；Windows 为见到回写标记（cmd 横幅先行到达）。
 #if defined(_WIN32)
     while (got.find("zz-pty-roundtrip") == std::string::npos) {
+        const std::ptrdiff_t n = readWithTimeout(*pty, buf);
+        if (n <= 0) {
+            // CI 诊断探针（R5）：EOF/超时时打子进程退出码与已读内容，定位会话死亡形态。
+            const std::optional<int> code = pty->tryWait();
+            std::fprintf(stderr, "DIAG roundtrip n=%td exit=%d got(%zu)=[%s]\n", n,
+                         code.value_or(-1), got.size(), got.c_str());
+        }
+        ZZ_TEST_EXPECT(n > 0);
+        if (n <= 0) break;
+        got.append(reinterpret_cast<const char*>(buf), static_cast<std::size_t>(n));
+    }
 #else
     while (got.size() < msg.size()) {
-#endif
         const std::ptrdiff_t n = readWithTimeout(*pty, buf);
         ZZ_TEST_EXPECT(n > 0);
         if (n <= 0) break;
         got.append(reinterpret_cast<const char*>(buf), static_cast<std::size_t>(n));
     }
+#endif
 #if defined(_WIN32)
     // 确定性断言：能读到回写内容即可（ConPTY 输入 echo 与 CRLF 行尾的精确行为留 CI 校准）。
     ZZ_TEST_EXPECT(got.find("zz-pty-roundtrip") != std::string::npos);
