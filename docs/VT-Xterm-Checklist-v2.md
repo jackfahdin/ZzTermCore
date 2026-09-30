@@ -179,7 +179,7 @@ Wrap / Reflow 章为准。
 -   [ ] \[Contour\]\[Test\]\[PASS-PoC\] Grow rows/columns 基础 resize
 -   [ ] \[Contour\]\[Test\] Shrink rows/columns
 -   [ ] \[Contour\]\[Test\] Soft-wrap reflow
--   [ ] \[Contour\]\[Test\] Hard-newline preservation
+-   [ ] \[Contour\]\[Test\] Hard-newline preservation（语义以 M16 为准：硬行软折、拉大接回）
 -   [ ] \[Contour\]\[Test\] Wide grapheme boundary
 -   [ ] \[Contour\]\[Test\] Cursor mapping
 -   [x] \[Zz-Native\]\[Test\] Selection/Search anchor mapping（M5a

@@ -115,7 +115,7 @@
 -   [x] Grow/Shrink columns（列变触发 reflow，M4 双后端）
 -   [x] Soft-wrap reflow（M4 双后端：native zzReflowLines + Contour
     allowReflowOnResize）
--   [x] Hard-newline preservation（硬行永不多行化，M4）
+-   [x] Hard-newline preservation（硬行缩列软折、拉大接回，M16 取代 M4 截断语义）
 -   [x] Wide grapheme boundary（宽字符不拆半，M4）
 -   [x] Cursor mapping（逻辑行链 + 链内偏移跟随，M4）
 -   [x] Selection mapping（M5a 已交付：reflow 保持选区文本，见 Selection 节）

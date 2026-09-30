@@ -73,11 +73,9 @@ static void testResizeReflowKeepsSelection()
     const std::string before = term.selectedText();
     term.resize(10, 3); // 列变触发 reflow，逻辑行集合不变
     ZZ_TEST_EXPECT(term.selectedText() == before);
-    // 简报原文为 resize(4, 3)：与 M4 钉死的「硬行永不多行化、缩列截断」
-    // 语义冲突（长到 10 列后软链已合并为硬行，缩到 4 列按规格截断为 "abcd"，
-    // test_native_reflow.cpp:46 钉住该行为）。改为缩到 8 列（不小于内容宽，
-    // 不触发截断），仍覆盖「缩列 reflow 选区文本保持」。
-    term.resize(8, 3);
+    // M16 恢复 M5a 原文断言 resize(4,3)（M5a 计划 :1908 记载的避让随硬行
+    // 截断语义废弃而失效）：硬行缩列多行化后逻辑行集合不变，选区文本保持。
+    term.resize(4, 3);
     ZZ_TEST_EXPECT(term.selectedText() == before);
 }
 

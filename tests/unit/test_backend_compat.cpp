@@ -440,6 +440,39 @@ void testResizeReflowCjk()
         checkRowEqualAllowEmptyWidthDiff(d.native, d.contour, r, 37, "reflow-cjk-37");
 }
 
+// 21. 硬行缩列 reflow parity（M16）：硬行缩列多行化、拉大接回，两后端
+// 历史行数/历史文本/wrapped 标记/屏幕逐格一致——M4 钉住的硬行 b 类分歧消灭。
+void testResizeReflowHardLine()
+{
+    Dual d;
+    const std::string hard(60, 'h'); // 80 列下的硬行（60 字符 + 尾空白），未软折
+    d.feedBoth(hard + "\r\n");
+    for (int i = 0; i < 30; ++i)
+        d.feedBoth("filler\r\n"); // 顶入历史
+
+    d.native.resize(40, 24); // 缩列：硬行多行化（40 + 20 两行链）
+    d.contour.resize(40, 24);
+    ZZ_CHECK(d.native.historyView().lineCount() == d.contour.historyView().lineCount());
+    for (std::size_t i = 0; i < d.native.historyView().lineCount(); ++i) {
+        ZZ_CHECK(historyText(d.native, i) == historyText(d.contour, i));
+        ZZ_CHECK(d.native.historyView().lineAt(i).wrapped()
+                 == d.contour.historyView().lineAt(i).wrapped());
+    }
+    for (int r = 0; r < 24; ++r)
+        checkRowEqualAllowEmptyWidthDiff(d.native, d.contour, r, 40, "hardline-40");
+
+    d.native.resize(80, 24); // 拉大：链接回，内容完整恢复
+    d.contour.resize(80, 24);
+    ZZ_CHECK(d.native.historyView().lineCount() == d.contour.historyView().lineCount());
+    for (std::size_t i = 0; i < d.native.historyView().lineCount(); ++i) {
+        ZZ_CHECK(historyText(d.native, i) == historyText(d.contour, i));
+        ZZ_CHECK(d.native.historyView().lineAt(i).wrapped()
+                 == d.contour.historyView().lineAt(i).wrapped());
+    }
+    for (int r = 0; r < 24; ++r)
+        checkRowEqualAllowEmptyWidthDiff(d.native, d.contour, r, 80, "hardline-80");
+}
+
 } // namespace
 
 int main()
@@ -463,6 +496,7 @@ int main()
     testFocusReportingCompat();
     testResizeReflow();
     testResizeReflowCjk();
+    testResizeReflowHardLine();
     testRowResizeParity();
     if (g_failures != 0)
         std::fprintf(stderr, "test_backend_compat: %d failure(s)\n", g_failures);

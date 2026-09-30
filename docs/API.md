@@ -88,7 +88,8 @@ parser/screen/scrollback 等引擎组件归各后端实现持有，`ZzTerminal`
 - `resize(cols, rows)` 调整终端尺寸（M4 起支持真 reflow，M15 起行变
   按条件语义搬行）：列变化触发 soft-wrap reflow——屏幕区与 scrollback
   历史一起重组，logical line 合并后按新列宽重切（列变重组），宽字符
-  不拆半，硬行截断/补空，光标按逻辑行链跟随内容；行变化（M15，双后端
+  不拆半，硬行缩列多行化、拉大沿 wrapped 链合并恢复（M16，对齐 Contour/xterm，
+  取代 M4 硬行截断），光标按逻辑行链跟随内容；行变化（M15，双后端
   语义对齐 contour shrinkLines/growLines）：缩行先裁光标下方行（不入
   历史），不够裁时把 Primary 顶部行压入历史；扩行仅当光标贴末行时从
   最新历史回抽注入顶部，不足部分底部补空，光标不在末行时纯底部补空。
@@ -217,10 +218,7 @@ match 坐标快照语义：match 是搜索时刻的坐标快照，此后 feed �
 4. 裸组合符 pattern 归并整格：pattern 为组合符等 cluster 字节串的中段
    片段时，命中坐标归并到所在整格，命中文本与 pattern 逐字节相等的
    自洽不变量不成立；v1 接受该语义（T2 审查裁定，规格 5.2）。
-5. 截断行 col 快照语义：列变 reflow 截断行上的 match 其 col 保持快照
-   原值（可能越出截断后行末），查询返回不 clamp；前端绘制高亮时自行
-   按行 clamp，需要精确文本时经 `selectedText` 提取（提取层按行
-   clamp）（规格 5.4）。
+5. （M16 起本条废止：硬行缩列多行化后不存在截断行，match 的 col 均在行内。）
 
 双后端 match 列表逐一相等由 test_search_compat 钉住（native 为基准，
 本里程碑未产生新 b 类分歧）；10 万行搜索性能门控见
@@ -346,3 +344,6 @@ RenderView 覆盖屏幕区，HistoryView 覆盖 scrollback 历史区。
   新增 `HistoryPullCallback` 类型别名与 `setHistoryPullCallback`
   方法（Core 内部协作口）；`ZzTerminal` 无签名变化，`resize` 行变
   行为语义变化（缩行压历史/扩行回抽，对齐 contour）。
+- M16：行为语义变化（reflow 硬行由截断改为多行化，zzReflowLines/两端 reflow
+  路径对外可观察结果变化），无 API 签名变化；M5b 的「截断行 col 快照」
+  条款随之废止。
