@@ -30,7 +30,7 @@
 
 **修改：**
 - `include/ZzTerm/Scrollback.h`（reflow 声明 :94 后）— takeNewest 接口声明
-- `src/history/ChunkedScrollback.cpp` — takeNewest 实现（含 <iterator> include）
+- `src/history/ChunkedScrollback.cpp` — takeNewest 实现（含 iterator 头文件 include）
 - `include/ZzTerm/Screen.h`（ScrollOutCallback :59 后、setter :370 后、私有区）— HistoryPullCallback 类型/setter/成员/resizeBuffer 私有方法/resize 文档更新
 - `src/screen/Screen.cpp` — ZzScreen::resize 重构为 resizeBuffer 双缓冲分发 + 行变条件语义
 - `src/backend/native/ZzNativeBackend.cpp`（构造回调安装区 :205-210 后）— pull 回调接线
@@ -639,7 +639,7 @@ void ZzScreen::setHistoryPullCallback(HistoryPullCallback callback)
 }
 ```
 
-实现要点（审查锚点）：Buffer::resize（:11-22）保留不动，继续服务构造函数（:31-32）的纯网格初始化；resizeBuffer 是行变语义的唯一落点；`std::make_move_iterator` 需要 `#include <iterator>`（Screen.cpp include 区追加）；`std::min` 已有 <algorithm>。
+实现要点（审查锚点）：Buffer::resize（:11-22）保留不动，继续服务构造函数（:31-32）的纯网格初始化；resizeBuffer 是行变语义的唯一落点；`std::make_move_iterator` 需要 iterator 头文件（Screen.cpp include 区追加）；`std::min` 已有 algorithm 头文件。
 
 - [ ] **步骤 5：构建并运行新测试**
 
