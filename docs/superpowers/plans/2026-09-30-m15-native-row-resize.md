@@ -200,7 +200,7 @@ int main()
 
 - [ ] **步骤 4：ChunkedScrollback 实现**
 
-`src/history/ChunkedScrollback.cpp` 两处。其一，include 区（`#include <deque>` 后）追加：
+`src/history/ChunkedScrollback.cpp` 两处。其一，include 区（deque 头文件那行后）追加：
 
 ```cpp
 #include <iterator>
@@ -837,7 +837,7 @@ cmake --preset linux-gcc-debug && cmake --build --preset linux-gcc-debug --targe
 
 - [ ] **步骤 5：compat 行变 parity 用例**
 
-`tests/unit/test_backend_compat.cpp` 在用例 9（testResize，:206-216）后新增（Dual/feedBoth/checkRowEqual 用法照用例 9 同款；include 区若无 <string> 则补）：
+`tests/unit/test_backend_compat.cpp` 在用例 9（testResize，:206-216）后新增（Dual/feedBoth/checkRowEqual 用法照用例 9 同款；include 区若无 string 头文件则补）：
 
 ```cpp
 // 20. 行变 resize parity（M15）：缩行压历史与扩行回抽双后端一致。
