@@ -41,7 +41,7 @@ struct ZzScrollbackStats {
  * @brief 滚动历史抽象接口。
  *
  * ownership：实现类独占拥有行数据；append 以值移交所有权，
- * lineAt 返回的引用在下一次 append/clear/setCapacity/reflow 后可能失效。
+ * lineAt 返回的引用在下一次 append/clear/setCapacity/reflow/takeNewest 后可能失效。
  *
  * 线程安全：非线程安全，与 ZzScreen 同线程使用。
  */
@@ -92,6 +92,17 @@ public:
      *       位置可能不同（M5 选区工作前加 compat 钉住）。
      */
     virtual void reflow(int newCols) = 0;
+
+    /**
+     * @brief 从最新端取走最多 n 行并删除（Core 内部使用；M15 行变回抽原语）。
+     * @param n 最多取走行数。
+     * @return 取走的行（旧到新顺序、以值移交所有权），不足 n 行时全部返回。
+     * @note 调用后既有 lineAt 引用失效（同 append 的失效规则）。
+     * @note stats 语义：本操作不是容量裁剪——totalDropped 不变；totalAppended
+     *       只增不改（绝对行号产生回退空洞，与 contour rotateBuffersRight 的
+     *       stableBase 回退同构，选区锚点按不透明行号处理）。
+     */
+    [[nodiscard]] virtual std::vector<ZzLine> takeNewest(std::size_t n) = 0;
 
     /**
      * @brief 当前容量上限（行）。

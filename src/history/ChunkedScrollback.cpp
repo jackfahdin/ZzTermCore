@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cstdint>
 #include <deque>
+#include <iterator>
 
 #include "../screen/Reflow.h"
 
@@ -113,6 +114,36 @@ public:
                                 static_cast<std::size_t>(line.cellCount()) * sizeof(ZzCell);
             }
         trimToCapacity();
+    }
+
+    [[nodiscard]] std::vector<ZzLine> takeNewest(std::size_t n) override
+    {
+        std::vector<ZzLine> out;
+        out.reserve(n);
+        while (out.size() < n && !chunks_.empty()) {
+            auto& back = chunks_.back();
+            const std::size_t take  = std::min(n - out.size(), back.size());
+            const std::size_t first = back.size() - take;
+            // 段内旧到新；先取到的是更新的段，整段前插维持全局旧到新。
+            std::vector<ZzLine> seg;
+            seg.reserve(take);
+            for (std::size_t i = first; i < back.size(); ++i) {
+                approxBytes_ -= sizeof(ZzLine) +
+                                static_cast<std::size_t>(back[i].cellCount()) * sizeof(ZzCell);
+                seg.push_back(std::move(back[i]));
+            }
+            back.erase(back.begin() + static_cast<std::ptrdiff_t>(first), back.end());
+            totalLines_ -= take;
+            if (back.empty()) {
+                chunks_.pop_back();
+                if (chunks_.empty())
+                    headOffset_ = 0; // 全取空：复位部分裁剪槽位计数
+            }
+            seg.insert(seg.end(), std::make_move_iterator(out.begin()),
+                       std::make_move_iterator(out.end()));
+            out = std::move(seg);
+        }
+        return out;
     }
 
     [[nodiscard]] std::size_t capacity() const noexcept override
