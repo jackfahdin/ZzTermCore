@@ -208,6 +208,14 @@ ZzNativeBackend::ZzNativeBackend(int cols, int rows, std::size_t scrollbackMaxLi
         scrollback_->append(std::move(lines));
         ++historyGeneration_; // M14：历史 append（含容量裁剪）代计数递增
     });
+    // M15：扩行回抽回调——Screen 经此从 scrollback 取最新行注入屏幕顶部；
+    // 实取非空时历史可见行数减少，代计数递增（M14「不得漏增」）。
+    screen_.setHistoryPullCallback([this](std::size_t maxLines) {
+        auto pulled = scrollback_->takeNewest(maxLines);
+        if (!pulled.empty())
+            ++historyGeneration_;
+        return pulled;
+    });
 }
 
 ZzNativeBackend::~ZzNativeBackend() = default;
@@ -244,7 +252,7 @@ bool ZzNativeBackend::resize(int cols, int rows)
         screen_.reflow(cols);
     }
     if (rows != old.rows)
-        screen_.resize(cols, rows); // 行向语义维持 M0 现状（截断/填充/clamp）
+        screen_.resize(cols, rows); // M15：行向条件语义（裁光标下方/压历史/回抽），见 Screen.h
     return true;
 }
 

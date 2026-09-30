@@ -73,12 +73,22 @@ void checkCellEqualAllowEmptyWidthDiff(const ZzTerminal& a, const ZzTerminal& b,
 }
 
 // 比对整行前 n 格（放宽空单元格宽度类别；仅供 testResizeReflow /
-// testResizeReflowCjk 使用，其余用例一律走严格 checkRowEqual）。
+// testResizeReflowCjk / testRowResizeParity 使用，其余用例一律走严格 checkRowEqual）。
 void checkRowEqualAllowEmptyWidthDiff(const ZzTerminal& a, const ZzTerminal& b, int row, int n,
                                       const char* what)
 {
     for (int col = 0; col < n; ++col)
         checkCellEqualAllowEmptyWidthDiff(a, b, row, col, what);
+}
+
+// 取历史行纯文本（M15 行变 parity 用例）。
+std::string historyText(const ZzTerminal& term, std::size_t index)
+{
+    const ZzLineView line = term.historyView().lineAt(index);
+    std::string out;
+    for (int col = 0; col < line.cellCount(); ++col)
+        out += line.cellAt(col).text;
+    return out;
 }
 
 // 1. ASCII 文本 + 光标位置/可见性。
@@ -213,6 +223,32 @@ void testResize()
     ZZ_CHECK(d.native.size() == d.contour.size());
     ZZ_CHECK(d.native.size() == (ZzSize { 100, 30 }));
     checkRowEqual(d.native, d.contour, 0, 4, "resize-keep");
+}
+
+// 20. 行变 resize parity（M15）：缩行压历史与扩行回抽双后端一致。
+// 屏幕比对走放宽空单元格宽度档：行变搬行后行尾空格命中本文件 :52 已钉住的
+// b 类表示差异（native Empty vs contour Narrow，文本/颜色/属性一致）。
+void testRowResizeParity()
+{
+    Dual d;
+    for (int i = 0; i < 30; ++i)
+        d.feedBoth("row-" + std::to_string(i) + "\r\n"); // 30 行进 24 行屏：双后端各 7 行历史
+    ZZ_CHECK(d.native.historyView().lineCount() == d.contour.historyView().lineCount());
+
+    ZZ_CHECK(d.native.resize(80, 10) == d.contour.resize(80, 10)); // 缩 14：光标贴底 pushUp
+    ZZ_CHECK(d.native.historyView().lineCount() == d.contour.historyView().lineCount());
+    ZZ_CHECK(d.native.historyView().lineCount() == 21); // 7 + 14
+    for (std::size_t i = 0; i < d.native.historyView().lineCount(); ++i) {
+        const std::string n = historyText(d.native, i);
+        const std::string c = historyText(d.contour, i);
+        ZZ_CHECK(n == c);
+    }
+    checkRowEqualAllowEmptyWidthDiff(d.native, d.contour, 0, 9, "rowresize-shrink");
+
+    ZZ_CHECK(d.native.resize(80, 24) == d.contour.resize(80, 24)); // 扩 14：光标贴底回抽
+    ZZ_CHECK(d.native.historyView().lineCount() == d.contour.historyView().lineCount());
+    ZZ_CHECK(d.native.historyView().lineCount() == 7);
+    checkRowEqualAllowEmptyWidthDiff(d.native, d.contour, 0, 23, "rowresize-grow");
 }
 
 // 10. 光标可见性（DECTCEM ?25l/h；M2：两后端均上报真实值，恢复强对照）。
@@ -427,6 +463,7 @@ int main()
     testFocusReportingCompat();
     testResizeReflow();
     testResizeReflowCjk();
+    testRowResizeParity();
     if (g_failures != 0)
         std::fprintf(stderr, "test_backend_compat: %d failure(s)\n", g_failures);
     return g_failures == 0 ? 0 : 1;

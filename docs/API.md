@@ -85,14 +85,17 @@ parser/screen/scrollback 等引擎组件归各后端实现持有，`ZzTerminal`
   （xterm 默认，构造初值）。仅 native 后端生效，Contour 无对应
   配置项、调用为空操作（适配层注释钉住的已知分歧）；设置对其后
   的 feed 生效，已落格内容不 retroactive 重排。
-- `resize(cols, rows)` 调整终端尺寸（M4 起支持真 reflow）：列变化
-  触发 soft-wrap reflow——屏幕区与 scrollback 历史一起重组，logical
-  line 合并后按新列宽重切（列变重组），宽字符不拆半，硬行截断/补空，
-  光标按逻辑行链跟随内容；行变化仅做网格增减，不触发 reflow
-  （行变不重组）。两后端语义对齐（Contour 经 allowReflowOnResize，
-  适配层显式钉住）。Alternate Screen 溢出行直接丢弃（备用屏无历史）。
-  resize 后 RenderView 与既有 `ZzLineView` 句柄全部失效，前端需重新
-  获取。尺寸未变或参数非法（非正）时返回 false 且为空操作。
+- `resize(cols, rows)` 调整终端尺寸（M4 起支持真 reflow，M15 起行变
+  按条件语义搬行）：列变化触发 soft-wrap reflow——屏幕区与 scrollback
+  历史一起重组，logical line 合并后按新列宽重切（列变重组），宽字符
+  不拆半，硬行截断/补空，光标按逻辑行链跟随内容；行变化（M15，双后端
+  语义对齐 contour shrinkLines/growLines）：缩行先裁光标下方行（不入
+  历史），不够裁时把 Primary 顶部行压入历史；扩行仅当光标贴末行时从
+  最新历史回抽注入顶部，不足部分底部补空，光标不在末行时纯底部补空。
+  Alternate Screen 不产生历史（备用屏无历史），Alternate 期间行变
+  resize 时主屏网格仍按上述语义压历史/回抽。resize 后 RenderView、
+  HistoryView 与既有 `ZzLineView` 句柄全部失效，前端需重新获取。
+  尺寸未变或参数非法（非正）时返回 false 且为空操作。
   resize/reflow 经 ScrollOutCallback 溢出的行不计入 ZzTermChanges 的
   scrollbackChanged/scrolledOutLines（resize 无 changes 通道，前端
   resize 后重取视图）。
@@ -337,3 +340,9 @@ RenderView 覆盖屏幕区，HistoryView 覆盖 scrollback 历史区。
 - M14：新增公共类 `ZzHistoryView` 与 `ZzTerminal::historyView` 非虚方法，
   向后兼容的 minor 新增；内部 `ZzTerminalBackend` 加非纯虚默认实现，
   不影响公共 ABI。
+- M15：`ZzScrollback` 新增 `takeNewest` 纯虚方法——该接口标注 Core
+  内部使用但属公共头，实现类仅仓内 `ChunkedScrollback` 一个（外部若
+  有自定义 `ZzScrollback` 实现需补实现，编译期可发现）；`ZzScreen`
+  新增 `HistoryPullCallback` 类型别名与 `setHistoryPullCallback`
+  方法（Core 内部协作口）；`ZzTerminal` 无签名变化，`resize` 行变
+  行为语义变化（缩行压历史/扩行回抽，对齐 contour）。

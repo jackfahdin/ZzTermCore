@@ -113,15 +113,18 @@ public:
     ZzTermChanges feed(std::span<const std::byte> data);
 
     /**
-     * @brief 调整终端尺寸；列变化触发 soft-wrap reflow（M4 起）。
+     * @brief 调整终端尺寸；列变化触发 soft-wrap reflow（M4 起），
+     *        行变化按条件语义搬行（M15 起）。
      * @param cols 新列数（> 0）。
      * @param rows 新行数（> 0）。
      * @return true 表示尺寸实际变化。
-     * @note 列变化：屏幕区与 scrollback 历史一起重组（logical line 合并后
-     *       按新列宽重切，宽字符不拆半，硬行截断/补空），光标跟随内容；
-     *       行变化仅做网格增减，不触发 reflow。两后端语义对齐
-     *       （Contour 经 allowReflowOnResize）。resize 后 RenderView 失效，
-     *       前端需重新获取视图。
+     * @note 列变化：屏幕区与 scrollback 历史一起重组（先历史后屏幕，
+     *       光标跟随内容）；行变化（M15，双后端语义对齐 contour
+     *       shrinkLines/growLines）：缩行先裁光标下方行，不够裁时把
+     *       顶部行压入历史（Primary）；扩行光标贴末行时从最新历史
+     *       回抽注入顶部，不足部分底部补空。Alternate 屏不产生历史。
+     *       resize 后 RenderView/HistoryView 既有行句柄失效，前端需
+     *       重新获取视图。
      */
     bool resize(int cols, int rows);
 

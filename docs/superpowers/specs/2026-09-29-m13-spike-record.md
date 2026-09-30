@@ -60,7 +60,7 @@ cd /home/zz/Jackfahdin/github/ZzClawTerm
 3. **方向键翻看历史命令看不到之前输入（--local）**：与现象 2 同根（-echo/-opost 的 readline 重绘缺失），随 `ec9acdf` 一并修复。
 4. **cat 阻塞后 Ctrl+C 无响应、界面似卡死（--local）**：~~疑 sendKey 编码路径或 ISIG 投递缺失~~ **同根修复**（`ec9acdf`）：cfmakeraw 的 -isig 使 Ctrl+C 不产生 SIGINT；rawMode=false 后恢复。
 4a. **补充根因证据**（调查反事实闭环）：raw spawn 的 bash 里 `stty sane` 后回显、CRLF 换行、SIGINT 立即全恢复，唯一变量为 slave termios；两模式均无 job control 告警，ZzPty spawn 的 setsid/TIOCSCTTY 完好；ZzTermSmoke 正常仅因显式 rawMode=false。
-5. **resize 后内容丢失、拉大不恢复（两链）**：疑 spike widget 的 resizeEvent 早退或格宽换算错误尺寸下发；SSH 链 tput cols 随尺寸变化实证 Core resize 通路正常，故定种子层。历史重排语义与 M14 历史访问契约相关，顺带在 M14 一并定性。
+5. **resize 后内容丢失、拉大不恢复（两链）**：疑 spike widget 的 resizeEvent 早退或格宽换算错误尺寸下发；SSH 链 tput cols 随尺寸变化实证 Core resize 通路正常，故定种子层。历史重排语义与 M14 历史访问契约相关，顺带在 M14 一并定性。**M15 已根治**：native 行变语义对齐 contour（缩行压历史/扩行回抽），spec 2026-09-30-m15-native-row-resize-design.md。
 6. --ssh 其余项（启动、ls、echo、vim、方向键）正常，无新增现象。
 
 以上 backlog 条目属 ZzClawTerm 仓 spike widget 演进面，不阻塞 Core 侧里程碑推进。
