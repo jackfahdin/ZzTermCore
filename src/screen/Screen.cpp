@@ -1,6 +1,7 @@
 #include "ZzTerm/Screen.h"
 
 #include <algorithm>
+#include <iterator>
 
 #include "Reflow.h"
 
@@ -44,18 +45,68 @@ void ZzScreen::resize(int cols, int rows)
 {
     if (cols <= 0 || rows <= 0)
         return;
+    resizeBuffer(primary_, cols, rows, true);    // M15：Primary 行变条件语义
+    resizeBuffer(alternate_, cols, rows, false); // Alternate 无历史：尾部截断/补空
     cols_ = cols;
     rows_ = rows;
-    primary_.resize(cols_, rows_);
-    alternate_.resize(cols_, rows_);
-    // resize 后网格内容已变化，wrap-pending 标志无意义，两个缓冲区一并清零。
-    primary_.wrapPending = false;
-    alternate_.wrapPending = false;
-    tabStops_.resize(static_cast<std::size_t>(cols_), 0);
+    tabStops_.resize(static_cast<std::size_t>(cols), 0);
     scrollTop_ = 0;
-    scrollBottom_ = rows_ - 1;
+    scrollBottom_ = rows - 1;
     ++dirtyGeneration_;
     markAllDirty();
+}
+
+// M15：行变条件语义（对齐 contour shrinkLines/growLines，规格 §4）。
+// 缩行：先裁光标下方行（不入历史），不够裁时顶部行经 ScrollOutCallback
+// 压入历史（无回调则丢弃，同 reflowBuffer 溢出语义）；光标随内容平移。
+// 扩行：光标贴末行时经 HistoryPullCallback 回抽注入顶部，不足底部补空。
+void ZzScreen::resizeBuffer(Buffer& buf, int cols, int rows, bool mayUseHistory)
+{
+    const int oldRows = static_cast<int>(buf.lines.size());
+    if (rows < oldRows) {
+        const int k = oldRows - rows;
+        if (mayUseHistory) {
+            const int below  = oldRows - 1 - buf.cursor.position.row;
+            const int cutoff = std::min(k, below); // 光标下方行直接裁（不入历史）
+            buf.lines.erase(buf.lines.end() - cutoff, buf.lines.end());
+            const int pushUp = k - cutoff; // 不足部分顶部压入历史（此时光标必贴底）
+            if (pushUp > 0) {
+                if (scrollOutCallback_) {
+                    std::vector<ZzLine> spilled;
+                    spilled.reserve(static_cast<std::size_t>(pushUp));
+                    for (int i = 0; i < pushUp; ++i)
+                        spilled.push_back(std::move(buf.lines[static_cast<std::size_t>(i)]));
+                    scrollOutCallback_(std::move(spilled));
+                }
+                buf.lines.erase(buf.lines.begin(), buf.lines.begin() + pushUp);
+                buf.cursor.position.row -= pushUp;
+            }
+        } else {
+            buf.lines.resize(static_cast<std::size_t>(rows)); // Alternate：尾部截断
+        }
+    } else if (rows > oldRows) {
+        const int k = rows - oldRows;
+        if (mayUseHistory && historyPullCallback_
+            && buf.cursor.position.row == oldRows - 1) { // 光标贴末行才回抽
+            auto pulled = historyPullCallback_(static_cast<std::size_t>(k));
+            if (!pulled.empty()) {
+                buf.lines.insert(buf.lines.begin(),
+                                 std::make_move_iterator(pulled.begin()),
+                                 std::make_move_iterator(pulled.end()));
+                buf.cursor.position.row += static_cast<int>(pulled.size());
+            }
+        }
+        buf.lines.resize(static_cast<std::size_t>(rows)); // 不足部分底部补空
+    }
+    // 列向：逐行截断/填充（无 reflow，维持 M0 语义）；新补空行同获列宽。
+    for (auto& line : buf.lines)
+        if (line.cellCount() != cols)
+            line.resize(cols);
+    buf.dirtyRows.assign(buf.lines.size(), 1);
+    buf.dirtyRanges.assign(buf.lines.size(), ZzCellRange{0, cols});
+    buf.cursor.position.row = std::clamp(buf.cursor.position.row, 0, rows - 1);
+    buf.cursor.position.col = std::clamp(buf.cursor.position.col, 0, cols - 1);
+    buf.wrapPending = false;
 }
 
 void ZzScreen::reflow(int newCols)
@@ -427,6 +478,11 @@ void ZzScreen::clearDirty() noexcept
 void ZzScreen::setScrollOutCallback(ScrollOutCallback callback)
 {
     scrollOutCallback_ = std::move(callback);
+}
+
+void ZzScreen::setHistoryPullCallback(HistoryPullCallback callback)
+{
+    historyPullCallback_ = std::move(callback);
 }
 
 void ZzScreen::markDirty(int row, int col) noexcept

@@ -59,6 +59,14 @@ public:
     using ScrollOutCallback = std::function<void(std::vector<ZzLine> lines)>;
 
     /**
+     * @brief 历史回抽回调（M15）。行变扩行且光标贴末行时，ZzScreen 经本回调
+     *        向历史后端索取最多 maxLines 行最新历史（旧到新顺序、以值移交
+     *        所有权）注入屏幕顶部；无历史可取时返回空向量。
+     *        仅为 Primary 缓冲区调用；Alternate 扩行永不触发。
+     */
+    using HistoryPullCallback = std::function<std::vector<ZzLine>(std::size_t maxLines)>;
+
+    /**
      * @brief 构造指定尺寸的工作区（Primary 活动）。
      * @param cols 列数（> 0）。
      * @param rows 行数（> 0）。
@@ -72,11 +80,16 @@ public:
     [[nodiscard]] ZzSize size() const noexcept;
 
     /**
-     * @brief 网格级 resize 原语：逐行截断/填充，光标 clamp 到新边界。
+     * @brief 网格级 resize 原语：行变按条件语义搬行（M15），列向逐行截断/填充。
      * @param cols 新列数（> 0）。
      * @param rows 新行数（> 0）。
-     * @note 不做 reflow；列变化时的 soft-wrap reflow、cursor 映射由
-     *       ZzNativeBackend::resize 协调（先历史后屏幕，M4 已落地）。全屏标脏。
+     * @note 行变语义（对齐 contour shrinkLines/growLines）：缩行先裁光标下方
+     *       行（不入历史），不够裁时把 Primary 顶部行经 ScrollOutCallback
+     *       压入历史（无回调则丢弃，同 reflow 溢出语义），光标随内容平移；
+     *       扩行仅当光标贴末行时经 HistoryPullCallback 从最新历史回抽注入
+     *       顶部，不足部分底部补空。Alternate 缓冲无回调路径：尾部截断/补空。
+     * @note 不做列向 reflow；列变化的 soft-wrap reflow 由 reflow() 原语承担，
+     *       ZzNativeBackend::resize 协调顺序（先历史后屏幕，M4 已落地）。全屏标脏。
      */
     void resize(int cols, int rows);
 
@@ -369,6 +382,12 @@ public:
      */
     void setScrollOutCallback(ScrollOutCallback callback);
 
+    /**
+     * @brief 设置历史回抽回调（由 ZzTerminal/backend 安装，M15）。
+     * @param callback 回调；传空表示扩行不回抽（底部补空）。
+     */
+    void setHistoryPullCallback(HistoryPullCallback callback);
+
 private:
     /// @brief 单缓冲区的完整状态。
     struct Buffer {
@@ -386,6 +405,8 @@ private:
     void markAllDirty() noexcept;
     /// @brief 重组单套缓冲区到新列宽（reflow 的 per-buffer 实现）。
     void reflowBuffer(Buffer& buf, int newCols, bool mayScrollOut);
+    /// @brief 单套缓冲区的 resize 实现（M15 行变条件语义 + 列向截断/填充）。
+    void resizeBuffer(Buffer& buf, int cols, int rows, bool mayUseHistory);
     /// @brief 滚动区是否覆盖全屏高度（滚出上沿的行才可进入历史）。
     [[nodiscard]] bool regionIsFullHeight() const noexcept;
     /// @brief 向上滚动滚动区（内部实现，含滚出回调）。
@@ -409,4 +430,5 @@ private:
     bool                autoWrapMode_ = true;   ///< DECAWM 默认开。
     std::uint64_t       dirtyGeneration_ = 0;
     ScrollOutCallback   scrollOutCallback_;
+    HistoryPullCallback historyPullCallback_;
 };
