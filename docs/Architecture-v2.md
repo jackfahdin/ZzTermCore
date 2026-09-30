@@ -187,6 +187,7 @@ Public API 由 Zz 定义。推荐使用 PImpl 隐藏具体后端：
         ZzTermChanges feed(std::span<const std::byte> data);
         void resize(int columns, int rows);
         ZzRenderView renderView() const;
+        ZzHistoryView historyView() const; // M14：历史行只读视图（0=最旧，Alternate 恒 0，generation 代计数侦测变化）
     private:
         class Impl;
         std::unique_ptr<Impl> impl_;

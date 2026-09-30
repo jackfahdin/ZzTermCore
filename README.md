@@ -10,14 +10,14 @@
     测试与 Fuzz
 -   Cell 级 Unicode 表达：wide cell、grapheme cluster、256 色与
     RGB TrueColor
--   稳定只读的 `ZzRenderView` 渲染边界，Renderer 不接触 Core 私有容器
+-   稳定只读的 `ZzRenderView` 渲染边界与 `ZzHistoryView` 历史边界（M14），Renderer 不接触 Core 私有容器
 -   静态库与动态库均可构建、安装和链接（`BUILD_SHARED_LIBS`）
 -   规划中的外层模块：Qt 6 QWidget 组件、关键词/正则高亮、
     Unix PTY / Windows ConPTY、独立 ZzTermDemo
 
 ``` text
 bytes -> UTF-8/VT/xterm Parser -> Terminal State
-      -> Cell/Line/Screen -> Scrollback -> RenderView
+      -> Cell/Line/Screen -> Scrollback -> RenderView + HistoryView
 
 Frontend semantic events -> InputEncoder -> bytes
 ```

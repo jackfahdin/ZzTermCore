@@ -11,7 +11,7 @@
 
 ``` text
 bytes -> UTF-8/VT/xterm Parser -> Terminal State
-      -> Cell/Line/Screen -> Scrollback -> RenderView
+      -> Cell/Line/Screen -> Scrollback -> RenderView + HistoryView
 
 Frontend semantic events -> InputEncoder -> bytes
 ```
@@ -311,6 +311,29 @@ Renderer 不访问 Core 私有容器。
   粗粒度后端（Contour）有脏时 `rowDirty` 恒 true、`dirtyRange`
   恒全行，契约对两种实现均成立。
 
+### HistoryView
+
+M14 新增的后端无关历史行只读视图，与 RenderView 平行的第二只读边界：
+RenderView 覆盖屏幕区，HistoryView 覆盖 scrollback 历史区。
+
+- `ZzTerminal::historyView()` 返回 `const ZzHistoryView&`，借用 Terminal，
+  不得比 Terminal 长寿。
+- `ZzHistoryView` 为纯虚接口：`lineCount` / `lineAt` / `droppedLineCount` /
+  `generation`。
+- 坐标：index 属于 [0, lineCount())，0 = 最旧历史行；
+  绝对行号 = droppedLineCount() + index（选区锚点平移/应用侧归档对齐用）。
+- `lineAt(index)` 返回 ZzLineView 借用句柄：feed/resize/clear 或下一次
+  lineAt 调用后失效（contour 为视图内部单行缓冲覆写，native 借 scrollback
+  const 引用）。行宽恒等于终端当前列宽（resize 经 reflow 维持）。
+- Alternate 屏 lineCount() 恒 0（Alternate 无历史），回 Primary 恢复。
+- 变化侦测用 generation()（append/裁剪/reflow/clear/Alternate 切换递增，
+  允许保守多增）；禁止每帧全扫历史，滚动查看按需取可见行。
+- 线程：非线程安全，与 ZzTerminal 同线程。
+
 ## 版本与 ABI 策略
 
 > 随实现补充（M6 里程碑收敛）。
+
+- M14：新增公共类 `ZzHistoryView` 与 `ZzTerminal::historyView` 非虚方法，
+  向后兼容的 minor 新增；内部 `ZzTerminalBackend` 加非纯虚默认实现，
+  不影响公共 ABI。
