@@ -198,6 +198,7 @@ ZzNativeBackend::ZzNativeBackend(int cols, int rows, std::size_t scrollbackMaxLi
     , scrollback_(zzCreateChunkedScrollback(scrollbackMaxLines))
     , lineSource_(screen_, *scrollback_)
     , renderView_(screen_)
+    , historyView_(screen_, *scrollback_, historyGeneration_)
     , sink_(std::make_unique<Sink>(*this))
     , parser_(std::make_unique<ZzVtParser>(sink_.get()))
 {
@@ -205,6 +206,7 @@ ZzNativeBackend::ZzNativeBackend(int cols, int rows, std::size_t scrollbackMaxLi
     screen_.setScrollOutCallback([this](std::vector<ZzLine> lines) {
         scrolledOutPending_ += lines.size();
         scrollback_->append(std::move(lines));
+        ++historyGeneration_; // M14：历史 append（含容量裁剪）代计数递增
     });
 }
 
@@ -238,6 +240,7 @@ bool ZzNativeBackend::resize(int cols, int rows)
     //（屏幕溢出行以新宽度经 ScrollOutCallback 回流到已重组的历史，宽度不变量自洽）。
     if (cols != old.cols) {
         scrollback_->reflow(cols);
+        ++historyGeneration_; // M14：历史 reflow 代计数递增（屏幕回流 append 经回调另计）
         screen_.reflow(cols);
     }
     if (rows != old.rows)

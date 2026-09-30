@@ -91,6 +91,7 @@ bool ZzTerminal::resize(int cols, int rows)
     return changed;
 }
 const ZzRenderView& ZzTerminal::renderView() const noexcept { return impl_->backend->renderView(); }
+const ZzHistoryView& ZzTerminal::historyView() const noexcept { return impl_->backend->historyView(); }
 ZzSize ZzTerminal::size() const noexcept { return impl_->backend->size(); }
 ZzCursorState ZzTerminal::cursor() const noexcept { return impl_->backend->cursor(); }
 bool ZzTerminal::isAlternateScreen() const noexcept { return impl_->backend->isAlternateScreen(); }

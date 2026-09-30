@@ -240,6 +240,7 @@ void ZzNativeBackend::dispatchDecPrivate(const ZzParamSequence& seq)
 
 void ZzNativeBackend::switchToAlternate(bool saveCur)
 {
+    ++historyGeneration_; // M14：Alternate 切换改变可见历史（lineCount 归零/恢复）
     if (saveCur)
         screen_.saveCursor();
     if (screen_.activeBuffer() != ZzScreenBuffer::Alternate) {
@@ -261,6 +262,7 @@ void ZzNativeBackend::switchToAlternate(bool saveCur)
 
 void ZzNativeBackend::switchToPrimary(bool restoreCur)
 {
+    ++historyGeneration_; // M14：Alternate 切换改变可见历史（lineCount 归零/恢复）
     if (screen_.activeBuffer() == ZzScreenBuffer::Primary)
         return; // 幂等
     screen_.setActiveBuffer(ZzScreenBuffer::Primary);

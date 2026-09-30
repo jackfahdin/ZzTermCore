@@ -4,6 +4,7 @@ target_sources(ZzTermCore PRIVATE
     ZzNativeRenderView.cpp
     ZzNativeBackend.cpp
     ZzNativeLineSource.cpp
+    ZzNativeHistoryView.cpp
     NativeCsiDispatch.cpp
     NativeSgr.cpp
 )

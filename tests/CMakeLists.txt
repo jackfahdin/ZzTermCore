@@ -34,6 +34,10 @@ if(TARGET test_backend_interface)
     # OFF 路径断言（Contour kind 抛 logic_error）依赖该宏透传。
     target_compile_definitions(test_backend_interface
         PRIVATE $<$<BOOL:${ZZTERM_WITH_CONTOUR}>:ZZTERM_WITH_CONTOUR=1>)
+    # M14：ZzTerminalBackend::historyView() 默认实现（src/backend，无 ZZTERM_API
+    # 导出）须编进测试可执行文件，否则 shared 构建（hidden visibility）链接不到。
+    target_sources(test_backend_interface PRIVATE
+        "${CMAKE_SOURCE_DIR}/src/backend/ZzTerminalBackend.cpp")
 endif()
 
 # test_reflow 直接调用内部纯函数 zzReflowLines（src/screen/Reflow.h，无

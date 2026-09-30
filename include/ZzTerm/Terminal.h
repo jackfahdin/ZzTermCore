@@ -9,6 +9,7 @@
 #include <string_view>
 
 #include "ZzTerm/Export.h"
+#include "ZzTerm/HistoryView.h"
 #include "ZzTerm/Input.h"
 #include "ZzTerm/RenderView.h"
 #include "ZzTerm/Screen.h"
@@ -130,6 +131,15 @@ public:
      *         帧内使用、跨帧重新读取其查询结果。
      */
     [[nodiscard]] const ZzRenderView& renderView() const noexcept;
+
+    /**
+     * @brief 获取历史行只读视图（M14；与 renderView 平行的第二只读边界）。
+     * @return 历史视图常量引用；借用 Terminal，不得比 Terminal 长寿。
+     * @note 坐标 0 = 最旧历史行；Alternate 屏 lineCount() 恒 0；
+     *       feed/resize 后经 lineAt 重新取行句柄。变化侦测用 generation()，
+     *       禁止每帧全扫历史。
+     */
+    [[nodiscard]] const ZzHistoryView& historyView() const noexcept;
 
     /**
      * @brief 当前网格尺寸。

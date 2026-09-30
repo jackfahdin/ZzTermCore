@@ -13,6 +13,7 @@
 #include <string_view>
 
 #include "ZzLineSource.h"
+#include "ZzTerm/HistoryView.h"
 #include "ZzTerm/Input.h"
 #include "ZzTerm/RenderView.h"
 #include "ZzTerm/Screen.h"
@@ -49,4 +50,7 @@ public:
     virtual void sendFocus(bool focused) = 0;
     /// 统一物理行只读数据源（M5a 选区/复制；借用语义同 renderView）。
     [[nodiscard]] virtual const ZzIPhysicalLineSource& lineSource() const noexcept = 0;
+    /// 历史行只读视图（M14；借用语义同 renderView）。
+    /// 非纯虚：默认返回兜底空视图（lineCount 恒 0），后端按能力覆写。
+    [[nodiscard]] virtual const ZzHistoryView& historyView() const noexcept;
 };
