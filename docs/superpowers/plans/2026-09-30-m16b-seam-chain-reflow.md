@@ -464,3 +464,11 @@ gh run list --branch contour --limit 7
 - ZzTermCore 仓打 tag `m16b` 并推送（`git tag m16b && git push origin m16b`）。
 - demo 工具回归（M16 时建的 /tmp/zz-m16-demo）：重跑 `cd /tmp/zz-m16-demo && ./build/m16demo -platform offscreen`——A/C 全缓冲非空行序列应严格相等（M16 时发现的跨缝劈链行对应接回），退出码 0；三张 PNG 对照目验。
 - 人工复验移交（用户执行）：spike 多栏 ls 反复拖窄拉宽，含接缝行的布局应完整恢复。
+
+## 实施勘误（SDD 审查中修正的计划数据缺陷，代码以仓库为准）
+
+1. 任务 1 步骤 1 测试 setup：makeChainLine 造 wrapped 非尾行只有 2 格内容——zzReflowChain 只裁链尾空白、链中间空白格占列，溢出/接回期望物理上必败。实施修正为满列 setup（test 6：head "abcd"(w) + 屏幕首行 "efgh" 置 wrapped；test 7：scr(2,3) + 满列 head "ta"），全部期望值逐项保留（4537537，任务 1 审查核实）。
+2. 任务 2 步骤 1 facade 用例 6/7：feed("op\r\n") 会在末行多滚一行把链尾 kl 也顶入历史使缝消失，修正为 feed("op")（ed480a1，任务 2 审查推演核实）。
+3. 任务 2 步骤 1 facade 用例 6/7：链 12 格在 10 列下必为 2 行链，「接回单行」需列宽 ≥ 12，拉大从 resize(10,3) 修正为 resize(12,3)（ed480a1）。
+4. 任务 2 步骤 5 compat 用例 22：80x24 下 23 行 filler 会滚 2 行（链尾也入历史），filler 数修正为 22（ed480a1）。
+5. demo 断言勘误（任务 2 审查裁定）：demo 的 A/C 严格相等断言对 bash SIGWINCH 重绘写入的提示符尾部空格过苛（应用侧内容、非 Core reflow 语义），放宽为去尾空白行序列比对；对照实验证实该差异与 M16b 无关。
