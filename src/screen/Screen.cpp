@@ -123,6 +123,22 @@ void ZzScreen::reflow(int newCols)
     markAllDirty();
 }
 
+void ZzScreen::prependPrimaryLines(std::vector<ZzLine> lines)
+{
+    if (lines.empty())
+        return;
+    const auto count = static_cast<int>(lines.size());
+    primary_.lines.insert(primary_.lines.begin(),
+                          std::make_move_iterator(lines.begin()),
+                          std::make_move_iterator(lines.end()));
+    // reflowBuffer 的光标→链坐标换算从 cursorRow 回找链头，必须随插入平移。
+    primary_.cursor.position.row += count;
+    primary_.wrapPending = false;
+    // 行数瞬时超 rows_：由随后的 reflow() 溢出分支裁回（出口恒 rows_）；
+    // dirtyRows/dirtyRanges 尺寸不动——对外查询以 rows_ 为界，reflow 后
+    // markAllDirty 自洽（M16b 调研 §3 验证）。
+}
+
 void ZzScreen::reflowBuffer(Buffer& buf, int newCols, bool mayScrollOut)
 {
     // 光标 -> 链坐标：向上找链起点，统计链序号，偏移 = 链内整行宽累加 + 光标列。

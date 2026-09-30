@@ -105,6 +105,17 @@ public:
      */
     void reflow(int newCols);
 
+    /**
+     * @brief 把若干行插入 Primary 缓冲区顶部（Core 内部使用；M16b 接缝链归还）。
+     * @param lines 待插入行（以值移交所有权，旧到新顺序）。
+     * @note 插入后行数可瞬时超过 rows_——由随后的 reflow() 溢出分支裁回
+     *       （reflowBuffer 出口恒 rows_）；cursor.position.row 随插入数平移；
+     *       wrapPending 清除；dirty 状态由随后的 reflow 全屏标脏自洽。
+     * @note 仅作用于 primary_（与当前活动缓冲无关）；Alternate 永不插入。
+     *       插入后到 reflow() 之间不得穿插写入路径调用（单线程约定）。
+     */
+    void prependPrimaryLines(std::vector<ZzLine> lines);
+
     // ---- 缓冲区 ----
 
     /**
