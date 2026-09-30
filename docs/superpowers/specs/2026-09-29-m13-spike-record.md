@@ -30,7 +30,7 @@
 
 | # | 想要的接口 | spike 期绕行形态 | 建议归宿 |
 | --- | --- | --- | --- |
-| 1 | RenderView 历史行只读访问（滚动查看历史） | 不实现滚动——ZzRenderView 仅暴露屏幕区 lineAt；ZzTerminal 的 scrollback 存在但标注 Core 内部使用、仅 Native、不属 Renderer API | M13 特性对齐阶段由 Core 提供后端无关的历史行只读视图，或明确放行 scrollback 给前端 |
+| 1 | RenderView 历史行只读访问（滚动查看历史） | 不实现滚动——ZzRenderView 仅暴露屏幕区 lineAt；ZzTerminal 的 scrollback 存在但标注 Core 内部使用、仅 Native、不属 Renderer API | M13 特性对齐阶段由 Core 提供后端无关的历史行只读视图，或明确放行 scrollback 给前端——**M14 已闭环**（ZzHistoryView，见 2026-09-30-m14-history-view-design.md） |
 | 2 | ZzPty master fd 非阻塞配置 | 调用方自置 fcntl O_NONBLOCK（宿主与 QTest 各一处，已注释）；阻塞 fd 上「read 循环到 EAGAIN」会吊死事件循环（T1 实证挂起 301s 被 watchdog SIGABRT，栈钉在 ZzPty read） | 评估 ZzPtyConfig 加 nonBlocking 项或 spawn 默认置非阻塞；文档补写「需调用方自置 O_NONBLOCK」 |
 | 3 | ZzSshCore 默认私钥探测 | 宿主侧自探测 id_ed25519 / id_ecdsa / id_rsa 首个存在者（另留 --key 显式指定）——ZzSshAuthConfig 的 privateKeyPath 为空即整段跳过公钥认证直落密码，与 OpenSSH 默认 key 扫描习惯不同 | 属 ZzSshCore（ZzClawTerm 仓）而非 Core：正式集成时在应用装配层或 ZzSshCore 内补默认路径扫描 |
 

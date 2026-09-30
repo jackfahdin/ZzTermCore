@@ -102,3 +102,10 @@ spike widget 加滚动条与 wheelEvent：
 
 - 特性对齐阶段 P0（历史行访问）随本里程碑闭环，剩余 P0 面清空；P1 队列：ZzPty 非阻塞配置、IME 中文输入
 - 删 ZzTermWidget 风险排序更新：历史/滚动由「最高（依赖 Core 新 API）」降为「中（契约已备，剩前端工程量与越顶拼接）」
+
+## 8. 收尾登记（M14 终审后立案的后续项）
+
+- **contour droppedLineCount 行变过冲（独立后续项，三包同做）**：缩行 pushUp 路径 Grid 收账顺序（rotateBuffersLeft 在前、pageSize 缩小在后）致 stableFloor 过冲，noteFloor 把仍可读的压入行计入 dropped——只产生行号空洞（不重复、不丢内容、单调性保持），契约注释伞形免责已在位，但应修：fork 修 Grid 收账顺序 + 契约注释把「列变 reflow」免责拓宽为含「行变 pushUp」+ 重钉 M5a/M14 相关用例。
+- **契约注释补一行**：双后端行变 resize 语义不对称（native 行向截断不压历史、contour shrinkLines pushUp 压入历史）自 M0 既有，M14 后 lineCount() 使之对外可观察，宜在 HistoryView.h 注释说明不承诺行变 parity。
+- **测试补强（低优先）**：contour 侧 wrapped() compat 断言；contour 历史 clear（CSI 3J）代计数递增用例。
+- **spike widget backlog（ZzClawTerm 演进面）**：滚轮平滑滚动截断（触摸板小步长）、上滚停留时新输出视口漂移（既定离底偏移语义，产品化时改绝对行锚定）、滚动条 pageStep/singleStep 缺省；M13 已录四条（回显错位、Ctrl+C、resize 内容丢失、IME 升 P1）照常跟踪。

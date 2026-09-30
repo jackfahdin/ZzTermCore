@@ -1364,3 +1364,9 @@ cd /home/zz/Jackfahdin/github/ZzClawTerm
 - ZzTermCore 仓打 tag `m14` 并推送（`git tag m14 && git push origin m14`）。
 - 更新 `docs/superpowers/specs/2026-09-29-m13-spike-record.md` §3 缺口 1 的状态标注为「M14 已闭环」（一行编辑，随 m14 tag 前最后 commit 或独立 docs commit）。
 - 人工验证现象按 M13 惯例定性入 M14 完成记录（新现象入 spike widget bug backlog，Core 契约层缺陷单独跟踪）。
+
+## 实施勘误（SDD 审查中修正的计划原文缺陷，代码以仓库为准）
+
+1. 任务 4 步骤 3 其七 wheelEvent：`scrollOffset_ - steps * 3` 方向写反（offset 语义为离底行数，上滚应增大），实施修为 `+ steps * 3` 并提单点钩子 scrollByWheelStepsForTest（ZzClawTerm f0ed50b）。
+2. 任务 4 步骤 4 其二滚动条装配：`QWidget window` 栈对象写法致 double free（layout 收编栈对象后析构顺序冲突），实施修为 new 分配由 QApplication 析构回收（ZzClawTerm 5fb5fcd）。
+3. 任务 4 步骤 4 滚动条连接：直连绑定致 thumb 朝向倒置且历史增长时稳态脱同步，实施修为 lambda 映射 value = maxScrollOffset - offset 并在 scrollRangeChanged 处理中同步 value（ZzClawTerm f0ed50b、5e11e71）。
