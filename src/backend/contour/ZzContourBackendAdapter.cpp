@@ -67,11 +67,13 @@ public:
         const auto [oldCols, oldRows] = backend_->size();
         if (oldCols == cols && oldRows == rows)
             return false;
+        // M14：historyBefore 须在 resize 前捕获——resize 后捕获会使下方行数比较
+        // 恒假，纯行变（屏幕顶行压入/回抽历史）漏增代计数。
+        const int historyBefore = backend_->historyLineCount();
         backend_->resize(cols, rows);
         // 双入口划分（ZzContourLineSource.cpp 文件头结论①）：列变化触发 reflow，
         // floor 前移是行身份重建副产而非真实丢弃——reanchorFloor 直接对齐不累计；
         // 纯行数变化 floor 仅在真实裁剪时前移——noteFloor 累计。
-        const int historyBefore = backend_->historyLineCount();
         if (cols != oldCols)
             lineSource_.reanchorFloor();
         else

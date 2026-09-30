@@ -82,6 +82,20 @@ static void testContourGenerationAndAlternate()
     ZZ_TEST_EXPECT(term.resize(40, 6));
     ZZ_TEST_EXPECT(term.historyView().generation() > g1); // 列变 reflow 递增
     ZZ_TEST_EXPECT(term.historyView().lineAt(0).cellCount() == 40); // 行宽不变量
+    // 纯行变 resize（R1）：缩行把屏幕顶行压入历史、扩行回抽——两者历史内容均变，
+    // 代计数均须递增。扩行不触动 droppedLineCount（floor 不动），唯行数比较能检出，
+    // 钉住 historyBefore 捕获点前移。
+    const std::uint64_t gRow = term.historyView().generation();
+    const std::size_t rowsBefore = term.historyView().lineCount();
+    ZZ_TEST_EXPECT(term.resize(40, 3));
+    ZZ_TEST_EXPECT(term.historyView().generation() > gRow);      // 缩行递增
+    ZZ_TEST_EXPECT(term.historyView().lineCount() > rowsBefore); // 顶行压入历史
+    const std::uint64_t gShrink = term.historyView().generation();
+    const std::size_t rowsShrunk = term.historyView().lineCount();
+    ZZ_TEST_EXPECT(term.resize(40, 6)); // 扩行回抽，视图仍可读不越界
+    ZZ_TEST_EXPECT(term.historyView().generation() > gShrink);   // 扩行亦递增（R1 关键）
+    ZZ_TEST_EXPECT(term.historyView().lineCount() < rowsShrunk); // 历史行回抽屏幕
+    ZZ_TEST_EXPECT(term.historyView().lineCount() > 0);
     const std::uint64_t g2 = term.historyView().generation();
     feedStr(term, "\x1b[?1049h");
     ZZ_TEST_EXPECT(term.historyView().lineCount() == 0); // Alternate 历史归零
