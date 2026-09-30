@@ -56,9 +56,10 @@ cd /home/zz/Jackfahdin/github/ZzClawTerm
 人工实测暴露的八现象与定性（全部落在 spike 种子层，无一指向 Core 契约层缺陷）：
 
 1. **无法输入中文（两链）**：IME 是 spike 规格明示的排除项，未接 QInputMethodEvent——非缺陷，是已知的未实现面。特性对齐阶段优先级由 P2 升至 **P1**（中文输入是目标用户群的刚需交互）。
-2. **打字不可见、回车后提示符所在行错位（--local）**：回显经由 PTY 回环上屏（两端均实证），疑 spike widget 的种子层渲染/光标定位问题（cellWidth 换算或 dirty 区），非 Core 输出通路问题——probe 与 QTest 均实证 Core 文本回读正确。入 widget bug backlog。
-3. **方向键翻看历史命令看不到之前输入（--local）**：与现象 2 同源（shell 重绘当前行时渲染错位），同一 backlog 条目。
-4. **cat 阻塞后 Ctrl+C 无响应、界面似卡死（--local）**：疑 sendKey 对 Ctrl 组合键的编码路径或 ISIG 信号投递在种子层缺失；方向键仍可动说明事件循环未死、渲染未刷新。入 widget bug backlog。
+2. **打字不可见、回车后提示符所在行错位（--local）**：~~疑 spike widget 的种子层渲染/光标定位问题~~ **已根因并修复**（ZzClawTerm `ec9acdf`）：runLocal 用 rawMode=true 调 ZzPty::spawn，slave 被 cfmakeraw（-echo -opost），打字零回显、换行裸 LF 列保持（提示符缩到行尾、ls 多栏塌单行）。修复=rawMode=false 与 ZzTermSmoke 对齐，TDD 红绿形态正确（回显链用例 bashEchoChainWorks 钉住）。
+3. **方向键翻看历史命令看不到之前输入（--local）**：与现象 2 同根（-echo/-opost 的 readline 重绘缺失），随 `ec9acdf` 一并修复。
+4. **cat 阻塞后 Ctrl+C 无响应、界面似卡死（--local）**：~~疑 sendKey 编码路径或 ISIG 投递缺失~~ **同根修复**（`ec9acdf`）：cfmakeraw 的 -isig 使 Ctrl+C 不产生 SIGINT；rawMode=false 后恢复。
+4a. **补充根因证据**（调查反事实闭环）：raw spawn 的 bash 里 `stty sane` 后回显/\r\n/SIGINT 立即全恢复，唯一变量为 slave termios；两模式均无 job control 告警，ZzPty spawn 的 setsid/TIOCSCTTY 完好；ZzTermSmoke 正常仅因显式 rawMode=false。
 5. **resize 后内容丢失、拉大不恢复（两链）**：疑 spike widget 的 resizeEvent 早退或格宽换算错误尺寸下发；SSH 链 tput cols 随尺寸变化实证 Core resize 通路正常，故定种子层。历史重排语义与 M14 历史访问契约相关，顺带在 M14 一并定性。
 6. --ssh 其余项（启动、ls、echo、vim、方向键）正常，无新增现象。
 
