@@ -16,7 +16,8 @@ list(REMOVE_ITEM ZZTERM_UNIT_TEST_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_backend_compat.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_selection_compat.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_search_compat.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_cluster_compat.cpp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_cluster_compat.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_historyview_compat.cpp")
 
 foreach(test_source IN LISTS ZZTERM_UNIT_TEST_SOURCES)
     get_filename_component(test_name "${test_source}" NAME_WE)
@@ -149,6 +150,14 @@ if(TARGET ZzTermContourBackend)
     add_executable(test_cluster_compat unit/test_cluster_compat.cpp)
     target_link_libraries(test_cluster_compat PRIVATE ZzTermCore)
     add_test(NAME test_cluster_compat COMMAND test_cluster_compat)
+endif()
+
+# M14：双后端历史视图 compat（同一脚本历史文本逐行一致，native 为基准）。
+# 只碰公开头（C++20 即可），仅链接 ZzTermCore（同 test_backend_compat 的 shared 构建理由）。
+if(TARGET ZzTermContourBackend)
+    add_executable(test_historyview_compat unit/test_historyview_compat.cpp)
+    target_link_libraries(test_historyview_compat PRIVATE ZzTermCore) # Contour target 一律 PRIVATE
+    add_test(NAME test_historyview_compat COMMAND test_historyview_compat)
 endif()
 
 # 脚本化冒烟：PTY 驱动 Core 全链路——真实 shell 输出经 ZzTerminal 渲染回 stdout，

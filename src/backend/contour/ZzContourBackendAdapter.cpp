@@ -3,6 +3,7 @@
 #include "ZzContourBackend.h"
 #include "ZzContourEvents.h"
 #include "ZzContourLineSource.h"
+#include "ZzContourHistoryView.h"
 #include "ZzContourRenderView.h"
 
 #include <utility>
@@ -19,6 +20,8 @@ public:
                                                       static_cast<int>(scrollbackLines)))
         // lineSource_ 借用 backend_：声明顺序须在 backend_ 之后（成员按声明序构造）。
         , lineSource_(*backend_)
+        // historyView_ 借用 backend_/lineSource_/historyGeneration_：声明顺序须在它们之后。
+        , historyView_(*backend_, lineSource_, historyGeneration_)
         , renderView_(*backend_, state_)
     {}
 
@@ -30,6 +33,12 @@ public:
         backend_->flushReplies(); // 回传字节经 onWriteToTransport（锁外）进 output handler
         const int historyAfter = backend_->historyLineCount();
         lineSource_.noteFloor(); // 累计 stableFloor 真实前移（容量裁剪）
+        // M14：历史代计数——行数变化（append）、真实裁剪（floor 前移）、
+        // Alternate 切换（可见历史归零/恢复）任一发生即递增；允许保守多增。
+        if (historyAfter != historyBefore || lineSource_.droppedLineCount() != lastDropped_
+            || activeBufferChanged_)
+            ++historyGeneration_;
+        lastDropped_ = lineSource_.droppedLineCount();
 
         ZzTermChanges changes;
         changes.screenDirty = screenDirty_;
@@ -62,10 +71,17 @@ public:
         // 双入口划分（ZzContourLineSource.cpp 文件头结论①）：列变化触发 reflow，
         // floor 前移是行身份重建副产而非真实丢弃——reanchorFloor 直接对齐不累计；
         // 纯行数变化 floor 仅在真实裁剪时前移——noteFloor 累计。
+        const int historyBefore = backend_->historyLineCount();
         if (cols != oldCols)
             lineSource_.reanchorFloor();
         else
             lineSource_.noteFloor();
+        // M14：列变 reflow 历史内容必变（保守递增）；行变仅在历史行数或
+        // 裁剪计数实际变化时递增。
+        if (cols != oldCols || backend_->historyLineCount() != historyBefore
+            || lineSource_.droppedLineCount() != lastDropped_)
+            ++historyGeneration_;
+        lastDropped_ = lineSource_.droppedLineCount();
         state_.dirtySinceClear = true;
         ++state_.dirtyGeneration;
         return true;
@@ -116,6 +132,7 @@ public:
         backend_->flushReplies();
     }
     [[nodiscard]] const ZzIPhysicalLineSource& lineSource() const noexcept override { return lineSource_; }
+    [[nodiscard]] const ZzHistoryView& historyView() const noexcept override { return historyView_; }
 
 private:
     // ZzContourEvents 实现：锁内回调（title/bell/altBuffer）只写 adapter 自有状态
@@ -144,6 +161,9 @@ private:
     std::unique_ptr<EventsImpl>       events_;
     std::unique_ptr<ZzContourBackend> backend_;
     ZzContourLineSource               lineSource_; // 借用 backend_，须声明在其后
+    std::uint64_t                     historyGeneration_ = 0; // M14 历史代计数（historyView_ 借用，须声明在其前）
+    std::uint64_t                     lastDropped_ = 0;       // M14 裁剪计数快照（代计数递增判定用）
+    ZzContourHistoryView              historyView_;  // 借用 backend_/lineSource_/historyGeneration_，须声明在它们之后
     ZzContourRenderView::State        state_;
     ZzContourRenderView               renderView_;
     std::string                       title_;
