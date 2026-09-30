@@ -473,6 +473,46 @@ void testResizeReflowHardLine()
         checkRowEqualAllowEmptyWidthDiff(d.native, d.contour, r, 80, "hardline-80");
 }
 
+// 22. 跨缝链列变 parity（M16b）：链横跨历史/屏幕接缝，缩/拉两档后双后端
+// 历史行数/文本/wrapped/屏幕逐格一致——native 归还机制 vs contour 统一流。
+void testResizeReflowSeamChain()
+{
+    Dual d;
+    const std::string head(80, 'a');
+    const std::string tail(10, 'b');
+    d.feedBoth(head + tail + "\r\n"); // 90 格链：80 列 autowrap 成 2 行，光标到行 2
+    for (int i = 0; i < 22; ++i)
+        d.feedBoth("filler\r\n");     // 恰好滚出 1 行：链头入历史、链尾留屏幕（跨缝）
+    // 跨缝状态双后端钉住：历史末行 wrapped=true
+    ZZ_CHECK(d.native.historyView().lineCount() == d.contour.historyView().lineCount());
+    ZZ_CHECK(d.native.historyView().lineCount() > 0);
+    const std::size_t h0 = d.native.historyView().lineCount();
+    ZZ_CHECK(d.native.historyView().lineAt(h0 - 1).wrapped());
+    ZZ_CHECK(d.contour.historyView().lineAt(h0 - 1).wrapped());
+
+    d.native.resize(60, 24); // 缩列：跨缝链接续保持（不劈开）
+    d.contour.resize(60, 24);
+    ZZ_CHECK(d.native.historyView().lineCount() == d.contour.historyView().lineCount());
+    for (std::size_t i = 0; i < d.native.historyView().lineCount(); ++i) {
+        ZZ_CHECK(historyText(d.native, i) == historyText(d.contour, i));
+        ZZ_CHECK(d.native.historyView().lineAt(i).wrapped()
+                 == d.contour.historyView().lineAt(i).wrapped());
+    }
+    for (int r = 0; r < 24; ++r)
+        checkRowEqualAllowEmptyWidthDiff(d.native, d.contour, r, 60, "seam-60");
+
+    d.native.resize(80, 24); // 拉大：链接回
+    d.contour.resize(80, 24);
+    ZZ_CHECK(d.native.historyView().lineCount() == d.contour.historyView().lineCount());
+    for (std::size_t i = 0; i < d.native.historyView().lineCount(); ++i) {
+        ZZ_CHECK(historyText(d.native, i) == historyText(d.contour, i));
+        ZZ_CHECK(d.native.historyView().lineAt(i).wrapped()
+                 == d.contour.historyView().lineAt(i).wrapped());
+    }
+    for (int r = 0; r < 24; ++r)
+        checkRowEqualAllowEmptyWidthDiff(d.native, d.contour, r, 80, "seam-80");
+}
+
 } // namespace
 
 int main()
@@ -497,6 +537,7 @@ int main()
     testResizeReflow();
     testResizeReflowCjk();
     testResizeReflowHardLine();
+    testResizeReflowSeamChain();
     testRowResizeParity();
     if (g_failures != 0)
         std::fprintf(stderr, "test_backend_compat: %d failure(s)\n", g_failures);

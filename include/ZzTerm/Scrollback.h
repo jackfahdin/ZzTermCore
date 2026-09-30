@@ -87,9 +87,10 @@ public:
      * @note 不变量：历史行宽度与终端当前列宽一致（resize 先历史后屏幕，
      *       屏幕溢出行以新宽度入库）；重组算法与屏幕区共用 zzReflowLines；
      *       重组后超容量仍从最旧一端裁剪并计入 totalDropped。
-     * @note 固有边界：历史与屏幕分域重组，横跨两域的逻辑行会在接缝处
-     *       被拆成两条独立链（内容零丢失），与 Contour 统一重组的折行
-     *       位置可能不同（M5 选区工作前加 compat 钉住）。
+     * @note 分域重组的接缝处理：历史与屏幕分别重组；横跨两域的逻辑行在
+     *       列变 resize 时经 backend 归还机制统一重组（M16b），不再被拆成
+     *       两条独立链；仅纯历史 API 直调 reflow 时 dangling 尾链仍按
+     *       完整链终结（ZzTerminal resize 路径不受影响）。
      */
     virtual void reflow(int newCols) = 0;
 

@@ -126,6 +126,72 @@ static void testResizeReturn()
     ZZ_TEST_EXPECT(!term.resize(0, 4));   // 非法
 }
 
+// 屏幕第 row 行文本（去尾空白断言用前缀比对）。
+static std::string screenRowText(const ZzTerminal& term, int row)
+{
+    const ZzLineView line = term.renderView().lineAt(row);
+    std::string out;
+    for (int col = 0; col < line.cellCount(); ++col)
+        out += line.cellAt(col).text;
+    return out;
+}
+
+// 历史第 index 行文本（test_native_reflow 现无同名帮手，随本用例新增）。
+static std::string historyText(const ZzTerminal& term, std::size_t index)
+{
+    const ZzLineView line = term.historyView().lineAt(index);
+    std::string out;
+    for (int col = 0; col < line.cellCount(); ++col)
+        out += line.cellAt(col).text;
+    return out;
+}
+
+// 6. 跨缝链列变往返（M16b）：缩列跨缝状态保持连续、拉大接回布局完整
+static void testSeamChainReflowRoundtrip()
+{
+    ZzTerminal term(10, 3, ZzBackendKind::Native, 100);
+    feed(term, "abcdefghij"); // 写满行 0（wrap-pending）
+    feed(term, "kl\r\n");     // 链 abcdefghijkl：行 0 wrapped + 行 1，光标到行 2
+    feed(term, "mn\r\n");     // 末行回车滚出链头：历史 [abcdefghij(wrapped)]，屏幕 kl/mn/空
+    feed(term, "op");         // 屏幕 kl/mn/op（不带换行：再滚会把 kl 也顶出、缝消失）
+    // 跨缝状态钉住：历史末行 wrapped=true（续接在屏幕首行）
+    ZZ_TEST_EXPECT(term.historyView().lineCount() == 1);
+    ZZ_TEST_EXPECT(term.historyView().lineAt(0).wrapped());
+
+    // 缩列：链接续保持——归还-重组后溢出裁回，历史尾仍 wrapped=true（合法跨缝态）
+    ZZ_TEST_EXPECT(term.resize(5, 3));
+    const std::size_t h1 = term.historyView().lineCount();
+    ZZ_TEST_EXPECT(h1 == 2); // 链 12 格 -> 5 列：abcde/fghij 溢出进历史，kl 留屏幕
+    ZZ_TEST_EXPECT(term.historyView().lineAt(h1 - 1).wrapped());
+    ZZ_TEST_EXPECT(historyText(term, 0) == "abcde");
+    ZZ_TEST_EXPECT(historyText(term, 1) == "fghij");
+    ZZ_TEST_EXPECT(screenRowText(term, 0) == "kl");
+
+    // 拉大：链接回——归还后统一重组为完整链回到屏幕首行
+    //（链 12 格需 12 列才能合成单行；resize(12,3) 后历史归零、屏幕首行完整链接回）
+    ZZ_TEST_EXPECT(term.resize(12, 3));
+    ZZ_TEST_EXPECT(term.historyView().lineCount() == 0);
+    ZZ_TEST_EXPECT(screenRowText(term, 0) == "abcdefghijkl");
+    ZZ_TEST_EXPECT(!term.renderView().lineAt(0).wrapped());
+}
+
+// 7. 多轮往返布局完整（M16b）：10->5->3->12 后内容逐格恢复
+static void testSeamChainMultiRoundtrip()
+{
+    ZzTerminal term(10, 3, ZzBackendKind::Native, 100);
+    feed(term, "abcdefghij");
+    feed(term, "kl\r\n");
+    feed(term, "mn\r\n");
+    feed(term, "op");
+    ZZ_TEST_EXPECT(term.resize(5, 3));
+    ZZ_TEST_EXPECT(term.resize(3, 3));
+    ZZ_TEST_EXPECT(term.resize(12, 3)); // 链 12 格，拉大到 12 列接回单行
+    ZZ_TEST_EXPECT(term.historyView().lineCount() == 0);
+    ZZ_TEST_EXPECT(screenRowText(term, 0) == "abcdefghijkl");
+    ZZ_TEST_EXPECT(!term.renderView().lineAt(0).wrapped());
+    ZZ_TEST_EXPECT(term.cursor().position.row >= 0 && term.cursor().position.row < 3);
+}
+
 int main()
 {
     testHistoryReflow();
@@ -133,6 +199,8 @@ int main()
     testCjkNotSplit();
     testAltScreenInterleave();
     testResizeReturn();
+    testSeamChainReflowRoundtrip();
+    testSeamChainMultiRoundtrip();
     if (g_failures == 0)
         std::printf("test_native_reflow: all passed\n");
     return g_failures;

@@ -247,6 +247,16 @@ bool ZzNativeBackend::resize(int cols, int rows)
     // M4：列变化触发 soft-wrap reflow，先历史后屏幕
     //（屏幕溢出行以新宽度经 ScrollOutCallback 回流到已重组的历史，宽度不变量自洽）。
     if (cols != old.cols) {
+        // M16b：跨缝链接续保护——历史末行 wrapped=true 即尾链跨缝（续接在
+        // primary 屏幕首链），先摘除归还屏幕统一重组，避免历史 reflow 把
+        // dangling 尾链终结劈链（spec 2026-09-30-m16b-seam-chain-reflow-design.md）。
+        if (const std::size_t histLines = scrollback_->lineCount();
+            histLines > 0 && scrollback_->lineAt(histLines - 1).wrapped()) {
+            std::size_t head = histLines - 1;
+            while (head > 0 && scrollback_->lineAt(head - 1).wrapped())
+                --head;
+            screen_.prependPrimaryLines(scrollback_->takeNewest(histLines - head));
+        }
         scrollback_->reflow(cols);
         ++historyGeneration_; // M14：历史 reflow 代计数递增（屏幕回流 append 经回调另计）
         screen_.reflow(cols);

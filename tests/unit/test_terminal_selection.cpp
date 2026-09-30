@@ -79,6 +79,24 @@ static void testResizeReflowKeepsSelection()
     ZZ_TEST_EXPECT(term.selectedText() == before);
 }
 
+// 跨缝链选区文本在列变往返下不变（M16b）：选区横跨历史/屏幕接缝，
+// 缩列跨缝保持、拉大后 selectedText 逐字不变。
+static void testSeamChainSelectionSurvivesReflow()
+{
+    ZzTerminal term(10, 3, ZzBackendKind::Native, 100);
+    feed(term, "abcdefghij"); // 写满行 0（wrap-pending）
+    feed(term, "kl\r\n");     // 链 abcdefghijkl：行 0 wrapped + 行 1，光标到行 2
+    feed(term, "mn\r\n");     // 末行回车滚出链头：跨缝（历史尾 wrapped=true）
+    feed(term, "op");         // 屏幕 kl/mn/op（不带换行：再滚会把 kl 也顶出、缝消失）
+    term.setSelection(ZzLogicalPos{0, 0}, ZzLogicalPos{0, 12});
+    const std::string before = term.selectedText(); // 跨缝拼链提取（ZzSelectionText 接缝规则）
+    ZZ_TEST_EXPECT(before == "abcdefghijkl");
+    term.resize(5, 3);  // 缩列：跨缝链接续保持
+    ZZ_TEST_EXPECT(term.selectedText() == before);
+    term.resize(10, 3); // 拉大：链接回（10 列下链仍跨缝，选区文本不变）
+    ZZ_TEST_EXPECT(term.selectedText() == before);
+}
+
 static void testDroppedShiftsAnchor()
 {
     ZzTerminal term(10, 2, ZzBackendKind::Native, 4); // 历史容量 4
@@ -117,6 +135,7 @@ int main()
     testSelectHistoryAndScreenSeam();
     testSelectionRangeQuery();
     testResizeReflowKeepsSelection();
+    testSeamChainSelectionSurvivesReflow();
     testDroppedShiftsAnchor();
     testAlternateSwitchClearsSelection();
     if (g_failures == 0)

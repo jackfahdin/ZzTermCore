@@ -99,7 +99,8 @@ parser/screen/scrollback 等引擎组件归各后端实现持有，`ZzTerminal`
   尺寸未变或参数非法（非正）时返回 false 且为空操作。
   resize/reflow 经 ScrollOutCallback 溢出的行不计入 ZzTermChanges 的
   scrollbackChanged/scrolledOutLines（resize 无 changes 通道，前端
-  resize 后重取视图）。
+  resize 后重取视图）。跨历史/屏幕接缝的链在列变 resize 时经归还机制
+  统一重组（M16b），缩列跨缝状态保持连续、拉大接回（对齐 contour 统一流）。
 - `screen()` 与 `scrollback()` 为 Core 内部协作口（可变访问工作区/
   历史后端），仅 Native 后端可用、不带 noexcept，Contour 后端调用
   抛 `std::logic_error`。
@@ -347,3 +348,6 @@ RenderView 覆盖屏幕区，HistoryView 覆盖 scrollback 历史区。
 - M16：行为语义变化（reflow 硬行由截断改为多行化，zzReflowLines/两端 reflow
   路径对外可观察结果变化），无 API 签名变化；M5b 的「截断行 col 快照」
   条款随之废止。
+- M16b：行为语义变化（列变 reflow 的跨历史/屏幕接缝链不再劈开，经归还
+  机制统一重组）；ZzScreen 新增 prependPrimaryLines 公共方法（Core 内部
+  使用定位）；存量劈链不修复（链尾空白已被裁，只对新 resize 生效）。

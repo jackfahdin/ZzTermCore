@@ -9,9 +9,9 @@
 /// 性能红线：禁止每帧扫描全部历史；变化侦测用 generation()，滚动查看按需
 /// lineAt 取可见行（native O(1)，contour 为单行快照拷贝）。
 ///
-/// 固有边界（分域 reflow）：历史与屏幕分域重组，跨域逻辑行在接缝处拆成
-/// 两条链——内容零丢失，但折行位置可能与 contour 后端不同（与 ZzScrollback
-/// 接口注释同一免责声明）。
+/// 接缝处理（M16b）：历史与屏幕分域重组，但横跨两域的逻辑行在列变
+/// resize 时经 backend 归还机制统一重组，不再拆链；历史末行 wrapped=true
+/// 即与屏幕首行续接为一条逻辑行（与 ZzLineSource 接缝规则一致）。
 
 #include <ZzTerm/RenderView.h> // ZzLineView
 
