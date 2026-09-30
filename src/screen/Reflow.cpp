@@ -18,8 +18,6 @@ bool zzIsPlainBlank(const ZzCell& c)
 void zzReflowChain(const ZzLine* chainLines, std::size_t chainLen, int oldCols, int newCols,
                    std::vector<ZzLine>& out, ZzReflowCursor* cursor, bool trackThis)
 {
-    const bool isHardLine = (chainLen == 1) && !chainLines[0].wrapped();
-
     // 链内容的有效末尾（流偏移，不含）：裁掉末尾完全默认空白格。
     std::size_t trimEnd = chainLen * static_cast<std::size_t>(oldCols);
     while (trimEnd > 0) {
@@ -44,22 +42,18 @@ void zzReflowChain(const ZzLine* chainLines, std::size_t chainLen, int oldCols, 
         lastContentCol = 0;
     };
 
-    const std::size_t limit = isHardLine
-        ? std::min(trimEnd, static_cast<std::size_t>(newCols)) // 硬行截断
-        : trimEnd;
-
     // 热循环：cells_ 连续存储，取行首指针顺序推进源位置。
     std::size_t srcIdx = 0;
     int srcCol = 0;
     const ZzLine* nextLine = &chainLines[srcIdx];
     const ZzCell* nextCells = &nextLine->cellAt(0);
-    for (std::size_t s = 0; s < limit; ++s) {
+    for (std::size_t s = 0; s < trimEnd; ++s) {
         const ZzLine* srcLine = nextLine;   // 本格所属行（cluster 文本取自此行）
         const ZzCell* srcCells = nextCells;
         const ZzCell& cell = srcCells[srcCol];
         if (++srcCol == oldCols) {
             srcCol = 0;
-            if (s + 1 < limit) { // 链尾最后一格之后不再推进，避免越界
+            if (s + 1 < trimEnd) { // 链尾最后一格之后不再推进，避免越界
                 nextLine = &chainLines[++srcIdx];
                 nextCells = &nextLine->cellAt(0);
             }
@@ -69,8 +63,6 @@ void zzReflowChain(const ZzLine* chainLines, std::size_t chainLen, int oldCols, 
 
         const int w = (cell.width() == ZzCellWidth::WideLead) ? 2 : 1;
         if (outCol + w > newCols) {
-            if (isHardLine)
-                break; // 硬行永不多行化：宽字符落边界时直接截断
             // 宽字符落边界：本行以默认空白收尾，提前换行。
             flushRow(true);
         }

@@ -24,7 +24,9 @@ struct ZzReflowCursor {
  * @param newCols 新列宽（大于 0）。
  * @param cursor 可选光标跟踪（nullptr 表示不跟踪）。
  * @return 重组后的物理行序列（每行 newCols 列，wrapped 标记已重算）。
- * @note 硬行（未 wrapped 的单行链）截断/补空，永不多行化；
+ * @note 链按新列宽重切：内容超宽的多行化；硬行（未 wrapped 的单行链）即
+ *       chainLen==1 普通链——缩列多行化、拉大沿 wrapped 链合并恢复
+ *       （M16，与 Contour/xterm 对齐，取代 M4 的硬行截断语义）；
  *       链末尾的完全默认空白格被裁除（避免短行变窄产生幽灵行）；
  *       宽字符原子搬运不落边界（边界前移一格补默认空白）；
  *       cluster 格在新行重新 internCluster。

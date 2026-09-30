@@ -79,13 +79,16 @@ static void testReflowNarrow()
     batch.push_back(makeLine(4, "tail", false));
     sb->append(std::move(batch));
     sb->reflow(2);
-    // 链 abcd/efgh -> ab/cd/ef/gh（4 行），tail -> ta（硬行截断）
-    ZZ_TEST_EXPECT(sb->lineCount() == 5);
+    // 链 abcd/efgh -> ab/cd/ef/gh（4 行）；tail -> ta/il（M16：硬行多行化 2 行链）
+    ZZ_TEST_EXPECT(sb->lineCount() == 6);
     ZZ_TEST_EXPECT(lineText(sb->lineAt(0), 2) == "ab");
     ZZ_TEST_EXPECT(sb->lineAt(0).wrapped());
     ZZ_TEST_EXPECT(lineText(sb->lineAt(3), 2) == "gh");
     ZZ_TEST_EXPECT(!sb->lineAt(3).wrapped());
     ZZ_TEST_EXPECT(lineText(sb->lineAt(4), 2) == "ta");
+    ZZ_TEST_EXPECT(sb->lineAt(4).wrapped());
+    ZZ_TEST_EXPECT(lineText(sb->lineAt(5), 2) == "il");
+    ZZ_TEST_EXPECT(!sb->lineAt(5).wrapped());
 }
 
 // 4. reflow 变宽合并 + 重组后超容量仍从最旧端裁
@@ -216,7 +219,8 @@ static void testReflowChunkedAlignment()
             chainStream += "   ";
     }
 
-    // 期望产出：硬行文本 = 编号前 4 字符（8->4 截断，4->8 往返后内容不变），
+    // 期望产出（M16 多行化）：8->4 时每条硬行（编号 5 字符有效内容）变 2 行链
+    //（"L%04" wrapped + "d" 非 wrapped）；4->8 沿链合并恢复 "L%04d" 单行硬行。
     // 链流按 newCols 顺序切块（编号序列严格递增无缺无重），除链末行外 wrapped 全 true。
     auto expectedRows = [&](int newCols) {
         std::vector<std::pair<std::string, bool>> rows;
@@ -230,9 +234,13 @@ static void testReflowChunkedAlignment()
                 continue;
             }
             std::snprintf(buf, sizeof(buf), "L%04d", i);
-            std::string t(buf);
-            t.resize(4); // 变窄截断后内容，往返两阶段一致
-            rows.emplace_back(std::move(t), false);
+            const std::string t(buf); // "L%04d"，5 字符
+            if (newCols == 4) {
+                rows.emplace_back(t.substr(0, 4), true);  // "L%04" wrapped
+                rows.emplace_back(t.substr(4, 1), false); // "d" 链末行
+            } else {
+                rows.emplace_back(t, false); // 往返恢复完整编号硬行
+            }
         }
         return rows;
     };
@@ -291,14 +299,16 @@ static void testReflowDanglingTailChain()
             chainStream += "   ";
     }
 
-    // 期望产出（8->2）：硬行截断为编号前 2 字符；链流按 2 列顺序切块
+    // 期望产出（8->2，M16 多行化）：每条编号硬行（5 字符有效内容）变 3 行链
+    //（"L%" wrapped、"04" wrapped、"d" 非 wrapped）；链流按 2 列顺序切块
     //（编号序列严格递增无缺无重），除链末行外 wrapped 全 true。
     std::vector<std::pair<std::string, bool>> rows;
     for (int i = 0; i < 300; ++i) {
         std::snprintf(buf, sizeof(buf), "L%04d", i);
-        std::string t(buf);
-        t.resize(2);
-        rows.emplace_back(std::move(t), false);
+        const std::string t(buf);
+        rows.emplace_back(t.substr(0, 2), true);
+        rows.emplace_back(t.substr(2, 2), true);
+        rows.emplace_back(t.substr(4, 1), false);
     }
     for (std::size_t off = 0; off < chainStream.size(); off += 2)
         rows.emplace_back(chainStream.substr(off, 2),

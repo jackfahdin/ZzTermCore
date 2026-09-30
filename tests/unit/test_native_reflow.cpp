@@ -42,9 +42,7 @@ static void testHistoryReflow()
     }
     ZZ_TEST_EXPECT(foundMerged);
 
-    term.resize(10, 3); // 变窄：B 的链重新折成多行
-    //（A 变宽后恰为整宽硬行，按 zzReflowLines 设计"硬行永不多行化"截断，
-    //   不参与重切断言；B 合并后仍是 2 行链，变窄可逆重切）。
+    term.resize(10, 3); // 变窄：B 的链重新折成多行（B 合并后仍是 2 行链，变窄可逆重切）。
     bool foundChain = false;
     for (std::size_t i = 0; i + 1 < term.scrollback().lineCount(); ++i) {
         const ZzLine& l0 = term.scrollback().lineAt(i);
@@ -54,6 +52,17 @@ static void testHistoryReflow()
             foundChain = true;
     }
     ZZ_TEST_EXPECT(foundChain);
+    // M16：A（20 列整宽硬行）缩列同样多行化为 2 行链且内容完整
+    //（取代原「硬行永不多行化截断、不参与断言」注释）。
+    bool foundA = false;
+    for (std::size_t i = 0; i + 1 < term.scrollback().lineCount(); ++i) {
+        const ZzLine& l0 = term.scrollback().lineAt(i);
+        const ZzLine& l1 = term.scrollback().lineAt(i + 1);
+        if (l0.wrapped() && !l1.wrapped() && l0.cellAt(0).codePoint() == U'a'
+            && l1.cellAt(9).codePoint() == U'x')
+            foundA = true;
+    }
+    ZZ_TEST_EXPECT(foundA); // A 多行化：首行 10 个 a wrapped，链末行 9 个 a + x
 }
 
 // 2. 屏幕区随 resize 重组且光标 clamp 在界内

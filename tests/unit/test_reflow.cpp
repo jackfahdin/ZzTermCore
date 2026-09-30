@@ -59,15 +59,22 @@ static void testWidenMergesChain()
     ZZ_TEST_EXPECT(lineText(out[1]).substr(40, 40) == c);
 }
 
-// 2. 变窄重切：80 列 1 行硬行 -> 40 列截断（硬行不多行化）
-static void testNarrowTruncatesHardLine()
+// 2. 变窄重切：80 列 1 行硬行 -> 40 列 2 行链（M16：硬行多行化，内容不丢，往返恢复）
+static void testNarrowHardLineMultiLines()
 {
     std::vector<ZzLine> lines;
     lines.push_back(makeLine(80, std::string(80, 'a'), false));
     auto out = zzReflowLines(std::move(lines), 80, 40);
-    ZZ_TEST_EXPECT(out.size() == 1);
-    ZZ_TEST_EXPECT(!out[0].wrapped());
+    ZZ_TEST_EXPECT(out.size() == 2);
+    ZZ_TEST_EXPECT(out[0].wrapped());
+    ZZ_TEST_EXPECT(!out[1].wrapped());
     ZZ_TEST_EXPECT(lineText(out[0]) == std::string(40, 'a'));
+    ZZ_TEST_EXPECT(lineText(out[1]) == std::string(40, 'a'));
+    // 拉大往返：沿 wrapped 链合并，恢复单行硬行。
+    auto back = zzReflowLines(std::move(out), 40, 80);
+    ZZ_TEST_EXPECT(back.size() == 1);
+    ZZ_TEST_EXPECT(!back[0].wrapped());
+    ZZ_TEST_EXPECT(lineText(back[0]) == std::string(80, 'a'));
 }
 
 // 3. 变窄重切：wrapped 链 80x2 -> 40 列 4 行
@@ -213,7 +220,7 @@ static void testCursorInTrimmedBlanks()
     ZZ_TEST_EXPECT(cur.col >= 0 && cur.col < 40); // 兜底到链内容尾/clamp
 }
 
-// 11. 硬行宽字符落新列宽边界：整体截断丢弃，不多行化、无续格泄漏
+// 11. 硬行宽字符落新列宽边界：前移落下行（M16：多行化），内容完整、无续格泄漏
 static void testHardLineWideCharAtBoundary()
 {
     // 10 列硬行：8 个窄字符 + 第 8 列 WideLead（占 8-9 两列），reflow 到 9 列。
@@ -229,13 +236,18 @@ static void testHardLineWideCharAtBoundary()
     l0.setCell(9, cont);
     lines.push_back(std::move(l0));
     auto out = zzReflowLines(std::move(lines), 10, 9);
-    ZZ_TEST_EXPECT(out.size() == 1);        // 硬行永不多行化
-    ZZ_TEST_EXPECT(!out[0].wrapped());
+    // M16：宽字符不落边界（9 列行末仅剩 1 列）→ 前移落第 2 行，两行成链。
+    ZZ_TEST_EXPECT(out.size() == 2);
+    ZZ_TEST_EXPECT(out[0].wrapped());
+    ZZ_TEST_EXPECT(!out[1].wrapped());
     ZZ_TEST_EXPECT(out[0].cellCount() == 9);
     ZZ_TEST_EXPECT(lineText(out[0]).substr(0, 8) == "abcdefgh");
-    ZZ_TEST_EXPECT(out[0].cellAt(8).isEmpty()); // 宽字符整体丢弃，边界补空白
-    for (int i = 0; i < out[0].cellCount(); ++i)
-        ZZ_TEST_EXPECT(out[0].cellAt(i).width() != ZzCellWidth::WideContinuation); // 无续格泄漏
+    ZZ_TEST_EXPECT(out[0].cellAt(8).isEmpty()); // 边界补空白
+    ZZ_TEST_EXPECT(out[1].cellAt(0).width() == ZzCellWidth::WideLead);
+    ZZ_TEST_EXPECT(out[1].cellAt(0).codePoint() == 0x4E2D);
+    ZZ_TEST_EXPECT(out[1].cellAt(1).width() == ZzCellWidth::WideContinuation);
+    for (int i = 2; i < out[1].cellCount(); ++i)
+        ZZ_TEST_EXPECT(out[1].cellAt(i).width() != ZzCellWidth::WideContinuation); // 无续格泄漏
 }
 
 // 12. 流式与一次性等价（M8b）：同一输入经 zzReflowLines 与 ZzReflowStreamer
@@ -375,7 +387,7 @@ static void testStreamEquivalence()
 int main()
 {
     testWidenMergesChain();
-    testNarrowTruncatesHardLine();
+    testNarrowHardLineMultiLines();
     testNarrowResplitsChain();
     testNoPhantomRows();
     testWideCharBoundaryClamp();
