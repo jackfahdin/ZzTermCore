@@ -615,7 +615,9 @@ cmake --build /home/zz/Jackfahdin/github/ZzClawTerm/build/spike-debug
 ## 自检记录
 
 - 规格覆盖：§3 机制（任务 1）、§5 测试 1-7（任务 1 用例 1-6 + 既有
-  testWidenPadsBottom 退化、任务 2 用例 1-4）、§6 文档（任务 3）。
+  testWidenPadsBottom 退化、任务 2 用例 1-4；测试项 6 由终审 I-1 补测的
+  任务 2 用例 5 testSeamChainTopFillCombo 覆盖，见实施勘误 3）、
+  §6 文档（任务 3）。
 - 断言值推演：任务 1 用例 1-6 与任务 2 用例 1-4 的行数账/光标账均已
   手工推演；facade 断言值经双后端探针实测核对（非纯推演）。
 - 类型一致：HistoryPullCallback 签名与 Screen.h:67 一致；prepend 语义
@@ -633,4 +635,11 @@ cmake --build /home/zz/Jackfahdin/github/ZzClawTerm/build/spike-debug
 2. 任务 2 步骤 4 预期 OFF 基线 44/44——实际：OFF 基线因新测试文件经
    GLOB 收编增至 46/46。裁定：基线计数随测试收编自然增长，非偏差，
    以实测 46/46 为准。
-3. 其余实施项与计划/规格一致，无偏差。
+3. 规格 §5 测试项 6（M16b 接缝归还 × 顶补同路径组合）在计划中遗漏——
+   预期：§5 七项测试全数映射；实际：只落 6 项，resize 时点存在跨缝链
+   （历史末行 wrapped=true 续接屏幕首链）的组合路径无用例覆盖，终审
+   I-1 发现。裁定：采纳补测，任务 2 追加 facade 用例
+   `testSeamChainTopFillCombo`（tests/unit/test_native_reflow_topfill.cpp），
+   初态跨缝钉住 + resize(30,3) 归还接回/顶补 h0/历史清零/光标 (5,2)
+   全断言一次通过，实测与推演一致。
+4. 其余实施项与计划/规格一致，无偏差。

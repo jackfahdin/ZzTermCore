@@ -1,5 +1,6 @@
 // M16c facade 级顶补钉住：纯列变拉宽顶补（探针场景 A）、列行同变事故复刻
-// （探针场景 B）、窄宽往返布局守恒、Alternate 期间主屏顶补按缓冲区分。
+// （探针场景 B）、窄宽往返布局守恒、Alternate 期间主屏顶补按缓冲区分、
+// 接缝归还 × 顶补同路径组合（规格 §5 测试项 6，终审 I-1 补测）。
 #include <cstdint>
 #include <cstdio>
 #include <span>
@@ -131,12 +132,38 @@ static void testPrimaryTopFillDuringAlternate()
     ZZ_TEST_EXPECT(term.cursor().position.col == 1);
 }
 
+// 5. 接缝归还 × 顶补同路径组合（规格 §5 测试项 6，终审 I-1 补测）：
+// resize 时点存在跨缝链（历史末行 wrapped=true 续接屏幕首链），单次拉宽
+// 先经 M16b 归还接回链，重组收缩产生缺口再顶补历史。
+static void testSeamChainTopFillCombo()
+{
+    ZzTerminal term(10, 3, ZzBackendKind::Native, 100);
+    feedStr(term, "h0\r\n");
+    feedStr(term, std::string(10, 'a') + std::string(10, 'b')
+                  + std::string(10, 'c') + std::string(5, 'd')); // 35 格链不换行
+    // 跨缝初态：history=[h0, a(w)]，screen=[b(w), c(w), ddddd]，光标 (5,2)
+    ZZ_TEST_EXPECT(term.historyView().lineCount() == 2);
+    ZZ_TEST_EXPECT(term.historyView().lineAt(1).wrapped());
+
+    ZZ_TEST_EXPECT(term.resize(30, 3)); // 归还 a(w) 接回，链 35 格折 2 行，缺口 1 顶补 h0
+    ZZ_TEST_EXPECT(term.historyView().lineCount() == 0);
+    ZZ_TEST_EXPECT(screenRowText(term, 0) == "h0");
+    ZZ_TEST_EXPECT(screenRowText(term, 1)
+                   == std::string(10, 'a') + std::string(10, 'b') + std::string(10, 'c'));
+    ZZ_TEST_EXPECT(screenRowText(term, 2) == "ddddd");
+    ZZ_TEST_EXPECT(term.renderView().lineAt(1).wrapped());
+    ZZ_TEST_EXPECT(!term.renderView().lineAt(2).wrapped());
+    ZZ_TEST_EXPECT(term.cursor().position.row == 2);
+    ZZ_TEST_EXPECT(term.cursor().position.col == 5);
+}
+
 int main()
 {
     testWidenTopFillFacade();
     testCombinedResizeTopFill();
     testNarrowWideRoundtrip();
     testPrimaryTopFillDuringAlternate();
+    testSeamChainTopFillCombo();
     if (g_failures != 0) {
         std::fprintf(stderr, "%d failure(s)\n", g_failures);
         return 1;
