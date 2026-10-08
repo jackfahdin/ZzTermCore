@@ -51,6 +51,9 @@ ZzScreen 与 ZzChunkedScrollback 两端共用同一算法核，杜绝语义漂�
 -   宽字符（占两列的单元格）原子搬运，不落在行边界上（边界前移一格并
     补默认空白）。
 -   grapheme cluster 格在新行重新 internCluster。
+-   屏幕重组产出不足 rows 时先经 HistoryPullCallback 从最新历史顶补
+    （M16c：仅 Primary 且装有回调时触发，对齐 Contour 统一流尾部窗口
+    的净效果），历史不足余量底部补空；Alternate 永不顶补。
 
 ## 4. 列变 reflow 的协调（ZzNativeBackend::resize）
 
@@ -65,12 +68,15 @@ ZzScreen 与 ZzChunkedScrollback 两端共用同一算法核，杜绝语义漂�
 2.  `scrollback_` 先按新列宽 reflow（流式路径）。
 3.  `screen_` 再按新列宽 reflow（全量路径，含光标跟踪）。屏幕重组溢出
     的行以新宽度经 ScrollOutCallback 回流到已重组的历史，宽度不变量
-    自洽。
+    自洽；重组产出不足 rows 时先经 HistoryPullCallback 从已重组的最新
+    历史顶补插入屏幕顶部（M16c：内容贴底锚定、光标随顶补数平移，
+    顶补行已是新列宽——历史先完成重组），历史不足余量底部补空行。
 
 历史代计数（M14）随之递增：历史 reflow 计一次，屏幕回流 append 经
 ScrollOutCallback 另计，保证 ZzHistoryView 持有方能感知失效。
 
-Alternate 缓冲区无历史：重组溢出行直接丢弃，不参与上述往返。
+Alternate 缓冲区无历史：重组溢出行直接丢弃、产出不足纯底部补空
+（永不顶补），不参与上述往返。
 
 ## 5. 行变 resize 的条件语义（M15）
 
@@ -112,6 +118,10 @@ resize 后前端不需要知道重组细节：
 
 -   行尾空白不保留：链末尾完全默认空白格在重组时裁除（与 Contour/xterm
     一致）。
+-   列变 reflow 的底部补空仅余量路径（M16c）：屏幕重组产出不足时优先
+    从最新历史顶补，历史耗尽后的余量才底部补空；无 HistoryPullCallback
+    的路径（Alternate、纯 ZzScreen 直调未装回调）退化为纯底部补空，
+    M4 语义不变。
 -   存量劈链不修复：M16b 之前的会话中已被劈开的跨缝链不做追溯修复。
 -   分域 reflow 的 dangling 尾链终结语义仍存在于纯历史 API 直调路径
     （有测试钉住）；经 ZzTerminal resize 的正常路径由 M16b 归还机制
@@ -130,6 +140,8 @@ resize 后前端不需要知道重组细节：
     `superpowers/specs/2026-09-30-m16-hardline-reflow-design.md`。
 -   M16b：跨缝链归还统一重组——
     `superpowers/specs/2026-09-30-m16b-seam-chain-reflow-design.md`。
+-   M16c：列变 reflow 历史顶补（屏幕内容贴底锚定、光标随顶补平移）——
+    `superpowers/specs/2026-10-08-m16c-reflow-topfill-design.md`。
 
 Contour 基准对照：third_party/contour 的 Grid.cpp——growColumns /
 shrinkColumns（统一流重组，列变基准）、shrinkLines / growLines（行变

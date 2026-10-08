@@ -101,6 +101,9 @@ parser/screen/scrollback 等引擎组件归各后端实现持有，`ZzTerminal`
   scrollbackChanged/scrolledOutLines（resize 无 changes 通道，前端
   resize 后重取视图）。跨历史/屏幕接缝的链在列变 resize 时经归还机制
   统一重组（M16b），缩列跨缝状态保持连续、拉大接回（对齐 contour 统一流）。
+  列变重组内容收缩（重组产出不足行数）时先经 HistoryPullCallback 从
+  最新历史顶补填满屏幕——内容贴底锚定、光标随顶补平移，历史不足
+  余量底部补空，Alternate 永不顶补（M16c，对齐 contour 统一流净效果）。
 - `screen()` 与 `scrollback()` 为 Core 内部协作口（可变访问工作区/
   历史后端），仅 Native 后端可用、不带 noexcept，Contour 后端调用
   抛 `std::logic_error`。

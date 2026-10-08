@@ -620,3 +620,17 @@ cmake --build /home/zz/Jackfahdin/github/ZzClawTerm/build/spike-debug
   手工推演；facade 断言值经双后端探针实测核对（非纯推演）。
 - 类型一致：HistoryPullCallback 签名与 Screen.h:67 一致；prepend 语义
   直插 out 向量的细化已在任务 1 步骤 3 注释与任务 3 步骤 3 勘误登记。
+
+---
+
+## 实施勘误（2026-10-08，任务 1/2 已落地：cfaccdd、f6b9724）
+
+1. 规格 §3「复用 prependPrimaryLines 原语」——预期：直接调用 M16b 的
+   `ZzScreen::prependPrimaryLines` 完成顶补；实际：细化为在
+   `reflowBuffer` 的重组产出向量 `out` 顶部直插（`out.insert(out.begin(), ...)`
+   于赋值 `buf.lines` 之前）。裁定：等价 prepend 语义且避免二次搬移，
+   采纳；prependPrimaryLines 保持 M16b 接缝归还专用，未改动。
+2. 任务 2 步骤 4 预期 OFF 基线 44/44——实际：OFF 基线因新测试文件经
+   GLOB 收编增至 46/46。裁定：基线计数随测试收编自然增长，非偏差，
+   以实测 46/46 为准。
+3. 其余实施项与计划/规格一致，无偏差。
