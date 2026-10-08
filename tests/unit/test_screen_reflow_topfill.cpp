@@ -170,6 +170,11 @@ static void testTopFillPreservesWrapped()
 }
 
 // 6. 光标在链内：链偏移跟踪 + 顶补平移复合
+// M17a 语义变更：Primary + 扩列 + 光标在折链上 → 豁免收链（规格
+// 2026-10-08-m17a §3）。链保持旧布局 [a10(w), bb]，产出 4 行 == rows，
+// 不触发顶补（回调装有历史也不取），光标 (1,1) 不动。旧断言（收链为
+// aaaaaaaaaabb + 顶补 h9 + 光标 (1,11)）按设计失效；收链+顶补路径由
+// 用例 1 testWidenTopFill（光标在链外）钉住。
 static void testTopFillCursorInsideChain()
 {
     ZzScreen scr(10, 4);
@@ -179,15 +184,23 @@ static void testTopFillCursorInsideChain()
     writeRow(scr, 2, "s1");
     writeRow(scr, 3, "s2");
     scr.setCursorPosition(ZzPosition{1, 1}); // 链内：偏移 10+1=11
-    scr.setHistoryPullCallback([](std::size_t) {
+    std::size_t asked = 0;
+    scr.setHistoryPullCallback([&](std::size_t maxLines) {
+        asked = maxLines;
         std::vector<ZzLine> pulled;
         pulled.push_back(makeTextLine(20, "h9"));
         return pulled;
     });
-    scr.reflow(20);
-    ZZ_TEST_EXPECT(rowText(scr.lineAt(1), 12) == "aaaaaaaaaabb");
-    ZZ_TEST_EXPECT(scr.cursor().position.row == 1); // 链跟踪 (0,11) + 顶补 1
-    ZZ_TEST_EXPECT(scr.cursor().position.col == 11);
+    scr.reflow(20); // M17a：豁免收链——链保持 2 行，产出 == rows，无顶补
+    ZZ_TEST_EXPECT(asked == 0);
+    ZZ_TEST_EXPECT(rowText(scr.lineAt(0), 10) == "aaaaaaaaaa");
+    ZZ_TEST_EXPECT(scr.lineAt(0).wrapped());
+    ZZ_TEST_EXPECT(rowText(scr.lineAt(1), 2) == "bb");
+    ZZ_TEST_EXPECT(!scr.lineAt(1).wrapped());
+    ZZ_TEST_EXPECT(rowText(scr.lineAt(2), 2) == "s1");
+    ZZ_TEST_EXPECT(rowText(scr.lineAt(3), 2) == "s2");
+    ZZ_TEST_EXPECT(scr.cursor().position.row == 1);
+    ZZ_TEST_EXPECT(scr.cursor().position.col == 1);
 }
 
 // M17a-4：光标在折链上扩列——豁免收链，布局/旗标/光标不动，无顶补需求

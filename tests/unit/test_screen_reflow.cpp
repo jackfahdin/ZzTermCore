@@ -62,7 +62,12 @@ static void testNarrowOverflowToCallback()
     ZZ_TEST_EXPECT(scr.cursor().position.col == 0);
 }
 
-// 2. 变宽合并 + 底部补空行
+// 2. 变宽 + 光标在折链链首（默认光标 (0,0)，line0 wrapped）
+// M17a 语义变更：Primary + 扩列 + 光标在折链上 → 豁免收链（规格
+// 2026-10-08-m17a §3），链 ab/cd 保持旧布局 2 行，产出 4 行 == rows，
+// 不再合并为 abcd，也不再需要底部补空（末行为既存空行）。旧语义的
+// 「变宽合并 + 底部补空」路径由 test_screen_reflow_topfill.cpp 的
+// testNoCallbackPadsBottom（光标在链外）钉住。
 static void testWidenPadsBottom()
 {
     ZzScreen scr(2, 4);
@@ -70,13 +75,16 @@ static void testWidenPadsBottom()
     scr.setLineWrapped(0, true);
     writeRow(scr, 1, "cd");
     writeRow(scr, 2, "xy");
-    scr.reflow(4); // 链 ab/cd 合并为 abcd 一行
+    scr.reflow(4); // M17a：光标 (0,0) 在链上 → 豁免，链保持 2 行
     ZZ_TEST_EXPECT(scr.size().rows == 4);
-    ZZ_TEST_EXPECT(rowText(scr.lineAt(0), 4) == "abcd");
-    ZZ_TEST_EXPECT(!scr.lineAt(0).wrapped());
-    ZZ_TEST_EXPECT(rowText(scr.lineAt(1), 4) == "xy  ");
-    ZZ_TEST_EXPECT(scr.lineAt(2).cellCount() == 4); // 补的空行
+    ZZ_TEST_EXPECT(rowText(scr.lineAt(0), 4) == "ab  ");
+    ZZ_TEST_EXPECT(scr.lineAt(0).wrapped());
+    ZZ_TEST_EXPECT(rowText(scr.lineAt(1), 4) == "cd  ");
+    ZZ_TEST_EXPECT(!scr.lineAt(1).wrapped());
+    ZZ_TEST_EXPECT(rowText(scr.lineAt(2), 4) == "xy  ");
     ZZ_TEST_EXPECT(rowText(scr.lineAt(3), 4) == "    ");
+    ZZ_TEST_EXPECT(scr.cursor().position.row == 0);
+    ZZ_TEST_EXPECT(scr.cursor().position.col == 0);
 }
 
 // 3. 备用屏重组但溢出不入历史
@@ -178,19 +186,36 @@ static void testPrependPrimaryLines()
 }
 
 // 7. prepend 的跨缝链经 reflow 统一重组：变大接回（M16b 核心场景 Screen 级）
+// M17a 语义变更：prepend 把光标从 (0,0) 平移到 (1,0)，落在跨缝链 ta/il
+// 上 → 扩列豁免收链（规格 2026-10-08-m17a §3），链保持旧布局 2 行不接回；
+// prepend 瞬时超行（4 行 > rows=3）由溢出分支裁顶，链头 ta 经
+// ScrollOutCallback 归还（facade 下即回历史），屏幕保持 [il, xy, 空]。
+// 旧断言（接回为 tail 一行）按设计失效；光标在链外的接回路径由
+// test_reflow.cpp testWidenMergesChain（纯函数层默认 Reflow）钉住。
 static void testPrependSeamChainRejoins()
 {
     // 2 列屏：链身行满列（"ta"/"il" 均满 2 列），模拟缩列后的跨缝断链。
     ZzScreen scr(2, 3);
+    std::vector<ZzLine> spilled;
+    scr.setScrollOutCallback([&](std::vector<ZzLine> lines) {
+        for (auto& l : lines)
+            spilled.push_back(std::move(l));
+    });
     writeRow(scr, 0, "il"); // 模拟缩列后屏幕首行（跨缝链尾）
     writeRow(scr, 1, "xy");
     std::vector<ZzLine> head;
     head.push_back(makeChainLine(2, "ta", true)); // 历史尾链（摘除归还），wrapped 续接
-    scr.prependPrimaryLines(std::move(head));
-    scr.reflow(8); // 变大：链 ta/il 接回为 "tail" 一行
-    ZZ_TEST_EXPECT(rowText(scr.lineAt(0), 4) == "tail");
+    scr.prependPrimaryLines(std::move(head));     // 瞬时 4 行（超 rows_），光标 (0,0)->(1,0)
+    scr.reflow(8); // M17a：光标在链上 → 豁免不接回；溢出 1 行裁顶
+    ZZ_TEST_EXPECT(spilled.size() == 1);
+    ZZ_TEST_EXPECT(rowText(spilled[0], 2) == "ta");
+    ZZ_TEST_EXPECT(spilled[0].wrapped());
+    ZZ_TEST_EXPECT(rowText(scr.lineAt(0), 2) == "il");
     ZZ_TEST_EXPECT(!scr.lineAt(0).wrapped());
     ZZ_TEST_EXPECT(rowText(scr.lineAt(1), 2) == "xy");
+    ZZ_TEST_EXPECT(rowText(scr.lineAt(2), 2) == "  ");
+    ZZ_TEST_EXPECT(scr.cursor().position.row == 0); // 链内行位 1 减溢出 1
+    ZZ_TEST_EXPECT(scr.cursor().position.col == 0);
 }
 
 // 8. prepend 只作用 primary：Alternate 缓冲不受影响（M16b 按缓冲区分）

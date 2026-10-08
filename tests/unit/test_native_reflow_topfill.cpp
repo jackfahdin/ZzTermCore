@@ -135,23 +135,29 @@ static void testPrimaryTopFillDuringAlternate()
 // 5. 接缝归还 × 顶补同路径组合（规格 §5 测试项 6，终审 I-1 补测）：
 // resize 时点存在跨缝链（历史末行 wrapped=true 续接屏幕首链），单次拉宽
 // 先经 M16b 归还接回链，重组收缩产生缺口再顶补历史。
+// M17a 语义变更：光标 (2,5) 在折链上 → 扩列豁免收链（规格
+// 2026-10-08-m17a §3）。归还的链头 a(w) 使豁免链贡献 4 行 > rows=3，
+// 溢出裁顶又压回历史——净效果为布局整体冻结：历史/屏幕/光标逐点不变，
+// 不产生缺口、不顶补 h0。旧断言（收链成 abc 30 格 + 顶补 h0）按设计失效；
+// 光标在链外的归还×顶补路径由用例 1 testWidenTopFillFacade 钉住。
 static void testSeamChainTopFillCombo()
 {
     ZzTerminal term(10, 3, ZzBackendKind::Native, 100);
     feedStr(term, "h0\r\n");
     feedStr(term, std::string(10, 'a') + std::string(10, 'b')
                   + std::string(10, 'c') + std::string(5, 'd')); // 35 格链不换行
-    // 跨缝初态：history=[h0, a(w)]，screen=[b(w), c(w), ddddd]，光标 (5,2)
+    // 跨缝初态：history=[h0, a(w)]，screen=[b(w), c(w), ddddd]，光标 (2,5)
     ZZ_TEST_EXPECT(term.historyView().lineCount() == 2);
     ZZ_TEST_EXPECT(term.historyView().lineAt(1).wrapped());
 
-    ZZ_TEST_EXPECT(term.resize(30, 3)); // 归还 a(w) 接回，链 35 格折 2 行，缺口 1 顶补 h0
-    ZZ_TEST_EXPECT(term.historyView().lineCount() == 0);
-    ZZ_TEST_EXPECT(screenRowText(term, 0) == "h0");
-    ZZ_TEST_EXPECT(screenRowText(term, 1)
-                   == std::string(10, 'a') + std::string(10, 'b') + std::string(10, 'c'));
-    ZZ_TEST_EXPECT(screenRowText(term, 2) == "ddddd");
+    ZZ_TEST_EXPECT(term.resize(30, 3)); // M17a：光标在链上 → 豁免，布局冻结
+    ZZ_TEST_EXPECT(term.historyView().lineCount() == 2); // 归还的 a(w) 压回历史
+    ZZ_TEST_EXPECT(term.historyView().lineAt(1).wrapped());
+    ZZ_TEST_EXPECT(screenRowText(term, 0) == std::string(10, 'b'));
+    ZZ_TEST_EXPECT(term.renderView().lineAt(0).wrapped());
+    ZZ_TEST_EXPECT(screenRowText(term, 1) == std::string(10, 'c'));
     ZZ_TEST_EXPECT(term.renderView().lineAt(1).wrapped());
+    ZZ_TEST_EXPECT(screenRowText(term, 2) == "ddddd");
     ZZ_TEST_EXPECT(!term.renderView().lineAt(2).wrapped());
     ZZ_TEST_EXPECT(term.cursor().position.row == 2);
     ZZ_TEST_EXPECT(term.cursor().position.col == 5);
