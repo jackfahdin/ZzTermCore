@@ -157,6 +157,52 @@ static void testSeamChainTopFillCombo()
     ZZ_TEST_EXPECT(term.cursor().position.col == 5);
 }
 
+// 6. M17a 事故复刻（2026-10-08 用户实测，spike 留痕重放定位）：极窄拖拽
+// 使提示符折链 -> 拉回时 readline 按旧帧发 \e[A\e[K 相对擦除。豁免后
+// 擦除命中提示符碎片行，内容零损失、无空洞、光标与 bash 预期一致。
+// 行数账（手工推演，与 M16c 探针同款方法）：
+//   40x10 喂 L0..L11（各 \r\n）：滚动后历史 3（L0,L1,L2），
+//   屏幕 [L3..L11, 提示符行]，光标 (19,9)；
+//   resize(8,4)：提示符 19 格折 3 行，物理 12 行溢出 8 压历史
+//   （历史 11 = L0..L10），屏幕 [L11, "prompt$ "(w), "echo abc"(w), "def"]，
+//   光标 (3,3)；
+//   resize(40,10)：豁免链保持 3 行，缺口 6 顶补（L5..L10），
+//   屏幕 [L5..L11, 碎片×3]，光标 (3,9)，历史 5（L0..L4）；
+//   重绘 "\r\e[K" + "\e[A\e[K"×2 + 重印：擦除命中 3 个碎片行，
+//   提示符重印在 L11 下一行，光标 (19,7)，内容零损失。
+static void testActiveChainGuardVsReadlineErase()
+{
+    ZzTerminal term(40, 10, ZzBackendKind::Native, 100);
+    for (int i = 0; i < 12; ++i)
+        feedStr(term, "L" + std::to_string(i) + "\r\n");
+    feedStr(term, "prompt$ echo abcdef"); // 19 格，光标 (19,9)
+    ZZ_TEST_EXPECT(term.historyView().lineCount() == 3);
+
+    ZZ_TEST_EXPECT(term.resize(8, 4)); // 极窄：提示符折 3 行
+    ZZ_TEST_EXPECT(term.historyView().lineCount() == 11);
+    ZZ_TEST_EXPECT(screenRowText(term, 0) == "L11");
+    // 物理内容 "prompt$ "（8 格，末格为分隔空格），screenRowText 裁行尾空格后为 "prompt$"
+    ZZ_TEST_EXPECT(screenRowText(term, 1) == "prompt$");
+    ZZ_TEST_EXPECT(screenRowText(term, 2) == "echo abc");
+    ZZ_TEST_EXPECT(screenRowText(term, 3) == "def");
+    ZZ_TEST_EXPECT(term.cursor().position.row == 3);
+    ZZ_TEST_EXPECT(term.cursor().position.col == 3);
+
+    ZZ_TEST_EXPECT(term.resize(40, 10)); // 拉回：豁免收链
+    ZZ_TEST_EXPECT(term.historyView().lineCount() == 5); // 顶补 6（L5..L10）
+
+    // readline WINCH 重绘（陈旧帧高 3）：擦上行×2 + 重印。
+    feedStr(term, "\r\033[K\033[A\033[K\033[A\033[K");
+    feedStr(term, "prompt$ echo abcdef");
+    ZZ_TEST_EXPECT(screenRowText(term, 6) == "L11"); // 修复前此处 L11 已被误擦
+    ZZ_TEST_EXPECT(screenRowText(term, 7) == "prompt$ echo abcdef");
+    ZZ_TEST_EXPECT(screenRowText(term, 8).empty()); // 被擦的是碎片行
+    ZZ_TEST_EXPECT(screenRowText(term, 9).empty());
+    ZZ_TEST_EXPECT(term.cursor().position.row == 7);
+    ZZ_TEST_EXPECT(term.cursor().position.col == 19);
+    ZZ_TEST_EXPECT(term.historyView().lineCount() == 5); // L0..L4 完好留存
+}
+
 int main()
 {
     testWidenTopFillFacade();
@@ -164,6 +210,7 @@ int main()
     testNarrowWideRoundtrip();
     testPrimaryTopFillDuringAlternate();
     testSeamChainTopFillCombo();
+    testActiveChainGuardVsReadlineErase();
     if (g_failures != 0) {
         std::fprintf(stderr, "%d failure(s)\n", g_failures);
         return 1;
