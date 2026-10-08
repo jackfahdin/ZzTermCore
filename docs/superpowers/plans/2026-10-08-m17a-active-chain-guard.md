@@ -581,3 +581,147 @@ cmake --build /home/zz/Jackfahdin/github/ZzClawTerm/build/spike-debug  # 重建 
   `screenRowText(term, 1) == "prompt$ "` 未计入 screenRowText 的行尾空格
   裁除——折行末格恰为分隔空格，实取值为 `"prompt$"`。实现者探针逐行核对，
   推演账其余全部精确吻合（history 3→11→5、光标四点、擦除命中碎片行）。
+
+- **E-3（任务 4，compat seam 用例不改写）**：简报步骤 1/2 预判
+  testResizeReflowSeamChain 的 60→80 回程会触发豁免，实测该场景光标停在
+  (23,0) 空行、不在折链上（豁免判定 `lines[chainStartRow].wrapped()` 为假），
+  native/contour 同样收链、parity 自然成立。属计划场景推演笔误
+  （把「跨缝链存在」误当「光标在折链上」），compat 文件零改动。
+
+## 追加任务 4b：Preserve 补白污染修复（任务 4 BLOCKED 裁决）
+
+**背景：** 任务 4 探针实证（/tmp/m17a_case5_screen_probe.cpp，Screen 级隔离复现）：
+Preserve 扩宽行存储引入的补白格打破「wrapped 行必满列」不变量——
+(a) 纯扩列后选区文本 "abcdefgh" 变 "abcde"；(b) 豁免后再次缩列，链内补白
+被 zzReflowChain 当成内容（trimEnd 只裁链尾），逻辑链 8 格污染为 13 格，
+片段漂移并多压历史。违反规格 §3.3「无残留设计」。
+
+**语义规则（修复锚点）：** wrapped 行（链的非末行）尾部的完全默认空白格
+（zzIsPlainBlank）恒为填充而非内容——reflow 链读取与选区拼链统一逐行裁尾。
+合法性论证：autowrap 只在行满时触发（末格必有码位），reflow 拆分各行恒满
+（宽字符边界补白也是默认空白格），故 wrapped 行尾部 plain-blank 只可能来自
+填充（M17a Preserve 扩宽 / 宽字符边界 / EL 擦尾——裁掉均正确）。
+**注意：** ZzCell 的真空格（码位 0x20）不是 plain-blank，不受影响。
+
+**文件：**
+- 修改：`src/screen/Reflow.cpp`（zzReflowChain 逐行裁尾 + 光标流偏移换算）
+- 修改：`src/terminal/ZzSelectionText.cpp`（拼链逐行裁尾，若实现位置不同以实际为准）
+- 测试：`tests/unit/test_reflow.cpp`（2 用例）、`tests/unit/test_screen_reflow.cpp`（1 用例）；
+  `tests/unit/test_terminal_selection.cpp` 的 testResizeReflowKeepsSelection **不改**（修复后应原样转绿）
+
+- [ ] **步骤 1：编写失败的测试**
+
+`tests/unit/test_reflow.cpp` 追加：
+
+```cpp
+// M17a-7：Preserve 扩列后再缩列——补白不得污染逻辑链（往返守恒）
+static void testPreservePaddingRoundTrip()
+{
+    std::vector<ZzLine> lines;
+    lines.push_back(makeLine(5, "abcde", true));
+    lines.push_back(makeLine(5, "fgh", false));
+    ZzReflowCursor cur;
+    cur.chainIndex = 0;
+    cur.chainOffset = 7; // 片段 1 列 2（'g'）
+    auto grown = zzReflowLines(std::move(lines), 5, 10, &cur,
+                               ZzReflowCursorChain::Preserve);
+    ZZ_TEST_EXPECT(grown.size() == 2); // 豁免保持 2 行
+    ZZ_TEST_EXPECT(cur.row == 1 && cur.col == 2);
+    // 再缩回 5 列（Reflow 模式）：逻辑链必须仍是 "abcdefgh" 8 格
+    auto shrunk = zzReflowLines(std::move(grown), 10, 5, &cur,
+                                ZzReflowCursorChain::Reflow);
+    ZZ_TEST_EXPECT(shrunk.size() == 2);
+    ZZ_TEST_EXPECT(lineText(shrunk[0]).substr(0, 5) == "abcde");
+    ZZ_TEST_EXPECT(shrunk[0].wrapped());
+    ZZ_TEST_EXPECT(lineText(shrunk[1]).substr(0, 3) == "fgh");
+    ZZ_TEST_EXPECT(!shrunk[1].wrapped());
+    ZZ_TEST_EXPECT(cur.row == 1 && cur.col == 2); // 'g' 行位不变
+}
+
+// M17a-8：Preserve 扩列后再次扩列（光标已离链）——合并结果无补白
+static void testPreserveThenMergeNoPadding()
+{
+    std::vector<ZzLine> lines;
+    lines.push_back(makeLine(5, "abcde", true));
+    lines.push_back(makeLine(5, "fgh", false));
+    ZzReflowCursor cur;
+    cur.chainIndex = 0;
+    cur.chainOffset = 7;
+    auto grown = zzReflowLines(std::move(lines), 5, 10, &cur,
+                               ZzReflowCursorChain::Preserve);
+    // 光标链变成另一链（模拟用户换了输入行）：本链走 Reflow 合并
+    cur.chainIndex = 99; // 不在任何链上（不跟踪本链）
+    auto merged = zzReflowLines(std::move(grown), 10, 20, &cur,
+                                ZzReflowCursorChain::Reflow);
+    ZZ_TEST_EXPECT(merged.size() == 1);
+    ZZ_TEST_EXPECT(lineText(merged[0]).substr(0, 8) == "abcdefgh"); // 无补白洞
+}
+```
+
+`tests/unit/test_screen_reflow.cpp` 追加（惯用法见该文件既有用例）：
+
+```cpp
+// M17a-9：豁免扩列后再缩列，屏幕内容零污染（Screen 级往返）
+static void testPreservePaddingRoundTripScreen()
+{
+    ZzScreen scr(5, 3);
+    writeRow(scr, 0, "abcde");
+    scr.setLineWrapped(0, true);
+    writeRow(scr, 1, "fgh");
+    scr.setCursorPosition(ZzPosition{1, 3});
+    scr.reflow(10); // 豁免：链保持 [abcde(w), fgh]
+    ZZ_TEST_EXPECT(scr.lineAt(0).wrapped());
+    scr.reflow(5);  // 缩回：内容必须回到 [abcde(w), fgh]，无补白污染
+    ZZ_TEST_EXPECT(rowText(scr.lineAt(0), 5) == "abcde");
+    ZZ_TEST_EXPECT(scr.lineAt(0).wrapped());
+    ZZ_TEST_EXPECT(rowText(scr.lineAt(1), 3) == "fgh");
+    ZZ_TEST_EXPECT(scr.cursor().position.row == 1);
+    ZZ_TEST_EXPECT(scr.cursor().position.col == 3);
+}
+```
+
+（writeRow/rowText 为 test_screen_reflow.cpp 既有帮助函数；若该文件没有，从
+test_screen_reflow_topfill.cpp 复制同款。注册进各自 main()。）
+
+运行：`cmake --build --preset linux-gcc-debug && ./build/linux-gcc-debug/tests/test_reflow && ./build/linux-gcc-debug/tests/test_screen_reflow`
+预期：M17a-7 失败（shrunk 实为 3-4 行且含补白洞）；M17a-8 失败（"abcde     fgh"）；
+M17a-9 失败（同污染）。test_terminal_selection 的 testResizeReflowKeepsSelection
+保持红（修复目标）。
+
+- [ ] **步骤 2：实现逐行裁尾**
+
+`src/screen/Reflow.cpp` zzReflowChain 改造要点（实现者可调整结构，语义必须满足）：
+
+1. 链读取从「扁平流 + 链尾 trimEnd」改为「逐行裁尾」：每行有效长度
+   used[i] = 该行尾部 zzIsPlainBlank 格裁除后的长度；链流 = 各行 used 段顺接
+   （链末行的裁尾语义与既有 trimEnd 一致，被本规则自然覆盖）。
+2. 光标跟踪换算：trackThis 时光标的链内物理坐标（chainOffset/oldCols 片段号、
+   chainOffset%oldCols 片段内列）先换算为新流偏移
+   `Σ used[0..f-1] + min(col, used[f])`，再参与既有「写入位置 == 流偏移」比较；
+   光标落在被裁补白区（col >= used[f]）时锚到该片段内容尾。
+3. 宽字符续格跳过、边界前移补默认空白、cluster 重新 intern 等既有规则不变；
+   逐行裁尾后宽字符边界补白格被裁，合并结果回到逻辑原位（比现状更精确，
+   既有 CJK/宽字符用例若因此转红，逐一核对是否钉住了旧漂移值，属实则按
+   新正确值改写并登记）。
+4. ZzReflowStreamer 路径同样消费 zzReflowChain，自动继承逐行裁尾——
+   scrollback 历史里若存在 Preserve 时代的补白链，reflow 时同样净化（符合预期）。
+
+`src/terminal/ZzSelectionText.cpp`（拼链处）：沿 wrapped 链拼接逻辑行文本时，
+每个 wrapped 行先裁尾部 plain-blank 再拼（与 reflow 同规则）。
+
+- [ ] **步骤 3：运行验证**
+
+运行：`cmake --build --preset linux-gcc-debug && ctest --preset linux-gcc-debug`
+预期：57/57 全绿——含 M17a-7/8/9、任务 1-3 全部用例、任务 4 已改写 4 用例、
+以及未改动的 testResizeReflowKeepsSelection 原样转绿。
+若有既有宽字符/选区用例转红：逐一核账（新旧值哪个对），新值更正确才允许改写，
+并在报告里逐条登记。
+
+- [ ] **步骤 4：Commit**
+
+```bash
+git add src/screen/Reflow.cpp src/terminal/ZzSelectionText.cpp tests/unit/test_reflow.cpp tests/unit/test_screen_reflow.cpp
+git commit -m "fix(reflow): wrapped 行尾部空白格恒为填充——逐行裁尾修复 Preserve 补白污染（M17a-4b）"
+```
+
+（若选区侧无需改动或另触文件，按实际调整 add 清单。）
