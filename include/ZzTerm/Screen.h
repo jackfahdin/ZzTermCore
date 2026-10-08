@@ -63,6 +63,9 @@ public:
      *        向历史后端索取最多 maxLines 行最新历史（旧到新顺序、以值移交
      *        所有权）注入屏幕顶部；无历史可取时返回空向量。
      *        仅为 Primary 缓冲区调用；Alternate 扩行永不触发。
+     *        回调返回行宽度须与当前网格列宽一致：行变回抽时列宽不变；
+     *        列变 reflow 顶补（M16c）时历史已先完成重组（backend 协调顺序：
+     *        先历史后屏幕），返回行为新列宽。
      */
     using HistoryPullCallback = std::function<std::vector<ZzLine>(std::size_t maxLines)>;
 
@@ -98,7 +101,9 @@ public:
      * @param newCols 新列宽（> 0；等于当前列宽或非法时为空操作）。
      * @note Primary/Alternate 两套网格各自重组；重组导致行数超出时，
      *       Primary 顶部溢出行经 ScrollOutCallback 上移（Alternate 溢出
-     *       直接丢弃，备用屏无历史）；行数不足时底部补空行。
+     *       直接丢弃，备用屏无历史）；行数不足时先经 HistoryPullCallback
+     *       从最新历史顶补填满（M16c，仅 Primary 且装有回调，内容贴底
+     *       锚定；Alternate 永不顶补），余量底部补空行。
      *       光标按"逻辑行链 + 链内偏移"跟随内容映射并 clamp；
      *       wrapPending 清除；滚动区复位全屏；tab stops 按新列宽重建；
      *       全屏标脏。行数不变（行向调整由 resize 负责）。

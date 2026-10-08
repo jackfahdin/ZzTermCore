@@ -163,7 +163,9 @@ void ZzScreen::reflowBuffer(Buffer& buf, int newCols, bool mayScrollOut)
 
     std::vector<ZzLine> out = zzReflowLines(buf.lines, cols_, newCols, &track);
 
-    // 行数平衡：溢出上移（仅 Primary）或丢弃（Alternate），不足底部补空行。
+    // 行数平衡：溢出上移（仅 Primary）或丢弃（Alternate）；
+    // 不足时先经 HistoryPullCallback 从最新历史顶补（M16c，仅 Primary 且
+    // 装有回调——对齐 contour 统一流尾部窗口的净效果），余量底部补空。
     if (static_cast<int>(out.size()) > rows_) {
         const int overflow = static_cast<int>(out.size()) - rows_;
         if (mayScrollOut && scrollOutCallback_) {
@@ -176,7 +178,19 @@ void ZzScreen::reflowBuffer(Buffer& buf, int newCols, bool mayScrollOut)
         out.erase(out.begin(), out.begin() + overflow);
         track.row -= overflow;
     } else if (static_cast<int>(out.size()) < rows_) {
-        while (static_cast<int>(out.size()) < rows_)
+        int deficit = rows_ - static_cast<int>(out.size());
+        if (mayScrollOut && historyPullCallback_) {
+            std::vector<ZzLine> pulled =
+                historyPullCallback_(static_cast<std::size_t>(deficit));
+            if (!pulled.empty()) {
+                const auto pulledCount = static_cast<int>(pulled.size());
+                out.insert(out.begin(), std::make_move_iterator(pulled.begin()),
+                           std::make_move_iterator(pulled.end()));
+                track.row += pulledCount;
+                deficit -= pulledCount;
+            }
+        }
+        for (; deficit > 0; --deficit)
             out.push_back(ZzLine(newCols));
     }
 
