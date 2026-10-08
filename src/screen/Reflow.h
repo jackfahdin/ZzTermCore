@@ -17,13 +17,21 @@ struct ZzReflowCursor {
     int col = 0;                ///< 输出：重组后物理列号。
 };
 
+/// @brief 光标链处置（M17a）：Reflow=现状重组；Preserve=扩列时豁免收链，
+///        光标所在折链保持旧宽度拆分（行存储扩宽到新列宽，内容布局/旗标/
+///        光标行位不动）——readline 陈旧帧擦除兼容。缩列方向忽略本标志。
+enum class ZzReflowCursorChain { Reflow, Preserve };
+
 /**
  * @brief 将物理行序列从旧列宽重组到新列宽（soft-wrap reflow）。
  * @param lines 物理行序列（按值传入，调用方可 move；函数不保留引用）。
  * @param oldCols 旧列宽（大于 0，不变量：所有行均为该宽度）。
  * @param newCols 新列宽（大于 0）。
  * @param cursor 可选光标跟踪（nullptr 表示不跟踪）。
- * @return 重组后的物理行序列（每行 newCols 列，wrapped 标记已重算）。
+ * @param cursorChain 光标链处置（默认 Reflow；Preserve 仅在 cursor 非空
+ *        且 newCols > oldCols 时生效）。
+ * @return 重组后的物理行序列（每行 newCols 列，wrapped 标记已重算；
+ *         Preserve 豁免链的标记原样保留）。
  * @note 链按新列宽重切：内容超宽的多行化；硬行（未 wrapped 的单行链）即
  *       chainLen==1 普通链——缩列多行化、拉大沿 wrapped 链合并恢复
  *       （M16，与 Contour/xterm 对齐，取代 M4 的硬行截断语义）；
@@ -32,7 +40,9 @@ struct ZzReflowCursor {
  *       cluster 格在新行重新 internCluster。
  */
 std::vector<ZzLine> zzReflowLines(std::vector<ZzLine> lines, int oldCols, int newCols,
-                                  ZzReflowCursor* cursor = nullptr);
+                                  ZzReflowCursor* cursor = nullptr,
+                                  ZzReflowCursorChain cursorChain
+                                  = ZzReflowCursorChain::Reflow);
 
 /**
  * @brief 流式 reflow 器（M8b）：逐批喂入物理行、产出重组后物理行。

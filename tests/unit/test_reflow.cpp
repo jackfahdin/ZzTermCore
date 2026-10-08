@@ -384,6 +384,67 @@ static void testStreamEquivalence()
     }
 }
 
+// M17a-1：Preserve 扩列——光标链豁免收链，旧布局/旗标/光标行位保持
+static void testPreserveCursorChainOnWiden()
+{
+    std::vector<ZzLine> lines;
+    lines.push_back(makeLine(10, "ABCDEFGHIJ", true)); // 链 0 行 0
+    lines.push_back(makeLine(10, "klm", false));       // 链 0 行 1（13 格）
+    lines.push_back(makeLine(10, "xy", false));        // 链 1
+    ZzReflowCursor cur;
+    cur.chainIndex = 0;
+    cur.chainOffset = 11; // 片段 1 列 1（'l'）
+    auto out = zzReflowLines(std::move(lines), 10, 20, &cur,
+                             ZzReflowCursorChain::Preserve);
+    ZZ_TEST_EXPECT(out.size() == 3); // 链豁免：2 行原样 + 链 1 一行
+    ZZ_TEST_EXPECT(out[0].cellCount() == 20);
+    ZZ_TEST_EXPECT(out[0].wrapped());
+    ZZ_TEST_EXPECT(lineText(out[0]).substr(0, 10) == "ABCDEFGHIJ");
+    ZZ_TEST_EXPECT(!out[1].wrapped());
+    ZZ_TEST_EXPECT(lineText(out[1]).substr(0, 3) == "klm");
+    ZZ_TEST_EXPECT(lineText(out[2]).substr(0, 2) == "xy");
+    ZZ_TEST_EXPECT(cur.row == 1); // 行位 = 链起点 0 + 偏移 11 / 10
+    ZZ_TEST_EXPECT(cur.col == 1); // 列 = 偏移 11 % 10
+}
+
+// M17a-2：Preserve 缩列不豁免——照常重切（与 Reflow 逐点一致）
+static void testPreserveIgnoredOnShrink()
+{
+    auto buildLines = [] {
+        std::vector<ZzLine> lines;
+        lines.push_back(makeLine(10, "ABCDEFGHIJ", true));
+        lines.push_back(makeLine(10, "klm", false));
+        lines.push_back(makeLine(10, "xy", false));
+        return lines;
+    };
+    ZzReflowCursor curA; curA.chainIndex = 0; curA.chainOffset = 11;
+    ZzReflowCursor curB = curA;
+    auto outPreserve = zzReflowLines(buildLines(), 10, 5, &curA,
+                                     ZzReflowCursorChain::Preserve);
+    auto outReflow = zzReflowLines(buildLines(), 10, 5, &curB,
+                                   ZzReflowCursorChain::Reflow);
+    ZZ_TEST_EXPECT(outPreserve.size() == 4); // "ABCDE"(w) "FGHIJ"(w) "klm" "xy"
+    ZZ_TEST_EXPECT(outPreserve.size() == outReflow.size());
+    for (std::size_t i = 0; i < outPreserve.size(); ++i) {
+        ZZ_TEST_EXPECT(lineText(outPreserve[i]) == lineText(outReflow[i]));
+        ZZ_TEST_EXPECT(outPreserve[i].wrapped() == outReflow[i].wrapped());
+    }
+    ZZ_TEST_EXPECT(curA.row == 2 && curA.col == 1);
+    ZZ_TEST_EXPECT(curA.row == curB.row && curA.col == curB.col);
+}
+
+// M17a-3：Preserve 无光标跟踪——豁免无对象，等同 Reflow，不崩
+static void testPreserveWithoutCursor()
+{
+    std::vector<ZzLine> lines;
+    lines.push_back(makeLine(10, "ABCDEFGHIJ", true));
+    lines.push_back(makeLine(10, "klm", false));
+    auto out = zzReflowLines(std::move(lines), 10, 20, nullptr,
+                             ZzReflowCursorChain::Preserve);
+    ZZ_TEST_EXPECT(out.size() == 1); // 13 格合 1 行（与 Reflow 一致）
+    ZZ_TEST_EXPECT(lineText(out[0]).substr(0, 13) == "ABCDEFGHIJklm");
+}
+
 int main()
 {
     testWidenMergesChain();
@@ -398,6 +459,9 @@ int main()
     testCursorInTrimmedBlanks();
     testHardLineWideCharAtBoundary();
     testStreamEquivalence();
+    testPreserveCursorChainOnWiden();
+    testPreserveIgnoredOnShrink();
+    testPreserveWithoutCursor();
     if (g_failures == 0)
         std::printf("test_reflow: all passed\n");
     return g_failures;

@@ -106,7 +106,7 @@ void zzReflowChain(const ZzLine* chainLines, std::size_t chainLen, int oldCols, 
 } // namespace
 
 std::vector<ZzLine> zzReflowLines(std::vector<ZzLine> lines, int oldCols, int newCols,
-                                  ZzReflowCursor* cursor)
+                                  ZzReflowCursor* cursor, ZzReflowCursorChain cursorChain)
 {
     std::vector<ZzLine> out;
     if (oldCols <= 0 || newCols <= 0 || oldCols == newCols) {
@@ -126,9 +126,23 @@ std::vector<ZzLine> zzReflowLines(std::vector<ZzLine> lines, int oldCols, int ne
         std::size_t chainEnd = chainStart + 1;
         while (chainEnd < lines.size() && lines[chainEnd - 1].wrapped())
             ++chainEnd;
-        const bool trackThis = cursor && cursor->chainIndex == chainIndex;
-        zzReflowChain(&lines[chainStart], chainEnd - chainStart, oldCols, newCols, out, cursor,
-                      trackThis);
+        // M17a：扩列且光标在本链（多行链）时豁免收链——旧宽度布局原样
+        // 保留（仅扩宽行存储），光标行位 = 链起点 + 偏移/旧宽、列 = 偏移%旧宽。
+        if (cursorChain == ZzReflowCursorChain::Preserve && cursor
+            && cursor->chainIndex == chainIndex && newCols > oldCols
+            && chainEnd - chainStart > 1) {
+            cursor->row = static_cast<int>(out.size()) + cursor->chainOffset / oldCols;
+            cursor->col = cursor->chainOffset % oldCols;
+            for (std::size_t i = chainStart; i < chainEnd; ++i) {
+                ZzLine row = std::move(lines[i]);
+                row.resize(newCols); // 扩宽，右侧补默认格；wrapped 旗标随 move 保留
+                out.push_back(std::move(row));
+            }
+        } else {
+            const bool trackThis = cursor && cursor->chainIndex == chainIndex;
+            zzReflowChain(&lines[chainStart], chainEnd - chainStart, oldCols, newCols, out,
+                          cursor, trackThis);
+        }
         ++chainIndex;
         chainStart = chainEnd;
     }
