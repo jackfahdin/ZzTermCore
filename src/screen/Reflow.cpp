@@ -18,15 +18,16 @@ bool zzIsPlainBlank(const ZzCell& c)
 void zzReflowChain(const ZzLine* chainLines, std::size_t chainLen, int oldCols, int newCols,
                    std::vector<ZzLine>& out, ZzReflowCursor* cursor, bool trackThis)
 {
-    // 链内容的有效末尾（流偏移，不含）：裁掉末尾完全默认空白格。
-    std::size_t trimEnd = chainLen * static_cast<std::size_t>(oldCols);
-    while (trimEnd > 0) {
-        const std::size_t s = trimEnd - 1;
-        const ZzCell& c = chainLines[s / oldCols].cellAt((int)(s % oldCols));
-        if (!zzIsPlainBlank(c))
-            break;
-        --trimEnd;
-    }
+    // 逐行裁尾（M17a-4b）：每行尾部完全默认空白格恒为填充而非内容——
+    // autowrap 只在行满触发（末格必有码位）、reflow 拆分各行恒满，
+    // wrapped 行尾部 plain-blank 只可能来自填充（M17a Preserve 扩宽 /
+    // 宽字符边界 / EL 擦尾），裁掉均正确；码位 0x20 的真空格不受影响。
+    // 链流 = 各行裁尾后有效段顺接（链末行裁尾即旧 trimEnd 语义）。
+    // 光标跟踪：链内物理坐标（片段号 = chainOffset/oldCols、片段内列 =
+    // chainOffset%oldCols）换算为新流偏移 Σ used[0..f-1] + min(col, used[f])，
+    // 落在被裁补白区时锚到该片段内容尾。
+    const int cursorFrag = trackThis ? cursor->chainOffset / oldCols : -1;
+    const int cursorFragCol = trackThis ? cursor->chainOffset % oldCols : 0;
 
     bool tracked = false;
 
@@ -42,54 +43,53 @@ void zzReflowChain(const ZzLine* chainLines, std::size_t chainLen, int oldCols, 
         lastContentCol = 0;
     };
 
-    // 热循环：cells_ 连续存储，取行首指针顺序推进源位置。
-    std::size_t srcIdx = 0;
-    int srcCol = 0;
-    const ZzLine* nextLine = &chainLines[srcIdx];
-    const ZzCell* nextCells = &nextLine->cellAt(0);
-    for (std::size_t s = 0; s < trimEnd; ++s) {
-        const ZzLine* srcLine = nextLine;   // 本格所属行（cluster 文本取自此行）
-        const ZzCell* srcCells = nextCells;
-        const ZzCell& cell = srcCells[srcCol];
-        if (++srcCol == oldCols) {
-            srcCol = 0;
-            if (s + 1 < trimEnd) { // 链尾最后一格之后不再推进，避免越界
-                nextLine = &chainLines[++srcIdx];
-                nextCells = &nextLine->cellAt(0);
+    std::size_t streamBase = 0; // 本行首格在新流中的偏移（逐行累加 used）
+    for (std::size_t i = 0; i < chainLen; ++i) {
+        const ZzLine& srcLine = chainLines[i]; // cluster 文本取自行内
+        int used = oldCols;
+        while (used > 0 && zzIsPlainBlank(srcLine.cellAt(used - 1)))
+            --used;
+        const std::size_t cursorTarget =
+            streamBase + static_cast<std::size_t>(
+                             cursorFrag == static_cast<int>(i)
+                                 ? std::min(cursorFragCol, used)
+                                 : 0);
+        for (int srcCol = 0; srcCol < used; ++srcCol) {
+            const ZzCell& cell = srcLine.cellAt(srcCol);
+            const std::size_t s = streamBase + static_cast<std::size_t>(srcCol);
+            if (cell.width() == ZzCellWidth::WideContinuation)
+                continue; // 续格随 lead 再生
+
+            const int w = (cell.width() == ZzCellWidth::WideLead) ? 2 : 1;
+            if (outCol + w > newCols) {
+                // 宽字符落边界：本行以默认空白收尾，提前换行。
+                flushRow(true);
             }
-        }
-        if (cell.width() == ZzCellWidth::WideContinuation)
-            continue; // 续格随 lead 再生
 
-        const int w = (cell.width() == ZzCellWidth::WideLead) ? 2 : 1;
-        if (outCol + w > newCols) {
-            // 宽字符落边界：本行以默认空白收尾，提前换行。
-            flushRow(true);
-        }
+            if (trackThis && !tracked && cursorFrag == static_cast<int>(i)
+                && (cursorTarget == s || (w == 2 && cursorTarget == s + 1))) {
+                cursor->row = (int)out.size();
+                cursor->col = outCol;
+                tracked = true;
+            }
 
-        if (trackThis && !tracked
-            && (cursor->chainOffset == (int)s
-                || (w == 2 && cursor->chainOffset == (int)s + 1))) {
-            cursor->row = (int)out.size();
-            cursor->col = outCol;
-            tracked = true;
+            ZzCell placed = cell;
+            if (placed.isCluster())
+                placed.setCluster(row.internCluster(srcLine.clusterText(cell.clusterIndex())));
+            row.setCell(outCol, placed);
+            if (w == 2) {
+                // 续格再生规则与 ZzNativeBackend::putChar 一致：
+                // 仅 width + 前景/背景，不带属性。
+                ZzCell cont;
+                cont.setWidth(ZzCellWidth::WideContinuation);
+                cont.setForeground(cell.foreground());
+                cont.setBackground(cell.background());
+                row.setCell(outCol + 1, cont);
+            }
+            outCol += w;
+            lastContentCol = outCol;
         }
-
-        ZzCell placed = cell;
-        if (placed.isCluster())
-            placed.setCluster(row.internCluster(srcLine->clusterText(cell.clusterIndex())));
-        row.setCell(outCol, placed);
-        if (w == 2) {
-            // 续格再生规则与 ZzNativeBackend::putChar 一致：
-            // 仅 width + 前景/背景，不带属性。
-            ZzCell cont;
-            cont.setWidth(ZzCellWidth::WideContinuation);
-            cont.setForeground(cell.foreground());
-            cont.setBackground(cell.background());
-            row.setCell(outCol + 1, cont);
-        }
-        outCol += w;
-        lastContentCol = outCol;
+        streamBase += static_cast<std::size_t>(used);
     }
 
     // 链末行收尾（硬行也在此收尾）；兜底需在 flushRow 重置 lastContentCol 前取值。

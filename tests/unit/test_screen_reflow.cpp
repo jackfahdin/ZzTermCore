@@ -218,6 +218,24 @@ static void testPrependSeamChainRejoins()
     ZZ_TEST_EXPECT(scr.cursor().position.col == 0);
 }
 
+// M17a-9：豁免扩列后再缩列，屏幕内容零污染（Screen 级往返）
+static void testPreservePaddingRoundTripScreen()
+{
+    ZzScreen scr(5, 3);
+    writeRow(scr, 0, "abcde");
+    scr.setLineWrapped(0, true);
+    writeRow(scr, 1, "fgh");
+    scr.setCursorPosition(ZzPosition{1, 3});
+    scr.reflow(10); // 豁免：链保持 [abcde(w), fgh]
+    ZZ_TEST_EXPECT(scr.lineAt(0).wrapped());
+    scr.reflow(5);  // 缩回：内容必须回到 [abcde(w), fgh]，无补白污染
+    ZZ_TEST_EXPECT(rowText(scr.lineAt(0), 5) == "abcde");
+    ZZ_TEST_EXPECT(scr.lineAt(0).wrapped());
+    ZZ_TEST_EXPECT(rowText(scr.lineAt(1), 3) == "fgh");
+    ZZ_TEST_EXPECT(scr.cursor().position.row == 1);
+    ZZ_TEST_EXPECT(scr.cursor().position.col == 3);
+}
+
 // 8. prepend 只作用 primary：Alternate 缓冲不受影响（M16b 按缓冲区分）
 static void testPrependPrimaryOnly()
 {
@@ -245,6 +263,7 @@ int main()
     testPrependPrimaryLines();
     testPrependSeamChainRejoins();
     testPrependPrimaryOnly();
+    testPreservePaddingRoundTripScreen();
     if (g_failures == 0)
         std::printf("test_screen_reflow: all passed\n");
     return g_failures;

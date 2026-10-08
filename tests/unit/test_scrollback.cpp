@@ -204,8 +204,13 @@ static void testReflowChunkedAlignment()
     for (int i = 0; i < 600; ++i) {
         std::snprintf(buf, sizeof(buf), "L%04d", i);
         // 行 250-260 为一条跨 256 块边界的 wrapped 链（11 物理行），其余硬行。
+        // M17a-4b：wrapped 行尾部空单元格恒为填充被逐行裁尾——链身行改用
+        // 真实空格（0x20 非填充格）填满 8 列，85 格链流期望不变。
         const bool inChain = (i >= 250 && i <= 260);
-        batch.push_back(makeLine(8, buf, inChain && i < 260));
+        std::string text = buf;
+        if (inChain && i < 260)
+            text += "   ";
+        batch.push_back(makeLine(8, text, inChain && i < 260));
     }
     sb->append(std::move(batch));
     ZZ_TEST_EXPECT(sb->lineCount() == 600);
@@ -285,7 +290,11 @@ static void testReflowDanglingTailChain()
     for (int i = 300; i < 600; ++i) {
         std::snprintf(buf, sizeof(buf), "L%04d", i);
         // 末尾 300 物理行为一条 dangling wrapped 链：最后一行 wrapped=true 无后继。
-        batch.push_back(makeLine(8, buf, true));
+        // M17a-4b：同 testReflowChunkedAlignment——链身行用真实空格填满。
+        std::string text = buf;
+        if (i < 599)
+            text += "   ";
+        batch.push_back(makeLine(8, text, true));
     }
     sb->append(std::move(batch));
     ZZ_TEST_EXPECT(sb->lineCount() == 600);

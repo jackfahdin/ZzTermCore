@@ -17,9 +17,20 @@ std::size_t totalRows(const ZzIPhysicalLineSource& src)
     return src.historyLineCount() + static_cast<std::size_t>(src.screenRowCount());
 }
 
+// 完全默认空白格（填充格）：无文本、默认前景背景、无属性。与 reflow 的
+// zzIsPlainBlank 同规则（M17a-4b）；码位 0x20 的真空格不是填充格。
+bool zzIsPlainBlankCell(const ZzCell& c)
+{
+    return c.isEmpty() && c.foreground().isDefault() && c.background().isDefault()
+           && c.attributes().raw() == 0;
+}
+
 // 提取一条逻辑行 [colStart, colEnd) 半开列区间的文本（colEnd < 0 表示到行末）。
 // span 为该逻辑行的物理行区间 [first, first+count)，由调用方单次扫描提供。
 // 宽字符边界归一在此完成。行尾空白（空单元格与 U+0020）修剪。
+// M17a-4b：wrapped 行（链非末行）尾部填充格恒为补白而非内容（与 reflow
+// 逐行裁尾同规则），拼链时逐行裁尾后再顺接——Preserve 扩宽/宽字符边界
+// 补白不进入逻辑行文本。
 std::string extractLogicalLine(const ZzIPhysicalLineSource& src,
                                std::pair<std::size_t, std::size_t> span,
                                std::int64_t colStart, std::int64_t colEnd)
@@ -32,15 +43,39 @@ std::string extractLogicalLine(const ZzIPhysicalLineSource& src,
         src.lineAt(span.first + i, snapshots.back());
     }
 
-    const std::int64_t lineLen = static_cast<std::int64_t>(cols) * static_cast<std::int64_t>(span.second);
+    // 逐行有效长度：wrapped 行裁尾部填充格（补白不拼入逻辑行），
+    // 非 wrapped 行（链尾）保持整宽，行尾空白由出口统一修剪。
+    std::vector<std::int64_t> used(span.second);
+    std::int64_t lineLen = 0;
+    for (std::size_t i = 0; i < span.second; ++i) {
+        std::int64_t u = cols;
+        if (src.lineWrapped(span.first + i)) {
+            while (u > 0 && zzIsPlainBlankCell(snapshots[i].cellAt(static_cast<int>(u) - 1)))
+                --u;
+        }
+        used[i] = u;
+        lineLen += u;
+    }
+
     std::int64_t begin = std::clamp<std::int64_t>(colStart, 0, lineLen);
     std::int64_t end = colEnd < 0 ? lineLen : std::clamp<std::int64_t>(colEnd, begin, lineLen);
     if (begin >= end)
         return {};
 
+    // 流偏移 -> (物理行, 行内列)：逐行裁尾后的有效段顺接定位。
+    auto locate = [&](std::int64_t offset, std::size_t& rowIdx, int& col) {
+        rowIdx = 0;
+        while (offset >= used[rowIdx]) { // 跳过本行有效段
+            offset -= used[rowIdx];
+            ++rowIdx;
+        }
+        col = static_cast<int>(offset);
+    };
     auto cellAt = [&](std::int64_t offset) -> const ZzCell& {
-        return snapshots[static_cast<std::size_t>(offset / cols)]
-            .cellAt(static_cast<int>(offset % cols));
+        std::size_t rowIdx;
+        int col;
+        locate(offset, rowIdx, col);
+        return snapshots[rowIdx].cellAt(col);
     };
     // 边界归一：start 落续格退到 lead；end 落续格进到其后（不拆半字）
     if (begin > 0 && cellAt(begin).width() == ZzCellWidth::WideContinuation)
@@ -50,7 +85,10 @@ std::string extractLogicalLine(const ZzIPhysicalLineSource& src,
 
     std::string out;
     for (std::int64_t i = begin; i < end; ++i) {
-        const ZzCell& cell = cellAt(i);
+        std::size_t rowIdx;
+        int col;
+        locate(i, rowIdx, col);
+        const ZzCell& cell = snapshots[rowIdx].cellAt(col);
         switch (cell.width()) {
         case ZzCellWidth::WideContinuation:
             continue; // 续格不输出（lead 已取整字）
@@ -61,8 +99,7 @@ std::string extractLogicalLine(const ZzIPhysicalLineSource& src,
             break;
         }
         if (cell.isCluster()) {
-            const ZzLine& owner = snapshots[static_cast<std::size_t>(i / cols)];
-            out += owner.clusterText(cell.clusterIndex());
+            out += snapshots[rowIdx].clusterText(cell.clusterIndex());
         } else if (cell.codePoint() != 0) {
             zzAppendCodePoint(out, cell.codePoint());
         } else {

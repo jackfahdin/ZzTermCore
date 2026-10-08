@@ -445,6 +445,53 @@ static void testPreserveWithoutCursor()
     ZZ_TEST_EXPECT(lineText(out[0]).substr(0, 13) == "ABCDEFGHIJklm");
 }
 
+// M17a-7：Preserve 扩列后再缩列——补白不得污染逻辑链（往返守恒）
+static void testPreservePaddingRoundTrip()
+{
+    std::vector<ZzLine> lines;
+    lines.push_back(makeLine(5, "abcde", true));
+    lines.push_back(makeLine(5, "fgh", false));
+    ZzReflowCursor cur;
+    cur.chainIndex = 0;
+    cur.chainOffset = 7; // 片段 1 列 2（'g'）
+    auto grown = zzReflowLines(std::move(lines), 5, 10, &cur,
+                               ZzReflowCursorChain::Preserve);
+    ZZ_TEST_EXPECT(grown.size() == 2); // 豁免保持 2 行
+    ZZ_TEST_EXPECT(cur.row == 1 && cur.col == 2);
+    // 再缩回 5 列（Reflow 模式）：逻辑链必须仍是 "abcdefgh" 8 格
+    // 勘误 E-4：chainOffset 以当前列宽为单位，调用方（Screen::reflowBuffer）
+    // 每次 reflow 按 cols_ 重算——豁免后光标 (1,2)，10 列单位下应为 1*10+2=12；
+    // 简报沿用 5 列单位的 7，会被解读为片段 0 列 7（补白区）而锚到片段 0 内容尾。
+    cur.chainOffset = 12;
+    auto shrunk = zzReflowLines(std::move(grown), 10, 5, &cur,
+                                ZzReflowCursorChain::Reflow);
+    ZZ_TEST_EXPECT(shrunk.size() == 2);
+    ZZ_TEST_EXPECT(lineText(shrunk[0]).substr(0, 5) == "abcde");
+    ZZ_TEST_EXPECT(shrunk[0].wrapped());
+    ZZ_TEST_EXPECT(lineText(shrunk[1]).substr(0, 3) == "fgh");
+    ZZ_TEST_EXPECT(!shrunk[1].wrapped());
+    ZZ_TEST_EXPECT(cur.row == 1 && cur.col == 2); // 'g' 行位不变
+}
+
+// M17a-8：Preserve 扩列后再次扩列（光标已离链）——合并结果无补白
+static void testPreserveThenMergeNoPadding()
+{
+    std::vector<ZzLine> lines;
+    lines.push_back(makeLine(5, "abcde", true));
+    lines.push_back(makeLine(5, "fgh", false));
+    ZzReflowCursor cur;
+    cur.chainIndex = 0;
+    cur.chainOffset = 7;
+    auto grown = zzReflowLines(std::move(lines), 5, 10, &cur,
+                               ZzReflowCursorChain::Preserve);
+    // 光标链变成另一链（模拟用户换了输入行）：本链走 Reflow 合并
+    cur.chainIndex = 99; // 不在任何链上（不跟踪本链）
+    auto merged = zzReflowLines(std::move(grown), 10, 20, &cur,
+                                ZzReflowCursorChain::Reflow);
+    ZZ_TEST_EXPECT(merged.size() == 1);
+    ZZ_TEST_EXPECT(lineText(merged[0]).substr(0, 8) == "abcdefgh"); // 无补白洞
+}
+
 int main()
 {
     testWidenMergesChain();
@@ -462,6 +509,8 @@ int main()
     testPreserveCursorChainOnWiden();
     testPreserveIgnoredOnShrink();
     testPreserveWithoutCursor();
+    testPreservePaddingRoundTrip();
+    testPreserveThenMergeNoPadding();
     if (g_failures == 0)
         std::printf("test_reflow: all passed\n");
     return g_failures;
