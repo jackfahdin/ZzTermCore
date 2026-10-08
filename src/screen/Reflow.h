@@ -28,8 +28,8 @@ enum class ZzReflowCursorChain { Reflow, Preserve };
  * @param oldCols 旧列宽（大于 0，不变量：所有行均为该宽度）。
  * @param newCols 新列宽（大于 0）。
  * @param cursor 可选光标跟踪（nullptr 表示不跟踪）。
- * @param cursorChain 光标链处置（默认 Reflow；Preserve 仅在 cursor 非空
- *        且 newCols > oldCols 时生效）。
+ * @param cursorChain 光标链处置（默认 Reflow；Preserve 仅在 cursor 非空、
+ *        光标在本链、newCols > oldCols 且为多行链（链 >= 2 行）时生效）。
  * @return 重组后的物理行序列（每行 newCols 列，wrapped 标记已重算；
  *         Preserve 豁免链的标记原样保留）。
  * @note 链按新列宽重切：内容超宽的多行化；硬行（未 wrapped 的单行链）即

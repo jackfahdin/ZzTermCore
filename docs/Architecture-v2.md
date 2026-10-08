@@ -341,6 +341,12 @@ modes、history、dirty region、最近 VT sequence、paint timing、内存统�
 Resize/Reflow 基础语义优先使用 Contour，并通过 compatibility/regression
 tests 验证；native 后端按 v1 语义契约实现同一行为。
 
+已知有意偏离（M17a）：扩列收链且 Primary 光标在折链上时，native 豁免
+收链、保持旧宽度布局（readline WINCH 重绘按旧布局帧发相对擦除的兼容
+保护），contour 后端保持收链。详见 docs/Scrollback-and-Reflow.md
+「光标活动链保护」小节与规格
+`superpowers/specs/2026-10-08-m17a-active-chain-guard-design.md` §4。
+
 Search/Copy/Selection 基于 logical line/grapheme abstraction。Search
 不得把全部历史拼成巨大字符串；按 logical line/chunk
 扫描，未来可加增量索引。

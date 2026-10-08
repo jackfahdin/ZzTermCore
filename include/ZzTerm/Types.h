@@ -44,7 +44,8 @@ struct ZzPosition {
  *       屏幕区紧跟其后；append 与滚动不改变已有内容的序号；历史头部丢弃时
  *       序号整体下移，Core 自动平移选区锚点。
  * col：逻辑行内单元格偏移（0 起，按格不按字符）；落在宽字符续格上时
- *      提取层归一到 lead 格。
+ *      提取层归一到 lead 格。偏移为内容坐标（不含 wrapped 行尾部填充格，
+ *      M17a-4b 起逐行裁尾），跨 resize 稳定。
  */
 struct ZzLogicalPos {
     std::int64_t line = 0; ///< 逻辑行序号（统一空间）
