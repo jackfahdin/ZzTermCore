@@ -513,6 +513,32 @@ void testResizeReflowSeamChain()
         checkRowEqualAllowEmptyWidthDiff(d.native, d.contour, r, 80, "seam-80");
 }
 
+// 23. 列变拉宽顶补 parity（M16c）：满屏折链拉宽，native 顶补与 contour
+// 统一流尾部窗口净效果一致——历史行数/屏幕逐行文本/光标一致。
+void testResizeReflowTopFill()
+{
+    ZzTerminal native(10, 4, ZzBackendKind::Native, 100);
+    ZzTerminal contour(10, 4, ZzBackendKind::Contour, 100);
+    for (auto* term : {&native, &contour}) {
+        for (int i = 0; i < 6; ++i) {
+            std::string s = "L" + std::to_string(i) + std::string(18, char('a' + i));
+            term->feed(std::span<const std::byte>(
+                reinterpret_cast<const std::byte*>(s.data()), s.size()));
+            term->feed(std::span<const std::byte>(
+                reinterpret_cast<const std::byte*>("\r\n"), 2));
+        }
+        term->feed(std::span<const std::byte>(
+            reinterpret_cast<const std::byte*>("s1\r\ns2"), 6));
+    }
+    ZZ_CHECK(native.resize(20, 4));
+    ZZ_CHECK(contour.resize(20, 4));
+    ZZ_CHECK(native.historyView().lineCount() == contour.historyView().lineCount());
+    ZZ_CHECK(native.historyView().lineCount() == 4);
+    for (int r = 0; r < 4; ++r)
+        checkRowEqualAllowEmptyWidthDiff(native, contour, r, 20, "topfill-20");
+    ZZ_CHECK(native.cursor().position == contour.cursor().position);
+}
+
 } // namespace
 
 int main()
@@ -538,6 +564,7 @@ int main()
     testResizeReflowCjk();
     testResizeReflowHardLine();
     testResizeReflowSeamChain();
+    testResizeReflowTopFill();
     testRowResizeParity();
     if (g_failures != 0)
         std::fprintf(stderr, "test_backend_compat: %d failure(s)\n", g_failures);
