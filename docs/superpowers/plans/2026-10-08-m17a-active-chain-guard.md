@@ -252,13 +252,14 @@ static void testPreserveSkippedOnShrinkScreen()
     scr.setScrollOutCallback([&](std::vector<ZzLine> lines) { spilled += lines.size(); });
     scr.reflow(10); // 链 22 格 -> 3 行，产出 5 行 > 4，溢出 1 行压历史
     ZZ_TEST_EXPECT(spilled == 1);
+    // 溢出从顶部删 1 行：屏幕 [a10(w), bb, s1, s2]（勘误 E-1，见文末）
     ZZ_TEST_EXPECT(rowText(scr.lineAt(0), 10) == "aaaaaaaaaa");
     ZZ_TEST_EXPECT(scr.lineAt(0).wrapped());
-    ZZ_TEST_EXPECT(rowText(scr.lineAt(1), 10) == "aaaaaaaaaa");
-    ZZ_TEST_EXPECT(scr.lineAt(1).wrapped());
-    ZZ_TEST_EXPECT(rowText(scr.lineAt(2), 2) == "bb");
-    ZZ_TEST_EXPECT(rowText(scr.lineAt(3), 2) == "s1");
-    // 光标：链偏移 21 -> 10 列下行 2 列 1，减溢出 1 -> 行 1 列 1
+    ZZ_TEST_EXPECT(rowText(scr.lineAt(1), 2) == "bb");
+    ZZ_TEST_EXPECT(!scr.lineAt(1).wrapped());
+    ZZ_TEST_EXPECT(rowText(scr.lineAt(2), 2) == "s1");
+    ZZ_TEST_EXPECT(rowText(scr.lineAt(3), 2) == "s2");
+    // 光标：链偏移 21 -> 10 列下行 2 列 1（"bb" 行），减溢出 1 -> 行 1 列 1
     ZZ_TEST_EXPECT(scr.cursor().position.row == 1);
     ZZ_TEST_EXPECT(scr.cursor().position.col == 1);
 }
@@ -568,3 +569,10 @@ cmake --build /home/zz/Jackfahdin/github/ZzClawTerm/build/spike-debug  # 重建 
 **占位符扫描：** 任务 4 步骤 2 的括注是「先核账再逐字替换」的防错指引（行号/帮助函数名以实测为准），非占位符；其余步骤均含逐字代码。
 
 **类型一致性：** `ZzReflowCursorChain::{Reflow,Preserve}` 在 Reflow.h 定义，Screen.cpp 经 `#include "Reflow.h"`（既有）可见；`row.resize(newCols)` 与 Screen.cpp:103 的既有 `line.resize(cols)` 同 API；测试帮助函数 `makeLine`/`lineText`/`writeRow`/`rowText`/`makeTextLine`/`feedStr`/`screenRowText`/`screenText`/`historyText`/`checkRowEqualAllowEmptyWidthDiff` 均沿用各测试文件既有定义。
+
+## 实施勘误
+
+- **E-1（任务 2，M17a-5 断言账修正）**：原断言布局 `[a10(w), a10(w), bb, s1]` 与
+  自身 `spilled == 1` 自相矛盾——溢出 1 行从顶部删去一个 a 行后应为
+  `[a10(w), bb, s1, s2]`。实现者独立探针取证核实，光标 (1,1) 落在 "bb" 行
+  与原账自洽。已按探针值修正正文断言。
