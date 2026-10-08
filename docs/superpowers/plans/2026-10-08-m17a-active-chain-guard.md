@@ -371,7 +371,7 @@ static void testActiveChainGuardVsReadlineErase()
     ZZ_TEST_EXPECT(term.resize(8, 4)); // 极窄：提示符折 3 行
     ZZ_TEST_EXPECT(term.historyView().lineCount() == 11);
     ZZ_TEST_EXPECT(screenRowText(term, 0) == "L11");
-    ZZ_TEST_EXPECT(screenRowText(term, 1) == "prompt$ ");
+    ZZ_TEST_EXPECT(screenRowText(term, 1) == "prompt$"); // 勘误 E-2：行尾空格被 screenRowText 裁除
     ZZ_TEST_EXPECT(screenRowText(term, 2) == "echo abc");
     ZZ_TEST_EXPECT(screenRowText(term, 3) == "def");
     ZZ_TEST_EXPECT(term.cursor().position.row == 3);
@@ -576,3 +576,8 @@ cmake --build /home/zz/Jackfahdin/github/ZzClawTerm/build/spike-debug  # 重建 
   自身 `spilled == 1` 自相矛盾——溢出 1 行从顶部删去一个 a 行后应为
   `[a10(w), bb, s1, s2]`。实现者独立探针取证核实，光标 (1,1) 落在 "bb" 行
   与原账自洽。已按探针值修正正文断言。
+
+- **E-2（任务 3，折行片段断言裁尾修正）**：resize(8,4) 段断言
+  `screenRowText(term, 1) == "prompt$ "` 未计入 screenRowText 的行尾空格
+  裁除——折行末格恰为分隔空格，实取值为 `"prompt$"`。实现者探针逐行核对，
+  推演账其余全部精确吻合（history 3→11→5、光标四点、擦除命中碎片行）。
