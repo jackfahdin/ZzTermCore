@@ -192,6 +192,19 @@ void ZzContourBackend::feed(std::string_view data)
 
 void ZzContourBackend::resize(int columns, int rows)
 {
+    const int oldColumns = impl_->pageSize.columns.value;
+    const int oldRows = impl_->pageSize.lines.value;
+    // contour Grid::resize 内部先列后行：列向快路径的再扩宽横扫只覆盖旧页高，
+    // 随后行长把旧宽度存储的备用行暴露进页面，写穿旧宽即越界断言。
+    // 行列同变时拆成先行后列两步，让列向横扫覆盖新页高（两侧方向均安全：
+    // 缩行先收的备用/历史行允许持旧宽度，回收时才再扩宽）。
+    if (columns != oldColumns && rows != oldRows) {
+        impl_->pageSize = makePageSize(oldColumns, rows);
+        impl_->terminal->resizeScreen(
+            impl_->pageSize,
+            vtbackend::ImageSize { vtbackend::Width(static_cast<unsigned>(oldColumns) * 8u),
+                                   vtbackend::Height(static_cast<unsigned>(rows) * 17u) });
+    }
     impl_->pageSize = makePageSize(columns, rows);
     impl_->terminal->resizeScreen(
         impl_->pageSize,

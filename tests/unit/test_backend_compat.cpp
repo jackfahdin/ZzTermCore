@@ -539,6 +539,38 @@ void testResizeReflowTopFill()
     ZZ_CHECK(native.cursor().position == contour.cursor().position);
 }
 
+// 24. 行列同变回归（M16d）：contour Grid::resize 先列后行，列向再扩宽横扫只
+// 覆盖旧页高，行长暴露的窄存储备用行会被彩色写穿越界断言。adapter 拆成
+// 先行后列两步规避；本用例钉住双后端在同变 + 彩色宽行 + 滚动下存活且内容完好。
+void testResizeBothDimsColoredWide()
+{
+    ZzTerminal native(80, 24, ZzBackendKind::Native, 10000);
+    ZzTerminal contour(80, 24, ZzBackendKind::Contour, 10000);
+    const std::string line = std::string(40, 'a') + "\033[01;34m" + std::string(20, 'b')
+                           + "\033[0m" + std::string(25, 'c') + "\r\n";
+    for (auto* term : {&native, &contour}) {
+        term->resize(79, 24);
+        term->resize(271, 75); // 行列同增：崩溃现场手势
+        for (int i = 0; i < 100; ++i)
+            term->feed(std::span<const std::byte>(
+                reinterpret_cast<const std::byte*>(line.data()), line.size()));
+    }
+    // 存活即主断言；内容完好性：屏幕 75 行应全满（100 行 85 格内容溢出滚动）。
+    for (auto* term : {&native, &contour}) {
+        ZZ_CHECK(term->renderView().size().cols == 271);
+        ZZ_CHECK(term->renderView().size().rows == 75);
+        ZZ_CHECK(term->historyView().lineCount() > 0);
+        // 末行 \r\n 落在新空行（光标行）：0..73 满，74 空。
+        for (int r = 0; r < 74; ++r) {
+            const ZzLineView line = term->renderView().lineAt(r);
+            std::string text;
+            for (int c = 0; c < line.cellCount(); ++c)
+                text += line.cellAt(c).text;
+            ZZ_CHECK(!text.empty());
+        }
+    }
+}
+
 } // namespace
 
 int main()
@@ -565,6 +597,7 @@ int main()
     testResizeReflowHardLine();
     testResizeReflowSeamChain();
     testResizeReflowTopFill();
+    testResizeBothDimsColoredWide();
     testRowResizeParity();
     if (g_failures != 0)
         std::fprintf(stderr, "test_backend_compat: %d failure(s)\n", g_failures);
