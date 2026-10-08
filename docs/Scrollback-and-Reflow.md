@@ -47,7 +47,10 @@ ZzScreen 与 ZzChunkedScrollback 两端共用同一算法核，杜绝语义漂�
 -   硬行不做特判（M16 语义翻转）：未 wrapped 的单行链即 chainLen 为 1
     的普通链，缩列同样多行化、拉大同样接回。这取代了 M4 的"硬行截断"
     语义——后者是事实性错误的对齐主张，已被 M16 规格正式取代。
--   链末尾的完全默认空白格裁除。
+-   逐行裁尾（M17a-4b）：wrapped 链各行尾部的完全默认空白格恒为填充
+    而非内容（autowrap 只在行满触发、reflow 拆分各行恒满），重组时逐行
+    裁除后顺接成链流——链末行裁尾即旧 trimEnd 语义；码位 0x20 的真空格
+    不受影响。
 -   宽字符（占两列的单元格）原子搬运，不落在行边界上（边界前移一格并
     补默认空白）。
 -   grapheme cluster 格在新行重新 internCluster。
@@ -77,6 +80,23 @@ ScrollOutCallback 另计，保证 ZzHistoryView 持有方能感知失效。
 
 Alternate 缓冲区无历史：重组溢出行直接丢弃、产出不足纯底部补空
 （永不顶补），不参与上述往返。
+
+### 光标活动链保护（M17a）
+
+扩列 reflow 收链时，**Primary 缓冲中光标所在的折链豁免合并**，保持旧宽度
+拆分（行存储扩宽到新列宽，内容布局、wrapped 旗标、光标行位均不动）。
+
+动机：readline 的 WINCH 重绘按**旧布局帧**发相对擦除（ESC [ A、ESC [ K
+连发 N 次）。若 reflow 已把输入链收链为 1 行，擦除会命中收链后无辜的
+内容行，造成永久性内容破坏（2026-10-08 用户实测，spike 留痕重放定位）。
+豁免后擦除命中提示符自己的碎片行，内容零损失。contour/xterm/VTE 等
+reflow 终端均有此破坏（contour 已用留痕逐点实测确认），本语义为有意
+差异化。
+
+细则：仅扩列方向（缩列拆分照常）、仅 Primary（Alternate 不豁免）；
+豁免是瞬时态——应用重写该链（readline 重印提示符）后链消失，后续
+reflow 无豁免对象；流式输出（cat）在链末片段旧列位继续追加，内容正确，
+视觉折点待下次重写消除。
 
 ## 5. 行变 resize 的条件语义（M15）
 
@@ -116,8 +136,9 @@ resize 后前端不需要知道重组细节：
 
 ## 7. 语义边界与已知限制
 
--   行尾空白不保留：链末尾完全默认空白格在重组时裁除（与 Contour/xterm
-    一致）。
+-   行尾空白不保留：wrapped 链各行尾部完全默认空白格在重组时逐行裁除
+    （M17a-4b 逐行裁尾，与 Contour/xterm 的链尾裁除语义兼容——填充格
+    均非内容）。
 -   列变 reflow 的底部补空仅余量路径（M16c）：屏幕重组产出不足时优先
     从最新历史顶补，历史耗尽后的余量才底部补空；无 HistoryPullCallback
     的路径（Alternate、纯 ZzScreen 直调未装回调）退化为纯底部补空，
@@ -142,6 +163,9 @@ resize 后前端不需要知道重组细节：
     `superpowers/specs/2026-09-30-m16b-seam-chain-reflow-design.md`。
 -   M16c：列变 reflow 历史顶补（屏幕内容贴底锚定、光标随顶补平移）——
     `superpowers/specs/2026-10-08-m16c-reflow-topfill-design.md`。
+-   M17a：光标活动链保护（扩列 reflow 时 Primary 光标所在折链豁免收链，
+    readline 陈旧帧擦除兼容；wrapped 行尾部空白格逐行裁尾）——
+    `superpowers/specs/2026-10-08-m17a-active-chain-guard-design.md`。
 
 Contour 基准对照：third_party/contour 的 Grid.cpp——growColumns /
 shrinkColumns（统一流重组，列变基准）、shrinkLines / growLines（行变

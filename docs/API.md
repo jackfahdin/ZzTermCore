@@ -104,6 +104,10 @@ parser/screen/scrollback 等引擎组件归各后端实现持有，`ZzTerminal`
   列变重组内容收缩（重组产出不足行数）时先经 HistoryPullCallback 从
   最新历史顶补填满屏幕——内容贴底锚定、光标随顶补平移，历史不足
   余量底部补空，Alternate 永不顶补（M16c，对齐 contour 统一流净效果）。
+  扩列 reflow 时 Primary 缓冲中光标所在的折链豁免收链、保持旧宽度
+  拆分（M17a，readline WINCH 重绘按旧布局帧发相对擦除的兼容保护，
+  详见 docs/Scrollback-and-Reflow.md「光标活动链保护」）；仅扩列方向、
+  仅 Primary，与 contour 后端在该场景有意偏离。
 - `screen()` 与 `scrollback()` 为 Core 内部协作口（可变访问工作区/
   历史后端），仅 Native 后端可用、不带 noexcept，Contour 后端调用
   抛 `std::logic_error`。
@@ -354,3 +358,11 @@ RenderView 覆盖屏幕区，HistoryView 覆盖 scrollback 历史区。
 - M16b：行为语义变化（列变 reflow 的跨历史/屏幕接缝链不再劈开，经归还
   机制统一重组）；ZzScreen 新增 prependPrimaryLines 公共方法（Core 内部
   使用定位）；存量劈链不修复（链尾空白已被裁，只对新 resize 生效）。
+- M17a：ZzScreen/ZzTerminal 无签名变化；行为语义变化——扩列 reflow 时
+  Primary 光标所在折链豁免收链（readline 重绘兼容）；与 contour 后端
+  在该场景有意偏离（偏离登记见 test_screen_reflow /
+  test_native_reflow_topfill / test_screen_reflow_topfill 的 M17a 语义
+  变更改写用例；compat seam 回程段光标不在折链上，parity 自然成立，
+  见计划勘误 E-3）。另：wrapped 链各行尾部完全默认空白格恒为填充，
+  reflow 与选区拼链逐行裁尾（M17a-4b），落被裁补白区的光标锚到链末行
+  内容尾。

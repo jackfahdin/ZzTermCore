@@ -107,6 +107,9 @@ public:
      *       光标按"逻辑行链 + 链内偏移"跟随内容映射并 clamp；
      *       wrapPending 清除；滚动区复位全屏；tab stops 按新列宽重建；
      *       全屏标脏。行数不变（行向调整由 resize 负责）。
+     * @note M17a：扩列时 Primary 光标所在折链豁免收链（readline 陈旧帧
+     *       擦除兼容），详见 docs/Scrollback-and-Reflow.md「光标活动链
+     *       保护」。
      */
     void reflow(int newCols);
 
