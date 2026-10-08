@@ -161,7 +161,16 @@ void ZzScreen::reflowBuffer(Buffer& buf, int newCols, bool mayScrollOut)
         track.chainOffset = (cursorRow - chainStartRow) * cols_ + buf.cursor.position.col;
     }
 
-    std::vector<ZzLine> out = zzReflowLines(buf.lines, cols_, newCols, &track);
+    // M17a：Primary 且扩列且光标在折链（链 >= 2 行）上时豁免收链——
+    // readline 的 WINCH 重绘按旧布局帧发相对擦除，豁免让擦除命中
+    // 提示符碎片行而非收链后的无辜内容行（规格 2026-10-08-m17a §3）。
+    const bool preserveCursorChain =
+        mayScrollOut && newCols > cols_
+        && buf.lines[static_cast<std::size_t>(chainStartRow)].wrapped();
+    std::vector<ZzLine> out =
+        zzReflowLines(buf.lines, cols_, newCols, &track,
+                      preserveCursorChain ? ZzReflowCursorChain::Preserve
+                                          : ZzReflowCursorChain::Reflow);
 
     // 行数平衡：溢出上移（仅 Primary）或丢弃（Alternate）；
     // 不足时先经 HistoryPullCallback 从最新历史顶补（M16c，仅 Primary 且

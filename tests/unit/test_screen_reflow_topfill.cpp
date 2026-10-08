@@ -190,6 +190,79 @@ static void testTopFillCursorInsideChain()
     ZZ_TEST_EXPECT(scr.cursor().position.col == 11);
 }
 
+// M17a-4：光标在折链上扩列——豁免收链，布局/旗标/光标不动，无顶补需求
+static void testPreserveCursorChainScreen()
+{
+    ZzScreen scr(10, 4);
+    writeRow(scr, 0, "aaaaaaaaaa"); // 链首（10 格）
+    scr.setLineWrapped(0, true);
+    writeRow(scr, 1, "bb");         // 链尾（链 12 格）
+    writeRow(scr, 2, "s1");
+    writeRow(scr, 3, "s2");
+    scr.setCursorPosition(ZzPosition{1, 1}); // 光标在链上（片段 1 列 1）
+    std::size_t asked = 0;
+    scr.setHistoryPullCallback([&](std::size_t maxLines) {
+        asked = maxLines;
+        return std::vector<ZzLine>{};
+    });
+    scr.reflow(20);
+    ZZ_TEST_EXPECT(asked == 0); // 豁免链贡献 2 行，产出 4 行 == rows，无缺口
+    ZZ_TEST_EXPECT(rowText(scr.lineAt(0), 10) == "aaaaaaaaaa");
+    ZZ_TEST_EXPECT(scr.lineAt(0).wrapped());
+    ZZ_TEST_EXPECT(rowText(scr.lineAt(1), 2) == "bb");
+    ZZ_TEST_EXPECT(!scr.lineAt(1).wrapped());
+    ZZ_TEST_EXPECT(rowText(scr.lineAt(2), 2) == "s1");
+    ZZ_TEST_EXPECT(rowText(scr.lineAt(3), 2) == "s2");
+    ZZ_TEST_EXPECT(scr.cursor().position.row == 1);
+    ZZ_TEST_EXPECT(scr.cursor().position.col == 1);
+}
+
+// M17a-5：光标在折链上缩列——不豁免，照常重切溢出
+static void testPreserveSkippedOnShrinkScreen()
+{
+    ZzScreen scr(20, 4);
+    writeRow(scr, 0, "aaaaaaaaaaaaaaaaaaaa"); // 链首（20 格）
+    scr.setLineWrapped(0, true);
+    writeRow(scr, 1, "bb");                   // 链尾（链 22 格）
+    writeRow(scr, 2, "s1");
+    writeRow(scr, 3, "s2");
+    scr.setCursorPosition(ZzPosition{1, 1});
+    std::size_t spilled = 0;
+    scr.setScrollOutCallback([&](std::vector<ZzLine> lines) { spilled += lines.size(); });
+    scr.reflow(10); // 链 22 格 -> 3 行，产出 5 行 > 4，溢出 1 行压历史
+    ZZ_TEST_EXPECT(spilled == 1);
+    ZZ_TEST_EXPECT(rowText(scr.lineAt(0), 10) == "aaaaaaaaaa");
+    ZZ_TEST_EXPECT(scr.lineAt(0).wrapped());
+    // 勘误 E-1：溢出从顶部删 1 行（链首 a10 压历史），剩余 [a10(w), bb, s1, s2]
+    ZZ_TEST_EXPECT(rowText(scr.lineAt(1), 2) == "bb");
+    ZZ_TEST_EXPECT(!scr.lineAt(1).wrapped());
+    ZZ_TEST_EXPECT(rowText(scr.lineAt(2), 2) == "s1");
+    ZZ_TEST_EXPECT(rowText(scr.lineAt(3), 2) == "s2");
+    // 光标：链偏移 21 -> 10 列下行 2 列 1，减溢出 1 -> 行 1 列 1
+    ZZ_TEST_EXPECT(scr.cursor().position.row == 1);
+    ZZ_TEST_EXPECT(scr.cursor().position.col == 1);
+}
+
+// M17a-6：Alternate 缓冲不豁免（全屏应用自带重绘，无 readline 帧假设）
+static void testPreserveSkippedOnAlternate()
+{
+    ZzScreen scr(10, 4);
+    scr.setActiveBuffer(ZzScreenBuffer::Alternate);
+    writeRow(scr, 0, "aaaaaaaaaa");
+    scr.setLineWrapped(0, true);
+    writeRow(scr, 1, "bb");
+    writeRow(scr, 2, "s1");
+    writeRow(scr, 3, "s2");
+    scr.setCursorPosition(ZzPosition{1, 1}); // Alternate 光标在链上
+    scr.reflow(20); // Alternate 缓冲：不豁免，链 12 格合 1 行
+    ZZ_TEST_EXPECT(rowText(scr.lineAt(0), 12) == "aaaaaaaaaabb");
+    ZZ_TEST_EXPECT(rowText(scr.lineAt(1), 2) == "s1");
+    ZZ_TEST_EXPECT(rowText(scr.lineAt(2), 2) == "s2");
+    // Alternate 光标链跟踪走现状换算：链偏移 11 -> 20 列下行 0 列 11
+    ZZ_TEST_EXPECT(scr.cursor().position.row == 0);
+    ZZ_TEST_EXPECT(scr.cursor().position.col == 11);
+}
+
 int main()
 {
     testWidenTopFill();
@@ -198,6 +271,9 @@ int main()
     testAlternateNoTopFill();
     testTopFillPreservesWrapped();
     testTopFillCursorInsideChain();
+    testPreserveCursorChainScreen();
+    testPreserveSkippedOnShrinkScreen();
+    testPreserveSkippedOnAlternate();
     if (g_failures != 0) {
         std::fprintf(stderr, "%d failure(s)\n", g_failures);
         return 1;
