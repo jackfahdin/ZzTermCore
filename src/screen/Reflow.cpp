@@ -24,8 +24,12 @@ void zzReflowChain(const ZzLine* chainLines, std::size_t chainLen, int oldCols, 
     // 宽字符边界 / EL 擦尾），裁掉均正确；码位 0x20 的真空格不受影响。
     // 链流 = 各行裁尾后有效段顺接（链末行裁尾即旧 trimEnd 语义）。
     // 光标跟踪：链内物理坐标（片段号 = chainOffset/oldCols、片段内列 =
-    // chainOffset%oldCols）换算为新流偏移 Σ used[0..f-1] + min(col, used[f])，
-    // 落在被裁补白区时锚到该片段内容尾。
+    // chainOffset%oldCols）换算为新流偏移 Σ used[0..f-1] + min(col, used[f])。
+    // col < used[f] 时命中本片段对应格；col >= used[f]（落在被裁补白区）时
+    // 目标偏移等于片段 f 的内容尾（即下一片段首格的流偏移），但跟踪仅限
+    // 片段 f 的内层循环（cursorFrag == i 守卫），故不命中任何格子，落入
+    // 全局兜底——锚到链末行内容尾（与 trimEnd 时代 testCursorInTrimmedBlanks
+    // 的兜底先例一致；仅 f 为链末片段时两者重合）。
     const int cursorFrag = trackThis ? cursor->chainOffset / oldCols : -1;
     const int cursorFragCol = trackThis ? cursor->chainOffset % oldCols : 0;
 

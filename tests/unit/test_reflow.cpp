@@ -492,6 +492,33 @@ static void testPreserveThenMergeNoPadding()
     ZZ_TEST_EXPECT(lineText(merged[0]).substr(0, 8) == "abcdefgh"); // 无补白洞
 }
 
+// M17a-10：光标落在 Preserve 扩宽链的非末片段补白区——目标流偏移不命中
+// 任何格子，兜底锚到链末行内容尾（与 testCursorInTrimmedBlanks 的 trimEnd
+// 时代先例一致；M17a 审查 R1 钉住实际语义，注释曾误称锚到本片段内容尾）
+static void testCursorInPaddingFallsBackToChainTail()
+{
+    std::vector<ZzLine> lines;
+    lines.push_back(makeLine(5, "abcde", true));
+    lines.push_back(makeLine(5, "fgh", false));
+    ZzReflowCursor cur;
+    cur.chainIndex = 0;
+    cur.chainOffset = 7;
+    auto grown = zzReflowLines(std::move(lines), 5, 10, &cur,
+                               ZzReflowCursorChain::Preserve);
+    ZZ_TEST_EXPECT(grown.size() == 2); // 豁免保持 [abcde(w), fgh]（行存储 10 列）
+    // 光标经 CUF/CUP 停在首片段补白区：片段 0 列 8（10 列单位；used[0]=5，
+    // 列 8 的格已在逐行裁尾中剔除）
+    cur.chainOffset = 8;
+    auto shrunk = zzReflowLines(std::move(grown), 10, 5, &cur,
+                                ZzReflowCursorChain::Reflow);
+    ZZ_TEST_EXPECT(shrunk.size() == 2);
+    ZZ_TEST_EXPECT(lineText(shrunk[0]).substr(0, 5) == "abcde");
+    ZZ_TEST_EXPECT(lineText(shrunk[1]).substr(0, 3) == "fgh");
+    // 兜底：链末行内容尾（"fgh" 尾后，列 = min(3, newCols-1)）
+    ZZ_TEST_EXPECT(cur.row == 1);
+    ZZ_TEST_EXPECT(cur.col == 3);
+}
+
 int main()
 {
     testWidenMergesChain();
@@ -511,6 +538,7 @@ int main()
     testPreserveWithoutCursor();
     testPreservePaddingRoundTrip();
     testPreserveThenMergeNoPadding();
+    testCursorInPaddingFallsBackToChainTail();
     if (g_failures == 0)
         std::printf("test_reflow: all passed\n");
     return g_failures;
