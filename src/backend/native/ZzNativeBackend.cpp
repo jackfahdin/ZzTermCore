@@ -6,6 +6,7 @@
 #include "unicode/GraphemeBreak.h"
 #include "unicode/Utf8Encode.h"
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -211,7 +212,17 @@ ZzNativeBackend::ZzNativeBackend(int cols, int rows, std::size_t scrollbackMaxLi
     // M15：扩行回抽回调——Screen 经此从 scrollback 取最新行注入屏幕顶部；
     // 实取非空时历史可见行数减少，代计数递增（M14「不得漏增」）。
     screen_.setHistoryPullCallback([this](std::size_t maxLines) {
-        auto pulled = scrollback_->takeNewest(maxLines);
+        // M17d 折链对齐（向下取整）：被取块首行必须是链头——接缝行
+        //（被取块上方一行）wrapped=true 说明从链中段切开，递减索取数
+        // 把跨缝整链留在历史。不向上多取：顶插超过扩行数会在 resize
+        // 出口从末尾截断，可能裁到活内容（规格 §3.3 勘误 E-1）。
+        // 对 M16c reflow 逆差顶补同生效（dangling 预防全域化）。
+        const std::size_t count = scrollback_->lineCount();
+        std::size_t n = std::min(maxLines, count);
+        while (n > 0 && n < count
+               && scrollback_->lineAt(count - n - 1).wrapped())
+            --n;
+        auto pulled = scrollback_->takeNewest(n);
         if (!pulled.empty())
             ++historyGeneration_;
         return pulled;
