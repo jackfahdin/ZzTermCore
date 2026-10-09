@@ -112,8 +112,8 @@ SeverSeamLinkCallback 通知持有方，由 ZzScrollback::severNewestWrapped
     ESC [ 2 K（整行擦除，任意光标列）、ESC [ 1 K 且光标在末列；
 -   ED 覆盖到的整行：ESC [ 0 J 下方全部整行（光标行仅当光标在列 0 时
     算整行覆盖）、ESC [ 1 J 上方全部整行（光标行仅当光标在末列时算）、
-    ESC [ 2 J 全屏整行。ESC [ 3 J 被分发层忽略不达 Screen，不在触发
-    集合。
+    ESC [ 2 J 全屏整行。ESC [ 3 J 清滚动区（M17d 起接线清空历史，
+    见 §9），不触及屏幕行链标，不在触发集合。
 
 不斩链：行尾/行首部分擦除（视为对活内容的编辑，链标不动）、覆盖写
 （无擦除直接改写单元格）、ECH / DL / IL（首版豁免，记录在案）。
@@ -154,9 +154,10 @@ Grid 的 shrinkLines/growLines）：
 -   缩行：先裁光标下方的行（直接丢弃，不入历史）；不够裁时把 Primary
     顶部行经 ScrollOutCallback 压入历史（无回调则丢弃，同 reflow 溢出
     语义）；光标随内容平移。
--   扩行：仅当光标贴末行时，经 HistoryPullCallback 从最新历史回抽行
-    注入屏幕顶部；不足部分底部补空行。光标不贴末行时纯底部补空，
-    不动历史。
+-   扩行（M17d 起）：Primary 且光标下方所有行为空行（会话活在底部）
+    时，经 HistoryPullCallback 从最新历史回抽行注入屏幕顶部；不足
+    部分底部补空行。光标下方有非空行时纯底部补空，不动历史。详见
+    §9「扩行回填（M17d）」。
 -   Alternate 缓冲区无回调路径：尾部截断或补空。
 
 两个回调在 backend 构造时接线（ZzNativeBackend.cpp）：
@@ -218,7 +219,49 @@ resize 后前端不需要知道重组细节：
     SeverSeamLinkCallback 与 severNewestWrapped；readline 8.3 光标错位
     登记为已知外部问题）——
     `superpowers/specs/2026-10-08-m17c-erase-chain-sever-design.md`。
+-   M17d：扩行回填（扩行回抽条件放宽为 Primary 且光标下方全空行即
+    回抽，折链对齐向下取整；ED 3 清滚动区接线）——
+    `superpowers/specs/2026-10-09-m17d-grow-refill-design.md`。
 
 Contour 基准对照：third_party/contour 的 Grid.cpp——growColumns /
 shrinkColumns（统一流重组，列变基准）、shrinkLines / growLines（行变
 基准）。
+
+## 9. 扩行回填（M17d）
+
+M17c 复验暴露「空白海」事故：窗口缩至极小再拉满后内容堆顶、底部大面积
+空白、提示符悬空（spike trace3 留痕离线重放实证，contour 参照后端跑同一
+剧本同现欠填——既存语义缺口，非 M17c 回归）。M17d 放宽扩行回抽条件并
+补齐 ED3 清历史。
+
+-   触发条件：Primary 缓冲且**光标下方所有行均为空行**（空行 = 整行
+    空白 cell）时回抽。旧条件「光标贴旧末行」是新条件的子集（贴末行
+    时下方无行，全称量词真空成立），既有行为天然兼容；光标下方存在
+    非空行（光标在内容中间，如全屏应用/布局中）一律不回抽，保护布局；
+    Alternate 维持 M15 尾部截断/补空，不动历史。
+-   回抽量与光标：满足触发条件时经既有 HistoryPullCallback 回抽
+    `p = min(扩行数 k, 历史可用行数)` 行顶插屏幕顶部，
+    `cursor.row += p`（内容整体下沉，提示符沉底）；历史不足时余量
+    底部补空（M15 语义不变）。
+-   折链对齐向下取整：回抽按折链边界对齐——被取块上方的接缝行
+    wrapped 时递减取量，直至接缝行非 wrapped、取量归零或历史全取
+    （跨缝的整条链留在历史）。不向上多取的理由：顶插行数超过扩行数
+    k 时，resize 出口从缓冲区末尾截断，光标下方空行不足吸纳超出量时
+    会裁掉活内容行（内容丢失）；向下取整的代价是至多（链长 - 1）行
+    差额留在底部补空，后续 resize 或输出自然修复，链完整性优先。
+    对齐在 native 后端 HistoryPullCallback 接线层实现（Screen 只见
+    回调不见历史），对 M16c reflow 逆差顶补同生效——dangling 预防
+    全域化；contour 的 LogicalLines 天然链对齐，此为向 contour 靠拢
+    的加固，非偏离。
+-   ED 3 清滚动区：`ESC [ 3 J` 清空历史，xterm 标准语义——**不动
+    屏幕内容、不动光标**（此前分发层忽略；`ZzScrollback::clear()`
+    既有接口首次接线，历史代计数递增）。`clear`（terminfo 序列含
+    ED3）后历史真正清空，拉大不回填，clear 意图受尊重。
+-   已知取舍：应用只发 ED2 清屏（不带 ED3 的老式清屏）后拉大，历史
+    内容会复活回填——kitty/Windows Terminal 行为相同，与主流一致，
+    非缺陷。
+
+与 contour 后端的 parity：扩行回填为有意偏离（contour growLines 仅
+光标贴末行回抽，偏离登记见 tests/unit/test_backend_compat.cpp 用例
+26 testGrowRefillDeviation）；ED3 为 parity 补齐（contour 原生支持，
+对照见用例 27 testEd3ClearScrollbackParity）。

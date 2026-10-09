@@ -91,8 +91,10 @@ parser/screen/scrollback 等引擎组件归各后端实现持有，`ZzTerminal`
   不拆半，硬行缩列多行化、拉大沿 wrapped 链合并恢复（M16，对齐 Contour/xterm，
   取代 M4 硬行截断），光标按逻辑行链跟随内容；行变化（M15，双后端
   语义对齐 contour shrinkLines/growLines）：缩行先裁光标下方行（不入
-  历史），不够裁时把 Primary 顶部行压入历史；扩行仅当光标贴末行时从
-  最新历史回抽注入顶部，不足部分底部补空，光标不在末行时纯底部补空。
+  历史），不够裁时把 Primary 顶部行压入历史；扩行当 Primary 且光标
+  下方全空行（会话活在底部）时从最新历史回抽注入顶部、光标随内容
+  下沉（M17d 放宽，旧条件「光标贴末行」为其子集），不足部分底部
+  补空，光标下方有非空行时纯底部补空。
   Alternate Screen 不产生历史（备用屏无历史），Alternate 期间行变
   resize 时主屏网格仍按上述语义压历史/回抽。resize 后 RenderView、
   HistoryView 与既有 `ZzLineView` 句柄全部失效，前端需重新获取。
@@ -376,3 +378,10 @@ RenderView 覆盖屏幕区，HistoryView 覆盖 scrollback 历史区。
   随之把被擦行按硬行处理；与 contour 后端在「erase 触及 wrapped 行」
   场景有意偏离（contour 保持链标，偏离登记见 test_backend_compat 的
   M17c 用例）。
+- M17d：行为语义变化——`ZzScreen::resize` 扩行回填条件由「光标贴旧
+  末行」放宽为「Primary 且光标下方全空行即回抽」（Screen.cpp 注释
+  同步）；CSI ED 3 清滚动区接线（此前分发层忽略，xterm 标准语义：
+  不动屏幕/光标，`clear` 后历史真正清空、扩行不回填）。无新公共
+  接口（`ZzScrollback::clear()` 为既有接口首次接线）；ABI 无变化。
+  与 contour 后端在扩行回填场景有意偏离（contour 仅光标贴旧末行
+  回抽，偏离登记见 test_backend_compat 的 M17d 用例）。

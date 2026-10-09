@@ -353,6 +353,20 @@ tests 验证；native 后端按 v1 语义契约实现同一行为。
 （M17c）」小节与 tests/unit/test_backend_compat.cpp 的 M17c 偏离用例
 （testEraseSeverDeviation）。
 
+已知有意偏离（M17d）：「行数增加且光标下方全空行」扩行回填——native
+从历史回抽填满、光标沉底（光标下方全空行即回抽），contour 核心仅光标
+贴旧末行回抽（CUP 抬离末行后不回抽、底部补空，第三方冻结不改）。
+动机：用户核心诉求「任意缩拉后内容填满屏幕、提示符沉底」（trace3
+留痕实证 contour 同现欠填）。偏离登记见
+docs/Scrollback-and-Reflow.md「扩行回填（M17d）」小节与
+tests/unit/test_backend_compat.cpp 的 M17d 偏离用例
+（testGrowRefillDeviation）。回抽折链对齐在 HistoryPullCallback
+接线层向下取整，dangling 预防全域化、对 M16c 顶补同生效；contour
+的 LogicalLines 天然链对齐，此为向 contour 靠拢的加固，非偏离。
+另：ED 3 清滚动区 M17d 起支持（此前分发层忽略），xterm 标准语义
+（不动屏幕/光标），compat 用例 27（testEd3ClearScrollbackParity）
+parity。
+
 Search/Copy/Selection 基于 logical line/grapheme abstraction。Search
 不得把全部历史拼成巨大字符串；按 logical line/chunk
 扫描，未来可加增量索引。

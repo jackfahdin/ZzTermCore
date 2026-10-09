@@ -81,7 +81,7 @@ compatibility/regression tests。
 -   [ ] \[Contour\]\[Test\]\[PASS-Native\] CUP / HVP
 -   [ ] \[Contour\]\[Test\]\[PASS-Native\] Save / Restore Cursor
 -   [ ] \[Contour\]\[Test\]\[PASS-Native\] ED 0/1/2/3（ED 3
-    清历史除外）
+    清滚动区自 M17d 起支持）
 -   [ ] \[Contour\]\[Test\]\[PASS-Native\] EL 0/1/2
 -   [ ] \[Contour\]\[Test\]\[PASS-Native\] ECH
 -   [ ] \[Contour\]\[Test\]\[PASS-Native\] ICH / DCH

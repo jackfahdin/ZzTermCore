@@ -33,7 +33,7 @@
 
 ## Erase / Insert / Delete / Scroll
 
--   [x] ED 0/1/2/3（ED 3 清历史除外）
+-   [x] ED 0/1/2/3（ED 3 清滚动区自 M17d 起支持）
 -   [x] EL 0/1/2
 -   [x] ECH
 -   [x] ICH / DCH
