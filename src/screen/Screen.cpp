@@ -369,6 +369,19 @@ bool ZzScreen::insertMode() const noexcept { return insertMode_; }
 void ZzScreen::setAutoWrapMode(bool on) noexcept { autoWrapMode_ = on; }
 bool ZzScreen::autoWrapMode() const noexcept { return autoWrapMode_; }
 
+// M17c：整行擦除斩链——内容死亡即从折链摘除：清本行出链，并斩断入链
+//（前驱行 wrapped）。前驱在历史区（row==0）时经 SeverSeamLinkCallback
+// 通知持有方斩断历史末行链标（仅 Primary；Alternate 无历史不触发）。
+void ZzScreen::severRowLinks(Buffer& buf, int row) noexcept
+{
+    buf.lines[static_cast<std::size_t>(row)].setWrapped(false);
+    if (row > 0) {
+        buf.lines[static_cast<std::size_t>(row - 1)].setWrapped(false);
+    } else if (&buf == &primary_ && severSeamLinkCallback_) {
+        severSeamLinkCallback_();
+    }
+}
+
 void ZzScreen::eraseInLine(ZzEraseMode mode, const ZzCell& fill) noexcept
 {
     const ZzPosition cur = cursor().position;
@@ -386,6 +399,9 @@ void ZzScreen::eraseInLine(ZzEraseMode mode, const ZzCell& fill) noexcept
         line.setCell(c, fill);
     markDirty(cur.row, from);
     markDirty(cur.row, to);
+    // M17c：整行覆盖才斩链；行尾/行首部分擦除视为编辑，不动链。
+    if (from == 0 && to == cols_ - 1)
+        severRowLinks(buf, cur.row);
 }
 
 void ZzScreen::eraseInDisplay(ZzEraseMode mode, const ZzCell& fill) noexcept
@@ -403,6 +419,9 @@ void ZzScreen::eraseInDisplay(ZzEraseMode mode, const ZzCell& fill) noexcept
             buf.lines[static_cast<std::size_t>(r)].clear(fill);
         for (int r = cur.row; r < rows_; ++r)
             markRowDirty(r);
+        // M17c：下方整行死亡；光标行仅当列 0 起才算整行覆盖。
+        for (int r = (cur.col == 0 ? cur.row : cur.row + 1); r < rows_; ++r)
+            severRowLinks(buf, r);
         break;
     case ZzEraseMode::FromStart:
         // 屏幕开头到光标（含）。
@@ -412,11 +431,18 @@ void ZzScreen::eraseInDisplay(ZzEraseMode mode, const ZzCell& fill) noexcept
             cursorLine.setCell(c, fill);
         for (int r = 0; r <= cur.row; ++r)
             markRowDirty(r);
+        // M17c：上方整行死亡；光标行仅当末列才算整行覆盖。
+        for (int r = 0; r < cur.row; ++r)
+            severRowLinks(buf, r);
+        if (cur.col == cols_ - 1)
+            severRowLinks(buf, cur.row);
         break;
     case ZzEraseMode::All:
         for (int r = 0; r < rows_; ++r)
             buf.lines[static_cast<std::size_t>(r)].clear(fill);
         markAllDirty();
+        for (int r = 0; r < rows_; ++r)
+            severRowLinks(buf, r);
         break;
     }
 }
@@ -522,6 +548,11 @@ void ZzScreen::setScrollOutCallback(ScrollOutCallback callback)
 void ZzScreen::setHistoryPullCallback(HistoryPullCallback callback)
 {
     historyPullCallback_ = std::move(callback);
+}
+
+void ZzScreen::setSeverSeamLinkCallback(SeverSeamLinkCallback callback)
+{
+    severSeamLinkCallback_ = std::move(callback);
 }
 
 void ZzScreen::markDirty(int row, int col) noexcept

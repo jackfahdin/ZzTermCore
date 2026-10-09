@@ -69,6 +69,11 @@ public:
      */
     using HistoryPullCallback = std::function<std::vector<ZzLine>(std::size_t maxLines)>;
 
+    /// @brief 屏幕首行整行擦除时斩断历史末行链标的通知（M17c）。
+    ///        仅 Primary 缓冲触发；Alternate 无历史不触发。由持有方接线到
+    ///        ZzScrollback::severNewestWrapped。
+    using SeverSeamLinkCallback = std::function<void()>;
+
     /**
      * @brief 构造指定尺寸的工作区（Primary 活动）。
      * @param cols 列数（> 0）。
@@ -302,6 +307,9 @@ public:
      * @brief 行内擦除（EL 0/1/2），基于当前光标列。
      * @param mode 擦除范围。
      * @param fill 填充单元格（通常携带当前画笔的背景属性）。
+     * @note M17c 斩链：擦除范围覆盖整行（ToEnd 起点列 0 / All /
+     *       FromStart 终点末列）时，本行出链与前驱入链一并斩断——整行
+     *       擦除 = 内容死亡 = 从折链摘除。部分擦除视为编辑，不动链标。
      */
     void eraseInLine(ZzEraseMode mode, const ZzCell& fill) noexcept;
 
@@ -311,6 +319,8 @@ public:
      * @param fill 填充单元格。
      * @note ED 3（清滚动历史）不由本方法处理；历史属于 ZzTerminal/
      *       ZzScrollback 职责。
+     * @note M17c 斩链：被整行覆盖的行按 eraseInLine 同规则斩链；row 0
+     *       被整行覆盖时经 SeverSeamLinkCallback 通知斩断历史末行链标。
      */
     void eraseInDisplay(ZzEraseMode mode, const ZzCell& fill) noexcept;
 
@@ -407,6 +417,9 @@ public:
      */
     void setHistoryPullCallback(HistoryPullCallback callback);
 
+    /// @brief 设置接缝斩链回调（M17c）；空回调时跳过跨界斩（不崩）。
+    void setSeverSeamLinkCallback(SeverSeamLinkCallback callback);
+
 private:
     /// @brief 单缓冲区的完整状态。
     struct Buffer {
@@ -432,6 +445,9 @@ private:
     void scrollRegionUp(int top, int bottom, int count, const ZzCell& fill);
     /// @brief 向下滚动滚动区（内部实现）。
     void scrollRegionDown(int top, int bottom, int count, const ZzCell& fill);
+    /// @brief M17c 整行擦除斩链：清 row 出链与前驱入链；row==0 且
+    ///        Primary 时经 severSeamLinkCallback_ 跨界斩历史末行。
+    void severRowLinks(Buffer& buf, int row) noexcept;
 
     Buffer              primary_;
     Buffer              alternate_;
@@ -450,4 +466,5 @@ private:
     std::uint64_t       dirtyGeneration_ = 0;
     ScrollOutCallback   scrollOutCallback_;
     HistoryPullCallback historyPullCallback_;
+    SeverSeamLinkCallback severSeamLinkCallback_;
 };
