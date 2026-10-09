@@ -209,6 +209,73 @@ static void testActiveChainGuardVsReadlineErase()
     ZZ_TEST_EXPECT(term.historyView().lineCount() == 5); // L0..L4 完好留存
 }
 
+// M17c 事故复刻：readline 两代重绘死链不粘——erase 斩链后残片收链、
+// 活代被 bash 帧擦除精确命中，内容零损失。
+// 行数账（20x6）：
+//   A) "C0\r\nC1\r\nC2\r\n" + 45 字符提示符 → r0-2=C0..C2，
+//      链 [r3(w),r4(w),r5]（20+20+5），光标 (5,5)；
+//   B) bash 二代重绘：\r\e[K\r + 同 45 字符 → \e[K 斩 r4.wrapped（M17c），
+//      写入折行触发 2 次滚动（C0、C1 入历史），屏：
+//      r0=C2, r1=gen1r0(w), r2=gen1r1(斩尾), r3=gen2r0(w), r4=gen2r1(w),
+//      r5=gen2r2，光标 (5,5)；历史 [C0,C1]；
+//   C) resize(40,6)：gen1 [r1,r2] 收链为 40 宽 1 行；gen2 是光标链，
+//      M17a 豁免保持 20 宽 3 行；产出 5 行缺 1 → 顶补 C1，历史 [C0]；
+//   D) bash 拉回重绘：\r\e[K + \e[A\e[K×2（帧=3 行，精确命中 gen2 三行）
+//      + 45 字符按 40 宽重印 → r3(40 字符) + r4("PROMP")，光标 (5,4)。
+//   无 M17c 时：B 不斩链 → gen1/gen2 粘成 5 行僵尸链 → C 整链豁免 →
+//   D 只擦 3 行 → r1/r2 残留 20 列碎片（本测试的否定断言点）。
+static void testEraseSeverVsZombieChain()
+{
+    ZzTerminal term(20, 6, ZzBackendKind::Native, 100);
+    const std::string prompt =
+        "0123456789abcdefghij0123456789abcdefghijPROMP"; // 45 字符
+    feedStr(term, "C0\r\nC1\r\nC2\r\n");
+    feedStr(term, prompt);                       // 链 r3-r5，光标 (5,5)
+    feedStr(term, "\r\x1b[K\r");                 // bash 二代重绘：整行擦 r5（斩链点）
+    feedStr(term, prompt);                       // 重写 → 2 次滚动，C0/C1 入历史
+    ZZ_TEST_EXPECT(term.historyView().lineCount() == 2);
+    ZZ_TEST_EXPECT(term.resize(40, 6));          // 拉回（M17a 豁免活代）
+    ZZ_TEST_EXPECT(term.historyView().lineCount() == 1); // 顶补取走 C1
+    feedStr(term, "\r\x1b[K\x1b[A\x1b[K\x1b[A\x1b[K"); // bash 帧擦除 3 行
+    feedStr(term, prompt);                       // 40 宽重印
+    // 内容零损失 + 无 20 列碎片：r2 是收链后的 40 列残骸（方案 A 形态）
+    ZZ_TEST_EXPECT(screenRowText(term, 0) == "C1");
+    ZZ_TEST_EXPECT(screenRowText(term, 1) == "C2");
+    ZZ_TEST_EXPECT(screenRowText(term, 2) ==
+                   "0123456789abcdefghij0123456789abcdefghij"); // gen1 收链残骸
+    ZZ_TEST_EXPECT(screenRowText(term, 3) ==
+                   "0123456789abcdefghij0123456789abcdefghij"); // 活提示符
+    ZZ_TEST_EXPECT(screenRowText(term, 4) == "PROMP");
+    ZZ_TEST_EXPECT(screenRowText(term, 5).empty());
+    ZZ_TEST_EXPECT(term.cursor().position.row == 4);
+    ZZ_TEST_EXPECT(term.cursor().position.col == 5);
+    ZZ_TEST_EXPECT(term.historyView().lineCount() == 1); // C0 完好
+}
+
+// M17c 跨界斩链接线实测（Terminal 级：Screen 回调 → backend →
+// scrollback_->severNewestWrapped 全链路）。
+// 行数账（20x6）：feed "L0\r\n"×6 → 历史 [L0]，光标 (0,5)；
+// 再连续写 130 个 'a'（无 \r\n）：每 20 字符折行触发 1 次滚屏，共 6 次——
+// L1..L5 依次入历史，第 6 次滚出的是折行首段 seg0（wrapped=true），
+// 历史 [L0..L5, seg0(w)] 共 7 行，seg0 续接屏幕 r0（seg1）构成接缝链；
+// 屏幕 r0-r4=seg1..seg5(w)，r5=seg6（10 字符），光标 (10,5)。
+// \e[H 光标回 row 0 → \e[K 整行擦除 r0 → 跨界斩：历史末行 seg0 链标死。
+static void testEraseSeverAcrossSeam()
+{
+    ZzTerminal term(20, 6, ZzBackendKind::Native, 100);
+    feedStr(term, "L0\r\nL1\r\nL2\r\nL3\r\nL4\r\nL5\r\n");
+    feedStr(term, std::string(130, 'a'));
+    ZZ_TEST_EXPECT(term.historyView().lineCount() == 7);
+    ZZ_TEST_EXPECT(term.historyView().lineAt(6).wrapped()); // 接缝链前提成立
+    const auto g0 = term.historyView().generation();
+    feedStr(term, "\x1b[H");   // CUP：光标到 (0,0)
+    feedStr(term, "\x1b[K");   // EL 列 0 整行擦除 r0 → 跨界斩链
+    ZZ_TEST_EXPECT(!term.renderView().lineAt(0).wrapped());  // r0 出链斩
+    ZZ_TEST_EXPECT(!term.historyView().lineAt(6).wrapped()); // 历史末行入链斩
+    ZZ_TEST_EXPECT(term.historyView().lineCount() == 7);     // 行数不动
+    ZZ_TEST_EXPECT(term.historyView().generation() > g0);    // 旗标变化计代
+}
+
 int main()
 {
     testWidenTopFillFacade();
@@ -217,6 +284,8 @@ int main()
     testPrimaryTopFillDuringAlternate();
     testSeamChainTopFillCombo();
     testActiveChainGuardVsReadlineErase();
+    testEraseSeverVsZombieChain();
+    testEraseSeverAcrossSeam();
     if (g_failures != 0) {
         std::fprintf(stderr, "%d failure(s)\n", g_failures);
         return 1;

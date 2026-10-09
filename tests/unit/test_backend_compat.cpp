@@ -571,6 +571,30 @@ void testResizeBothDimsColoredWide()
     }
 }
 
+// 25. erase 斩链 parity 偏离登记（M17c）：整行擦除（EL 列 0 起）斩断折链——
+// native 斩（M17c 语义：擦除行出链与前驱入链均置死，r0.wrapped 变 false）；
+// contour 不斩（第三方冻结不改，r0.wrapped 保持 true）。b 类真实语义分歧，
+// 分别断言钉住，不强行对齐。
+void testEraseSeverDeviation()
+{
+    ZzTerminal native(20, 6, ZzBackendKind::Native, 100);
+    ZzTerminal contour(20, 6, ZzBackendKind::Contour, 100);
+    for (auto* term : {&native, &contour}) {
+        const std::string chain(25, 'x'); // 20 列折链 r0(w)-r1，光标 (5,1)
+        term->feed(std::span<const std::byte>(
+            reinterpret_cast<const std::byte*>(chain.data()), chain.size()));
+    }
+    // 斩链前提：双后端 r0 均在链上（r0(w)-r1 同一折链）
+    ZZ_CHECK(native.renderView().lineAt(0).wrapped());
+    ZZ_CHECK(contour.renderView().lineAt(0).wrapped());
+    for (auto* term : {&native, &contour}) {
+        term->feed(std::span<const std::byte>(
+            reinterpret_cast<const std::byte*>("\r\x1b[K"), 4)); // 光标回列 0 整行擦 r1
+    }
+    ZZ_CHECK(!native.renderView().lineAt(0).wrapped());  // native：M17c 斩链
+    ZZ_CHECK(contour.renderView().lineAt(0).wrapped());  // contour：不斩，登记偏离
+}
+
 } // namespace
 
 int main()
@@ -599,6 +623,7 @@ int main()
     testResizeReflowTopFill();
     testResizeBothDimsColoredWide();
     testRowResizeParity();
+    testEraseSeverDeviation();
     if (g_failures != 0)
         std::fprintf(stderr, "test_backend_compat: %d failure(s)\n", g_failures);
     return g_failures == 0 ? 0 : 1;

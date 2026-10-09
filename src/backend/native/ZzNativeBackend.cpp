@@ -216,6 +216,14 @@ ZzNativeBackend::ZzNativeBackend(int cols, int rows, std::size_t scrollbackMaxLi
             ++historyGeneration_;
         return pulled;
     });
+    // M17c：屏幕首行整行擦除时斩断历史末行链标（erase 斩链跨界段）；
+    // 旗标变化影响 HistoryView 可见内容，代计数递增（M14「不得漏增」同口径）。
+    screen_.setSeverSeamLinkCallback([this] {
+        if (scrollback_->lineCount() > 0) {
+            scrollback_->severNewestWrapped();
+            ++historyGeneration_;
+        }
+    });
 }
 
 ZzNativeBackend::~ZzNativeBackend() = default;
