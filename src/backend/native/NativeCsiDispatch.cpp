@@ -104,10 +104,14 @@ void ZzNativeBackend::dispatchCsi(const ZzParamSequence& seq)
     case 'u': // SCORC
         screen_.restoreCursor();
         break;
-    case 'J': { // ED 0/1/2；ED 3（清历史）不在 M1 范围，忽略
+    case 'J': { // ED 0/1/2 清屏；ED 3 清滚动区（M17d，xterm 语义：不动屏幕/光标）
         const int p = paramOr(seq, 0, 0);
         if (p <= 2)
             screen_.eraseInDisplay(static_cast<ZzEraseMode>(p), eraseFill());
+        else if (p == 3 && scrollback_->lineCount() > 0) {
+            scrollback_->clear();
+            ++historyGeneration_; // M14 同口径：可见历史变化必计代；空历史守卫防空转
+        }
         break;
     }
     case 'K': { // EL 0/1/2

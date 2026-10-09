@@ -109,11 +109,45 @@ static void testGrowRefillChainAligned()
     ZZ_TEST_EXPECT(term.cursor().position.row == 4); // 3 + 1
 }
 
+// 4. ED 3 清滚动区：历史清空、代计数递增、屏幕与光标不动；空历史不计代
+static void testEd3ClearsHistory()
+{
+    ZzTerminal term(10, 4, ZzBackendKind::Native, 100);
+    feedSixLines(term); // 历史 a,b,c
+    ZZ_TEST_EXPECT(term.historyView().lineCount() == 3);
+
+    const std::uint64_t g0 = term.historyView().generation();
+    feedStr(term, "\x1b[3J");
+    ZZ_TEST_EXPECT(term.historyView().lineCount() == 0);
+    ZZ_TEST_EXPECT(term.historyView().generation() > g0);
+    ZZ_TEST_EXPECT(screenRowText(term, 0) == "d"); // 屏幕不动
+    ZZ_TEST_EXPECT(term.cursor().position.row == 3); // 光标不动
+
+    const std::uint64_t g1 = term.historyView().generation();
+    feedStr(term, "\x1b[3J"); // 空历史守卫：不重复计代
+    ZZ_TEST_EXPECT(term.historyView().generation() == g1);
+}
+
+// 5. clear 序列（H + ED2 + ED3）后扩行不复活内容
+static void testClearSequenceNoRefill()
+{
+    ZzTerminal term(10, 4, ZzBackendKind::Native, 100);
+    feedSixLines(term);
+    feedStr(term, "\x1b[H\x1b[2J\x1b[3J"); // clear：清屏 + 清历史
+    ZZ_TEST_EXPECT(term.historyView().lineCount() == 0);
+    ZZ_TEST_EXPECT(term.resize(10, 6)); // 扩 2：光标下方全空但历史已空
+    ZZ_TEST_EXPECT(term.historyView().lineCount() == 0);
+    ZZ_TEST_EXPECT(screenRowText(term, 0).empty()); // 不复活
+    ZZ_TEST_EXPECT(term.cursor().position.row == 0);
+}
+
 int main()
 {
     testGrowRefillEndToEnd();
     testGrowRefillCursorAboveBlankTail();
     testGrowRefillChainAligned();
+    testEd3ClearsHistory();
+    testClearSequenceNoRefill();
     if (g_failures != 0) {
         std::fprintf(stderr, "%d failure(s)\n", g_failures);
         return 1;
