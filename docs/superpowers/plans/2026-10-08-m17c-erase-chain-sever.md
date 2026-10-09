@@ -716,3 +716,6 @@ cmake --build /home/zz/Jackfahdin/github/ZzClawTerm/build/spike-debug
 - **E-1**（任务 2 实施中发现）：任务 2 步骤 5 预期写「11 用例」，实际测试
   文件含 12 用例（计划自检后补的「覆盖写不斩链」用例计入），属计划笔误，
   实现按 12 用例落地。
+- **E-2**（任务 3 实施中发现）：计划头部基线「m2-off-check 46 例」为任务 2
+  新增 test_screen_erase_sever.cpp 之前的旧数；GLOB 收编后两 m2 套件
+  各 +1（off 47 / shared 58）。
