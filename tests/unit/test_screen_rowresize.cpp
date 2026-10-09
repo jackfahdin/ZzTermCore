@@ -188,6 +188,10 @@ static void testAlternateNoHistoryPath()
         pullCalled = true;
         return std::vector<ZzLine>{};
     });
+    // M17d：扩行回抽条件放宽为「Primary 光标下方全空行」。本用例断言的对象是
+    // Alternate，但 resize 会同步扩 Primary——须先把 Primary 做成不回抽形态
+    //（光标 {0,0} 下方行 1 有内容），否则 Primary 回抽会污染 !pullCalled 断言。
+    writeRow(scr, 1, "p1");
     scr.setActiveBuffer(ZzScreenBuffer::Alternate);
     for (int r = 0; r < 4; ++r)
         writeRow(scr, r, "a" + std::to_string(r));

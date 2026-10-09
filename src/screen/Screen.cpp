@@ -59,7 +59,20 @@ void ZzScreen::resize(int cols, int rows)
 // M15：行变条件语义（对齐 contour shrinkLines/growLines，规格 §4）。
 // 缩行：先裁光标下方行（不入历史），不够裁时顶部行经 ScrollOutCallback
 // 压入历史（无回调则丢弃，同 reflowBuffer 溢出语义）；光标随内容平移。
-// 扩行：光标贴末行时经 HistoryPullCallback 回抽注入顶部，不足底部补空。
+// 扩行：M17d 起 Primary 且光标下方全空行（会话活在底部）时经
+// HistoryPullCallback 回抽注入顶部（偏离 contour 仅贴末行回抽，compat
+// 用例 26 登记），不足底部补空。
+
+// M17d：空行判定——整行 cell 均 isEmpty（覆盖默认格/擦除格/宽字符续格；
+// 显式写入的空格 cell 非 isEmpty，视为内容，保守不回抽）。
+static bool zzRowIsBlank(const ZzLine& line) noexcept
+{
+    for (int c = 0; c < line.cellCount(); ++c)
+        if (!line.cellAt(c).isEmpty())
+            return false;
+    return true;
+}
+
 void ZzScreen::resizeBuffer(Buffer& buf, int cols, int rows, bool mayUseHistory)
 {
     const int oldRows = static_cast<int>(buf.lines.size());
@@ -86,8 +99,16 @@ void ZzScreen::resizeBuffer(Buffer& buf, int cols, int rows, bool mayUseHistory)
         }
     } else if (rows > oldRows) {
         const int k = rows - oldRows;
-        if (mayUseHistory && historyPullCallback_
-            && buf.cursor.position.row == oldRows - 1) { // 光标贴末行才回抽
+        // M17d：回抽条件放宽——光标下方全空行即「会话活在底部」
+        //（旧条件「光标贴末行」是其子集：末行下方无行，全称真空成立）。
+        bool liveAtBottom = true;
+        for (int r = buf.cursor.position.row + 1; r < oldRows; ++r) {
+            if (!zzRowIsBlank(buf.lines[static_cast<std::size_t>(r)])) {
+                liveAtBottom = false;
+                break;
+            }
+        }
+        if (mayUseHistory && historyPullCallback_ && liveAtBottom) {
             auto pulled = historyPullCallback_(static_cast<std::size_t>(k));
             if (!pulled.empty()) {
                 buf.lines.insert(buf.lines.begin(),
