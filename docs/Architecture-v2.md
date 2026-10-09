@@ -347,6 +347,12 @@ tests 验证；native 后端按 v1 语义契约实现同一行为。
 「光标活动链保护」小节与规格
 `superpowers/specs/2026-10-08-m17a-active-chain-guard-design.md` §4。
 
+已知有意偏离（M17c）：「erase 整行擦除触及 wrapped 行」时，native 斩链
+（清本行出链+前驱入链，擦屏幕首行时跨界斩断历史末行链标），contour 不斩
+（第三方冻结不改）。详见 docs/Scrollback-and-Reflow.md「整行擦除斩链
+（M17c）」小节与 tests/unit/test_backend_compat.cpp 的 M17c 偏离用例
+（testEraseSeverDeviation）。
+
 Search/Copy/Selection 基于 logical line/grapheme abstraction。Search
 不得把全部历史拼成巨大字符串；按 logical line/chunk
 扫描，未来可加增量索引。
