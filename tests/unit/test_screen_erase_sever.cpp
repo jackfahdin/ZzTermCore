@@ -167,6 +167,27 @@ static void testOverwriteKeepsChain()
     ZZ_TEST_EXPECT(scr.lineAt(1).wrapped());
 }
 
+// 13. ED \e[1J 光标在末列：光标行整行覆盖 → 出链+入链均斩（链延长到 r4
+//     使出链斩非空断言）；上方整行死亡行按同规则斩——r1 出链随 r2 死亡
+//     斩断（对照用例 8 同款传导）。非末列对照：光标行部分擦除保留出链。
+static void testEdFromStartCursorAtLastCol()
+{
+    ZzScreen scr = makeChainScreen(); // 链 r1-r2-r3
+    scr.setLineWrapped(3, true);      // 延长到 r4：r1-r2-r3-r4
+    scr.setCursorPosition(ZzPosition{3, 9}); // 末列（宽 10）
+    scr.eraseInDisplay(ZzEraseMode::FromStart, ZzCell{});
+    ZZ_TEST_EXPECT(!scr.lineAt(3).wrapped()); // r3 整行覆盖斩出链
+    ZZ_TEST_EXPECT(!scr.lineAt(2).wrapped()); // r3 入链斩
+    ZZ_TEST_EXPECT(!scr.lineAt(1).wrapped()); // r2 整行死亡 → r1 出链斩
+
+    ZzScreen part = makeChainScreen();
+    part.setLineWrapped(3, true);
+    part.setCursorPosition(ZzPosition{3, 8}); // 非末列：光标行部分擦除
+    part.eraseInDisplay(ZzEraseMode::FromStart, ZzCell{});
+    ZZ_TEST_EXPECT(part.lineAt(3).wrapped());  // r3 出链保留
+    ZZ_TEST_EXPECT(!part.lineAt(2).wrapped()); // r2 整行死亡斩出链
+}
+
 int main()
 {
     testElFromCol0SeversChain();
@@ -181,6 +202,7 @@ int main()
     testAlternateNeverFiresSeam();
     testRow0EraseWithoutCallbackNoCrash();
     testOverwriteKeepsChain();
+    testEdFromStartCursorAtLastCol();
     if (g_failures == 0)
         std::puts("PASS test_screen_erase_sever");
     return g_failures == 0 ? 0 : 1;

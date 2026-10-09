@@ -276,6 +276,28 @@ static void testEraseSeverAcrossSeam()
     ZZ_TEST_EXPECT(term.historyView().generation() > g0);    // 旗标变化计代
 }
 
+// M17c 终审 F3：接缝回调代计数守卫——历史末行本就无链标时整行擦屏幕
+// 首行触发回调，但 severNewestWrapped 是空操作，不得计代（HistoryView 不
+// 无谓失效）。
+// 行数账（20x6）：feed "L0\r\n"×7 + "L7" → 历史 [L0,L1]（L1
+// wrapped=false），屏幕 r0=L2..r5=L7，光标 (2,5)；\e[H 光标回 (0,0)；
+// \e[K 整行擦 r0 → 接缝回调触发，但历史末行无链标 → 空操作不计代。
+static void testEraseSeverSeamNoLinkNoGeneration()
+{
+    ZzTerminal term(20, 6, ZzBackendKind::Native, 100);
+    for (int i = 0; i < 7; ++i)
+        feedStr(term, "L" + std::to_string(i) + "\r\n");
+    feedStr(term, "L7");
+    ZZ_TEST_EXPECT(term.historyView().lineCount() == 2);
+    ZZ_TEST_EXPECT(!term.historyView().lineAt(1).wrapped()); // 前提：无链标
+    const std::uint64_t g0 = term.historyView().generation();
+    feedStr(term, "\x1b[H");   // CUP：光标到 (0,0)
+    feedStr(term, "\x1b[K");   // EL 列 0 整行擦除 r0 → 接缝回调触发
+    ZZ_TEST_EXPECT(!term.historyView().lineAt(1).wrapped()); // 不变
+    ZZ_TEST_EXPECT(term.historyView().generation() == g0);   // 无链标不计代
+    ZZ_TEST_EXPECT(term.historyView().lineCount() == 2);
+}
+
 int main()
 {
     testWidenTopFillFacade();
@@ -286,6 +308,7 @@ int main()
     testActiveChainGuardVsReadlineErase();
     testEraseSeverVsZombieChain();
     testEraseSeverAcrossSeam();
+    testEraseSeverSeamNoLinkNoGeneration();
     if (g_failures != 0) {
         std::fprintf(stderr, "%d failure(s)\n", g_failures);
         return 1;

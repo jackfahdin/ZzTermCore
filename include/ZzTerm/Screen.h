@@ -72,6 +72,7 @@ public:
     /// @brief 屏幕首行整行擦除时斩断历史末行链标的通知（M17c）。
     ///        仅 Primary 缓冲触发；Alternate 无历史不触发。由持有方接线到
     ///        ZzScrollback::severNewestWrapped。
+    ///        回调不得抛异常（severRowLinks 为 noexcept，抛出即 terminate）。
     using SeverSeamLinkCallback = std::function<void()>;
 
     /**
