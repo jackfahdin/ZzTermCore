@@ -417,7 +417,10 @@ public:
      */
     void setHistoryPullCallback(HistoryPullCallback callback);
 
-    /// @brief 设置接缝斩链回调（M17c）；空回调时跳过跨界斩（不崩）。
+    /**
+     * @brief 设置接缝斩链回调（M17c，由 backend 安装）；空回调时跳过跨界斩。
+     * @param callback 回调；擦屏幕首行时通知持有方斩断历史末行链标。
+     */
     void setSeverSeamLinkCallback(SeverSeamLinkCallback callback);
 
 private:

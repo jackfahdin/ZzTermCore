@@ -98,6 +98,54 @@ reflow 终端均有此破坏（contour 已用留痕逐点实测确认），本�
 reflow 无豁免对象；流式输出（cat）在链末片段旧列位继续追加，内容正确，
 视觉折点待下次重写消除。
 
+### 整行擦除斩链（M17c）
+
+整行擦除的语义是**内容死亡**：被擦行从折链上摘除——本行 wrapped 置
+false（斩断出链，不再续接下一行），前驱行 wrapped 置 false（斩断入链，
+前驱不再续接到本行）。前驱已滚入历史区时（擦屏幕首行），ZzScreen 经
+SeverSeamLinkCallback 通知持有方，由 ZzScrollback::severNewestWrapped
+跨界斩断历史末行链标（仅 Primary；Alternate 无历史不触发）。
+
+触发集合（首版）：
+
+-   EL 整行覆盖：ESC [ 0 K 且擦除起点为列 0（典型形态 CR + ESC [ K）、
+    ESC [ 2 K（整行擦除，任意光标列）、ESC [ 1 K 且光标在末列；
+-   ED 覆盖到的整行：ESC [ 0 J 下方全部整行（光标行仅当光标在列 0 时
+    算整行覆盖）、ESC [ 1 J 上方全部整行（光标行仅当光标在末列时算）、
+    ESC [ 2 J 全屏整行。ESC [ 3 J 被分发层忽略不达 Screen，不在触发
+    集合。
+
+不斩链：行尾/行首部分擦除（视为对活内容的编辑，链标不动）、覆盖写
+（无擦除直接改写单元格）、ECH / DL / IL（首版豁免，记录在案）。
+
+动机：M17a 复验事故——窄窗期间 bash 每次 WINCH 重绘都擦除并重写
+提示符行，多代提示符尸体因擦除不动链标而粘连成一条僵尸折链，
+Preserve 把整条僵尸链豁免收链，拉回后死代残尸永久留屏（spike 留痕
+实证）。斩链后 Preserve 只保护活代：bash 帧擦除精确命中活代行数，
+屏幕零残片、内容零损失；死代残骸按普通规则收链成短行留在滚动区
+（方案 A 形态），选区拼链跨代自然断开。
+
+降级边界：斩链只动 wrapped 旗标，不删行、不动内容；即使误斩（exotic
+应用对活链整行擦除再续写），后果仅为该逻辑行在 reflow/选区拼链中按
+硬行处理，不产生内容破坏。与 contour 后端在「erase 触及 wrapped 行」
+场景有意偏离（contour 保持链标，偏离登记见 API.md 版本节）。
+
+### 已知外部问题：readline 8.3 光标错位（终端侧不处理）
+
+M17a 复验中用户同时报告「光标停在提示符中间」，诊断为上游 readline
+8.3 已知 bug，与终端渲染无关（无终端 PTY 实验逐字节复刻现场，字节流
+纯由 bash 算出）：
+
+-   触发条件：终端变宽时提示符从折行变为单行，且提示符含 2 段以上
+    隐形字符（颜色码）；readline 把光标放偏左，错位量 = 隐形段字节数；
+-   上游状态：bug-readline 2026-08-10 报告（bash 5.3.9 实测复现），
+    维护者确认 devel 分支已修复（commit 1e9f5e10b2），已发布补丁
+    （8.3-p003 及之前）未带该修复；
+-   自愈方式：按回车换新提示符即恢复；C-l 无效，打字会视觉覆盖提示符
+    尾部（逻辑无损）；根治等发行版更新 bash/readline；
+-   终端侧结论：xterm/konsole/contour 对同字节流渲染结果一致，无忠实
+    修复手段，Core 与 spike 均不动。
+
 ## 5. 行变 resize 的条件语义（M15）
 
 行数变化不走 reflow，由 `ZzScreen::resize` 按条件语义搬行（对齐 Contour
@@ -166,6 +214,10 @@ resize 后前端不需要知道重组细节：
 -   M17a：光标活动链保护（扩列 reflow 时 Primary 光标所在折链豁免收链，
     readline 陈旧帧擦除兼容；wrapped 行尾部空白格逐行裁尾）——
     `superpowers/specs/2026-10-08-m17a-active-chain-guard-design.md`。
+-   M17c：整行擦除斩链（EL/ED 整行覆盖斩断 wrapped 链标，跨界斩链经
+    SeverSeamLinkCallback 与 severNewestWrapped；readline 8.3 光标错位
+    登记为已知外部问题）——
+    `superpowers/specs/2026-10-08-m17c-erase-chain-sever-design.md`。
 
 Contour 基准对照：third_party/contour 的 Grid.cpp——growColumns /
 shrinkColumns（统一流重组，列变基准）、shrinkLines / growLines（行变

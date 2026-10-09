@@ -366,3 +366,13 @@ RenderView 覆盖屏幕区，HistoryView 覆盖 scrollback 历史区。
   见计划勘误 E-3）。另：wrapped 链各行尾部完全默认空白格恒为填充，
   reflow 与选区拼链逐行裁尾（M17a-4b），落被裁补白区的光标锚到链末行
   内容尾。
+- M17c：`ZzScrollback` 新增纯虚 `severNewestWrapped()`——该接口标注
+  Core 内部使用但属公共头，实现类仅仓内 `ChunkedScrollback` 一个（外部
+  若有自定义 `ZzScrollback` 实现需补实现，编译期可发现；M15 takeNewest
+  同先例登记）；`ZzScreen` 新增 `SeverSeamLinkCallback` 类型别名与
+  `setSeverSeamLinkCallback` 方法（Core 内部协作口）；`ZzTerminal`
+  无签名变化。行为语义变化：EL/ED 整行擦除斩断被擦行的 wrapped 链标
+  （本行出链与前驱入链，前驱在历史区时跨界斩断），reflow 与选区拼链
+  随之把被擦行按硬行处理；与 contour 后端在「erase 触及 wrapped 行」
+  场景有意偏离（contour 保持链标，偏离登记见 test_backend_compat 的
+  M17c 用例）。
