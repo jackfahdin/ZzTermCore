@@ -59,10 +59,13 @@ public:
     using ScrollOutCallback = std::function<void(std::vector<ZzLine> lines)>;
 
     /**
-     * @brief 历史回抽回调（M15）。行变扩行且光标贴末行时，ZzScreen 经本回调
+     * @brief 历史回抽回调（M15）。行变扩行且光标下方全空行时（M17d 放宽，
+     *        旧「光标贴末行」为其子集），ZzScreen 经本回调
      *        向历史后端索取最多 maxLines 行最新历史（旧到新顺序、以值移交
      *        所有权）注入屏幕顶部；无历史可取时返回空向量。
      *        仅为 Primary 缓冲区调用；Alternate 扩行永不触发。
+     *        native 后端在接线层做折链对齐（向下取整到链边界，M17d），
+     *        返回值可能比索取数少。
      *        回调返回行宽度须与当前网格列宽一致：行变回抽时列宽不变；
      *        列变 reflow 顶补（M16c）时历史已先完成重组（backend 协调顺序：
      *        先历史后屏幕），返回行为新列宽。
