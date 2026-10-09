@@ -595,6 +595,73 @@ void testEraseSeverDeviation()
     ZZ_CHECK(contour.renderView().lineAt(0).wrapped());  // contour：不斩，登记偏离
 }
 
+// 行文本提取（空格 cell 的 text 为空串，天然去尾）。
+std::string rowTextOf(const ZzTerminal& term, int row)
+{
+    const ZzLineView line = term.renderView().lineAt(row);
+    std::string out;
+    for (int c = 0; c < line.cellCount(); ++c)
+        out += line.cellAt(c).text;
+    return out;
+}
+
+// 26. 扩行回填 parity 偏离登记（M17d）：行数增加且光标下方全空时，native
+// 从历史回抽填满、光标沉底（M17d 语义）；contour 核心仅光标贴旧末行回抽，
+// CUP 抬离末行后不回抽、底部补空（第三方冻结不改）。b 类真实语义分歧，
+// 分别断言钉住，不强行对齐。
+void testGrowRefillDeviation()
+{
+    ZzTerminal native(10, 4, ZzBackendKind::Native, 100);
+    ZzTerminal contour(10, 4, ZzBackendKind::Contour, 100);
+    for (auto* term : {&native, &contour}) {
+        for (char c = 'a'; c <= 'f'; ++c) { // 历史 a,b,c；屏幕 d,e,f；光标空行 3
+            std::string s;
+            s += c;
+            s += "\r\n";
+            term->feed(std::span<const std::byte>(
+                reinterpret_cast<const std::byte*>(s.data()), s.size()));
+        }
+        term->feed(std::span<const std::byte>(
+            reinterpret_cast<const std::byte*>("\x1b[3;1H"), 6)); // CUP 光标行 2
+        term->resize(10, 6);
+    }
+    // native：回抽 b,c 顶插——屏幕 b,c,d,e,f,空；光标行 4；历史剩 a
+    ZZ_CHECK(native.historyView().lineCount() == 1);
+    ZZ_CHECK(rowTextOf(native, 0) == "b");
+    ZZ_CHECK(rowTextOf(native, 1) == "c");
+    ZZ_CHECK(native.cursor().position.row == 4);
+    // contour：不回抽——屏幕 d,e,f 在顶、底部补空；光标行 2；历史仍 3
+    ZZ_CHECK(contour.historyView().lineCount() == 3);
+    ZZ_CHECK(rowTextOf(contour, 0) == "d");
+    ZZ_CHECK(contour.cursor().position.row == 2);
+}
+
+// 27. ED 3 清滚动区 parity（M17d）：ESC [ 3 J 清空历史、屏幕与光标不动。
+// contour 原生支持 ED3（xterm 标准扩展），预期 parity；若实测分歧按 b 类
+// 登记偏离并分别断言钉住（同步修正 Architecture-v2 登记措辞）。
+void testEd3ClearScrollbackParity()
+{
+    ZzTerminal native(10, 4, ZzBackendKind::Native, 100);
+    ZzTerminal contour(10, 4, ZzBackendKind::Contour, 100);
+    for (auto* term : {&native, &contour}) {
+        for (char c = 'a'; c <= 'f'; ++c) { // 历史 a,b,c；屏幕 d,e,f；光标行 3
+            std::string s;
+            s += c;
+            s += "\r\n";
+            term->feed(std::span<const std::byte>(
+                reinterpret_cast<const std::byte*>(s.data()), s.size()));
+        }
+        term->feed(std::span<const std::byte>(
+            reinterpret_cast<const std::byte*>("\x1b[3J"), 4));
+    }
+    ZZ_CHECK(native.historyView().lineCount() == 0);
+    ZZ_CHECK(contour.historyView().lineCount() == 0);
+    ZZ_CHECK(rowTextOf(native, 0) == "d"); // 屏幕不动
+    ZZ_CHECK(rowTextOf(contour, 0) == "d");
+    ZZ_CHECK(native.cursor().position.row == 3); // 光标不动
+    ZZ_CHECK(contour.cursor().position.row == 3);
+}
+
 } // namespace
 
 int main()
@@ -624,6 +691,8 @@ int main()
     testResizeBothDimsColoredWide();
     testRowResizeParity();
     testEraseSeverDeviation();
+    testGrowRefillDeviation();
+    testEd3ClearScrollbackParity();
     if (g_failures != 0)
         std::fprintf(stderr, "test_backend_compat: %d failure(s)\n", g_failures);
     return g_failures == 0 ? 0 : 1;
