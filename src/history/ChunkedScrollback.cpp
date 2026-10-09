@@ -146,6 +146,13 @@ public:
         return out;
     }
 
+    void severNewestWrapped() noexcept override
+    {
+        if (totalLines_ == 0)
+            return;
+        chunks_.back().back().setWrapped(false);
+    }
+
     [[nodiscard]] std::size_t capacity() const noexcept override
     {
         return capacity_;

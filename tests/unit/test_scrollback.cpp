@@ -339,6 +339,33 @@ static void testReflowDanglingTailChain()
     ZZ_TEST_EXPECT(sb->stats().lineCount == sb->lineCount());
 }
 
+// 10. severNewestWrapped：斩断最新历史行出链（M17c）
+static void testSeverNewestWrapped()
+{
+    auto sb = zzCreateChunkedScrollback(10);
+    std::vector<ZzLine> batch;
+    batch.push_back(makeLine(4, "l1", false));
+    batch.push_back(makeLine(4, "l2", true)); // 末行带链标（接缝粘连场景）
+    sb->append(std::move(batch));
+    ZZ_TEST_EXPECT(sb->lineAt(1).wrapped());
+    sb->severNewestWrapped();
+    ZZ_TEST_EXPECT(!sb->lineAt(1).wrapped());     // 链标被斩
+    ZZ_TEST_EXPECT(sb->lineCount() == 2);         // 行数/内容不动
+    ZZ_TEST_EXPECT(lineText(sb->lineAt(1), 2) == "l2");
+    const ZzScrollbackStats st = sb->stats();     // 统计记账不受影响
+    ZZ_TEST_EXPECT(st.totalAppended == 2);
+    ZZ_TEST_EXPECT(st.totalDropped == 0);
+    sb->severNewestWrapped();                     // 幂等：已无链标再斩不崩
+    ZZ_TEST_EXPECT(sb->lineCount() == 2);
+}
+
+static void testSeverNewestWrappedEmpty()
+{
+    auto sb = zzCreateChunkedScrollback(10);
+    sb->severNewestWrapped(); // 空历史空操作，不崩
+    ZZ_TEST_EXPECT(sb->lineCount() == 0);
+}
+
 int main()
 {
     testAppendAndTrim();
@@ -350,6 +377,8 @@ int main()
     testSingleChunkRefillAfterTrim();
     testReflowChunkedAlignment();
     testReflowDanglingTailChain();
+    testSeverNewestWrapped();
+    testSeverNewestWrappedEmpty();
     if (g_failures == 0)
         std::printf("test_scrollback: all passed\n");
     return g_failures;

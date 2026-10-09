@@ -106,6 +106,16 @@ public:
     [[nodiscard]] virtual std::vector<ZzLine> takeNewest(std::size_t n) = 0;
 
     /**
+     * @brief 斩断最新历史行的出链（wrapped 置 false，M17c erase 斩链）。
+     * @note 空历史为空操作；幂等。语义配对场景：屏幕首行被整行擦除时其
+     *       入链（历史末行 wrapped）必须同步死亡，否则已死内容跨代粘连成
+     *       僵尸折链（M17a Preserve 会被迫保护整条死链）。
+     * @note 就地改旗标：行数/内容/统计记账（totalAppended/totalDropped）
+     *       与绝对行号均不受影响（区别于 append/takeNewest）。
+     */
+    virtual void severNewestWrapped() noexcept = 0;
+
+    /**
      * @brief 当前容量上限（行）。
      * @return 容量上限；0 表示不保留历史。
      */
