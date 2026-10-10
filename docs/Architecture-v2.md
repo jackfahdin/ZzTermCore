@@ -188,6 +188,7 @@ Public API 由 Zz 定义。推荐使用 PImpl 隐藏具体后端：
         void resize(int columns, int rows);
         ZzRenderView renderView() const;
         ZzHistoryView historyView() const; // M14：历史行只读视图（0=最旧，Alternate 恒 0，generation 代计数侦测变化）
+        ZzUnwrapView unwrapView() const; // M17b：拼接行只读视图（折链拼回完整行；拼接空间与 ZzLogicalPos 逻辑空间恒等，纯视图层派生缓存）
     private:
         class Impl;
         std::unique_ptr<Impl> impl_;
@@ -372,6 +373,12 @@ tests/unit/test_backend_compat.cpp 的 M17d/M17e 偏离用例
 另：ED 3 清滚动区 M17d 起支持（此前分发层忽略），xterm 标准语义
 （不动屏幕/光标），compat 用例 27（testEd3ClearScrollbackParity）
 parity。
+
+parity N/A 登记（M17b）：拼接行视图（ZzUnwrapView，不换行显示）为纯
+视图层新增，contour 库无对应概念（其前端不做不换行显示），无可对照
+行为、不产生行为分歧，登记 N/A；双后端经统一 RenderView/HistoryView
+接口消费。详见规格
+`superpowers/specs/2026-10-10-m17b-unwrap-view-design.md` §7。
 
 Search/Copy/Selection 基于 logical line/grapheme abstraction。Search
 不得把全部历史拼成巨大字符串；按 logical line/chunk

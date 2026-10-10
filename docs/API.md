@@ -12,6 +12,7 @@
 ``` text
 bytes -> UTF-8/VT/xterm Parser -> Terminal State
       -> Cell/Line/Screen -> Scrollback -> RenderView + HistoryView
+                                            + UnwrapView（M17b 拼接行）
 
 Frontend semantic events -> InputEncoder -> bytes
 ```
@@ -341,6 +342,50 @@ RenderView 覆盖屏幕区，HistoryView 覆盖 scrollback 历史区。
   允许保守多增）；禁止每帧全扫历史，滚动查看按需取可见行。
 - 线程：非线程安全，与 ZzTerminal 同线程。
 
+### UnwrapView
+
+M17b 新增的拼接行只读视图，与 RenderView/HistoryView 平行的第三只读
+边界：把折链（wrapped 链）拼回完整逻辑行，供不换行显示模式与横向
+滚动条消费。纯视图层派生缓存（无新存储），引擎存储/reflow/resize/
+搜索/选区语义零改动；只依赖 RenderView + HistoryView 既有暴露，
+双后端通用。
+
+- `ZzTerminal::unwrapView()` 返回 `const ZzUnwrapView&`，借用
+  Terminal，不得比 Terminal 长寿；feed/resize/reflow 后既有视图与
+  `ZzStitchedLineView` 句柄全部失效（同 RenderView 规则），与 feed
+  同线程使用，非线程安全。
+- 拼接行 = 折链拼回的完整行：`lineCount()` 为拼接行数（<= 统一空间
+  物理行数，无折链时相等）；`lineAt(index)` 取 `ZzStitchedLineView`
+  句柄——`cellCount()` 链有效全长、`cellAt(col)` 跨链寻址、
+  `sourceLine()` 链头统一物理行号、`sourceLineCount()` 链行数。
+- 坐标空间：`ZzStitchedPos`（拼接行索引 + 拼接列）与选区/搜索的
+  `ZzLogicalPos` 折链合并逻辑空间**逐项恒等**——拼接行索引 == 逻辑
+  行号、拼接列 == 逻辑列（内容坐标，不含 wrapped 行尾部填充格，逐行
+  裁尾口径）。选区/搜索场景无需换算：（拼接行，拼接列）直接喂
+  `setSelection`/`extendSelection`，searchMatch 的 ZzLogicalRange
+  直接按拼接坐标显示。
+- `toStitched`/`fromStitched` 换算的是「统一物理坐标 ↔ 拼接坐标」
+  （光标定位、物理行渲染寻址用；统一物理坐标复用 ZzLogicalPos 类型
+  承载，历史+屏幕行号）。钳位规则：`toStitched` 的 line 越界钳到
+  首/末拼接行、col 钳到链内有效段；`fromStitched` 的 line 钳到
+  [0, lineCount-1]、col 钳到 [0, cellCount-1]，空拼接行钳到链头
+  格 0。
+- `maxCellCount()`：全部拼接行的最大有效全长，横向滚动条 range
+  原料（range = max(0, maxCellCount - cols)），空缓冲为 0。
+- 裁尾拼接口径：与 reflow 链流逐行裁尾同口径——拼接行内容 =
+  reflow 眼中的链内容，宽字符跨缝两格完整保留。视图层判据
+  （`text.empty()` 且非宽字符续格）不含样式属性，与 reflow/选区的
+  zzIsPlainBlank 在「带色空尾格」corner 下宽度账不同（text 内容
+  不受影响），登记为已知良性差异。
+- 索引惰性重建：RenderView.dirtyGeneration + HistoryView.generation
+  双代计数任一变化后的首次查询自动重建（O(行数)），派生缓存非新
+  存储，无一致性负担。
+
+术语区分：`ZzLogicalPos` 的「逻辑行」本来就是折链合并后的逻辑行
+空间（选区/搜索口径，非统一物理行序号）；「拼接行」是该同一空间的
+视图层术语。统一物理行为视图的底层行序（sourceLine 口径），仅
+toStitched/fromStitched 涉及。
+
 ## 版本与 ABI 策略
 
 > 随实现补充（M6 里程碑收敛）。
@@ -385,3 +430,7 @@ RenderView 覆盖屏幕区，HistoryView 覆盖 scrollback 历史区。
   接口（`ZzScrollback::clear()` 为既有接口首次接线）；ABI 无变化。
   与 contour 后端在扩行回填场景有意偏离（contour 仅光标贴旧末行
   回抽，偏离登记见 test_backend_compat 的 M17d 用例）。
+- M17b：新增公共类 `ZzUnwrapView`/`ZzStitchedLineView`、公共类型
+  `ZzStitchedPos`（Types.h）与 `ZzTerminal::unwrapView` 非虚方法，
+  向后兼容的 minor 新增（M14 historyView 先例），次版本号口径沿用
+  项目版本策略不变；纯视图层派生缓存，引擎语义零改动，无迁移负担。

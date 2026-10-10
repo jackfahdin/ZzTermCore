@@ -51,6 +51,9 @@ ZzScreen 与 ZzChunkedScrollback 两端共用同一算法核，杜绝语义漂�
     而非内容（autowrap 只在行满触发、reflow 拆分各行恒满），重组时逐行
     裁除后顺接成链流——链末行裁尾即旧 trimEnd 语义；码位 0x20 的真空格
     不受影响。
+-   拼接行视图（M17b）消费同一链结构、同一逐行裁尾口径做不换行显示
+    （折链拼回完整行 + 横向视口原料），见规格
+    `superpowers/specs/2026-10-10-m17b-unwrap-view-design.md`。
 -   宽字符（占两列的单元格）原子搬运，不落在行边界上（边界前移一格并
     补默认空白）。
 -   grapheme cluster 格在新行重新 internCluster。
