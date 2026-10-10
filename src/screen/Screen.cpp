@@ -114,7 +114,8 @@ void ZzScreen::resizeBuffer(Buffer& buf, int cols, int rows, bool mayUseHistory)
             // 规格 2026-10-10-m17e §3.4），回填预算从 k 扩为 k+b——历史
             // 充足时屏幕填满、提示符沉底；历史不足时净效果与 M17d 相同
             //（规格 §3.3 等价性证明）。
-            const int blankTail = oldRows - 1 - buf.cursor.position.row;
+            const int blankTail =
+                std::max(0, oldRows - 1 - buf.cursor.position.row);
             if (blankTail > 0)
                 buf.lines.erase(buf.lines.end() - blankTail, buf.lines.end());
             auto pulled = historyPullCallback_(static_cast<std::size_t>(k + blankTail));
