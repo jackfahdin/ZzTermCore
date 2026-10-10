@@ -69,6 +69,20 @@ struct ZzLogicalRange {
 };
 
 /**
+ * @brief 拼接坐标（M17b 拼接行视图）：拼接行索引 + 行内拼接列。
+ *
+ * 拼接行 = 折链（wrapped 链）拼回的完整行；坐标空间与 ZzLogicalPos
+ * 的物理行空间经 ZzUnwrapView::toStitched/fromStitched 双向换算。
+ */
+struct ZzStitchedPos {
+    std::int64_t line = 0; ///< 拼接行序号（0 起）
+    std::int32_t col  = 0; ///< 拼接行内单元格偏移
+
+    /// @brief 相等比较（拼接行序号与拼接列均相等）。
+    friend constexpr bool operator==(ZzStitchedPos, ZzStitchedPos) noexcept = default;
+};
+
+/**
  * @brief 搜索选项（M5b）。
  */
 struct ZzSearchOptions {

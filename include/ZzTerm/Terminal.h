@@ -16,6 +16,8 @@
 #include "ZzTerm/Scrollback.h"
 #include "ZzTerm/Types.h"
 
+class ZzUnwrapView;
+
 /**
  * @file Terminal.h
  * @brief ZzTerminal：终端模拟器顶层外观（Facade）。
@@ -145,6 +147,17 @@ public:
      *       禁止每帧全扫历史。
      */
     [[nodiscard]] const ZzHistoryView& historyView() const noexcept;
+
+    /**
+     * @brief 获取拼接行只读视图（M17b；与 renderView/historyView 平行的
+     * 第三只读边界：折链拼回完整行 + 双向坐标换算）。
+     *
+     * 视图借用 Terminal，不得比 Terminal 长寿；索引惰性重建，feed/resize
+     * 后查询自动跟随最新内容。非线程安全（同 renderView）。
+     *
+     * @return 拼接行视图常量引用。
+     */
+    [[nodiscard]] const ZzUnwrapView& unwrapView() const noexcept;
 
     /**
      * @brief 当前网格尺寸。

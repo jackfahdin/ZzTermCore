@@ -1,4 +1,5 @@
 #include <ZzTerm/Terminal.h>
+#include <ZzTerm/UnwrapView.h>
 
 #include "../backend/ZzTerminalBackend.h"
 #include "../backend/native/ZzNativeBackend.h"
@@ -32,8 +33,12 @@ public:
 #endif
             break;
         }
+
+        unwrapView = std::make_unique<ZzUnwrapView>(backend->renderView(),
+                                                    backend->historyView());
     }
     std::unique_ptr<ZzTerminalBackend> backend;
+    std::unique_ptr<ZzUnwrapView> unwrapView;
 
     ZzSelection selection;
     ZzSearchState searchState;
@@ -92,6 +97,7 @@ bool ZzTerminal::resize(int cols, int rows)
 }
 const ZzRenderView& ZzTerminal::renderView() const noexcept { return impl_->backend->renderView(); }
 const ZzHistoryView& ZzTerminal::historyView() const noexcept { return impl_->backend->historyView(); }
+const ZzUnwrapView& ZzTerminal::unwrapView() const noexcept { return *impl_->unwrapView; }
 ZzSize ZzTerminal::size() const noexcept { return impl_->backend->size(); }
 ZzCursorState ZzTerminal::cursor() const noexcept { return impl_->backend->cursor(); }
 bool ZzTerminal::isAlternateScreen() const noexcept { return impl_->backend->isAlternateScreen(); }
