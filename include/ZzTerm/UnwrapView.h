@@ -33,8 +33,9 @@ public:
      */
     [[nodiscard]] ZzCellView cellAt(int col) const;
     /**
-     * @brief 链头统一行号（历史+屏幕统一空间，同 ZzLogicalPos::line）。
-     * @return 统一行号（链头可能在历史区）。
+     * @brief 链头统一物理行号（历史+屏幕统一物理空间；非 ZzLogicalPos::line
+     *        的折链合并逻辑行号，两者仅无折链时相等）。
+     * @return 统一物理行号（链头可能在历史区）。
      */
     [[nodiscard]] std::int64_t sourceLine() const noexcept;
     /**
@@ -82,16 +83,18 @@ public:
      */
     [[nodiscard]] int maxCellCount() const;
     /**
-     * @brief 引擎坐标 → 拼接坐标。
-     * @param pos 统一空间物理坐标（同 ZzLogicalPos 语义）。
+     * @brief 统一物理坐标 → 拼接（=逻辑）坐标。
+     * @param pos 统一空间物理行坐标（物理行号 + 行内格偏移；复用
+     *        ZzLogicalPos 类型承载，非折链合并逻辑坐标）。
      * @return 拼接行索引 + 拼接列；pos.line 越界时钳到首/末拼接行。
      */
     [[nodiscard]] ZzStitchedPos toStitched(ZzLogicalPos pos) const;
     /**
-     * @brief 拼接坐标 → 引擎坐标。
+     * @brief 拼接（=逻辑）坐标 → 统一物理坐标。
      * @param line 拼接行索引（钳到 [0, lineCount-1]）。
      * @param col 拼接列（钳到 [0, cellCount-1]；空行钳到链头格 0）。
-     * @return 统一空间物理坐标。
+     * @return 统一空间物理行坐标（复用 ZzLogicalPos 类型承载；选区/搜索
+     *         场景勿用本接口——拼接坐标本身即 ZzLogicalPos 逻辑坐标）。
      */
     [[nodiscard]] ZzLogicalPos fromStitched(std::int64_t line, int col) const;
 

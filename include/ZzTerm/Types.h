@@ -72,7 +72,9 @@ struct ZzLogicalRange {
  * @brief 拼接坐标（M17b 拼接行视图）：拼接行索引 + 行内拼接列。
  *
  * 拼接行 = 折链（wrapped 链）拼回的完整行；坐标空间与 ZzLogicalPos
- * 的物理行空间经 ZzUnwrapView::toStitched/fromStitched 双向换算。
+ * 的折链合并逻辑空间逐项恒等（拼接行索引 == 逻辑行号、拼接列 ==
+ * 逻辑列）。ZzUnwrapView::toStitched/fromStitched 换算的是统一物理
+ * 坐标 ↔ 拼接坐标（物理坐标复用 ZzLogicalPos 类型承载）。
  */
 struct ZzStitchedPos {
     std::int64_t line = 0; ///< 拼接行序号（0 起）
