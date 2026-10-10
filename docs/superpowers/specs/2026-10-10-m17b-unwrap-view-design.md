@@ -73,51 +73,55 @@ Line.h:101-107）合并为拼接行。
 class ZzUnwrapView {
 public:
     // 拼接行数（<= 统一空间物理行数；无折链时相等）
-    [[nodiscard]] std::size_t lineCount() const noexcept;
+    [[nodiscard]] std::size_t lineCount() const;
     // 第 i 条拼接行视图
     [[nodiscard]] ZzStitchedLineView lineAt(std::size_t index) const;
     // 全部拼接行的最大 cellCount（滚动条 range 原料；空时为 0）
-    [[nodiscard]] int maxCellCount() const noexcept;
+    [[nodiscard]] int maxCellCount() const;
     // 引擎坐标 → 拼接坐标（拼接行索引 + 拼接列）
     [[nodiscard]] ZzStitchedPos toStitched(ZzLogicalPos pos) const;
     // 拼接坐标 → 引擎坐标（拼接列落在链内第几物理行、行内哪一格）
-    [[nodiscard]] ZzLogicalPos fromStitched(std::size_t line, int col) const;
+    [[nodiscard]] ZzLogicalPos fromStitched(std::int64_t line, int col) const;
 };
 
 class ZzStitchedLineView {
 public:
-    [[nodiscard]] int cellCount() const noexcept;       // 链全长（各物理行 cellCount 累加）
+    [[nodiscard]] int cellCount() const noexcept;       // 链有效全长（各物理行裁尾后有效段累加）
     [[nodiscard]] ZzCellView cellAt(int col) const;     // 跨链寻址
     [[nodiscard]] std::int64_t sourceLine() const noexcept; // 链头统一行号
     [[nodiscard]] int sourceLineCount() const noexcept;     // 链行数（1 = 无折）
 };
 ```
 
-`ZzStitchedPos{ std::size_t line; int col; }`（新公共类型，入
-Types.h）。越界访问语义对齐 ZzLineView 既有契约（调用方保证，
-不重复防御）。
+`ZzStitchedPos{ std::int64_t line; std::int32_t col; }`（新公共类型，
+入 Types.h）。越界访问语义对齐 ZzLineView 既有契约（调用方保证），
+唯一例外：`fromStitched` 的 col 超出拼接行有效全长时钳到行尾
+（选区拖拽越界是正常输入，必须良定义）。
 
 ### 4.4 关键语义
 
+- **裁尾拼接**：每个物理行接入链流前裁掉尾部无效格（视图层判据：
+  `text.empty()` 且非宽字符续格），与 reflow 链流的逐行裁尾
+  （Reflow.cpp:21-26：行尾默认空白恒为填充、码位 0x20 真空格不受
+  影响）同口径——拼接行内容 = reflow 眼中的链内容，宽字符跨缝
+  两格完整保留。
 - **拼接内容跨 resize 稳定**：reflow（M16 系）重排链边界但保逻辑
   内容，拼接行内容因此天然稳定——「缩拉后内容完整」在视图层白拿。
 - **跨历史-屏幕缝的链**：链头在历史、续行在屏幕（M16b 跨缝）时照常
   拼接；sourceLine 指向链头（可能在历史区）。
-- **EAW 宽字符跨缝**：宽字符在行尾放不下时整体折到下一物理行
-  （M2 语义），拼接后宽字符两格完整落在拼接行内；cellAt 按格寻址
-  与物理行一致。
-- **空拼接行**：物理空行是独立拼接行（sourceLineCount=1，
-  cellCount=列数但全 isEmpty），不被吞掉——行数账可与物理空间
-  对账。
+- **空拼接行**：物理空行是独立拼接行（sourceLineCount=1，裁尾后
+  cellCount=0），不被吞掉——行数账可与物理空间对账。
 - **Alternate 屏**：历史为空，链在屏幕内，照常拼接。
 
 ### 4.5 实现形态
 
-纯视图层：构造时遍历统一空间物理行，按 wrapped 旗标建拼接索引
-（O(行数)，每帧重建可接受——M6 量级下行数有限；不行再优化）。
-无新存储、无缓存一致性负担。dirty 追踪不复用 RenderView 行级
-dirty（拼接行与物理行多对一），第一版前端在不换行模式下整帧
-重绘（spike 本就如此）。
+纯视图层：惰性拼接索引——首次查询或双代计数
+（RenderView.dirtyGeneration + HistoryView.generation）变化时遍历
+统一空间物理行按 wrapped 旗标重建（O(行数)；重建分配内存，故
+lineCount/maxCellCount/toStitched/fromStitched 不标 noexcept）。
+索引是派生缓存非新存储，代计数失效即重建，无一致性负担。dirty
+追踪不复用 RenderView 行级 dirty（拼接行与物理行多对一），第一版
+前端在不换行模式下整帧重绘（spike 本就如此）。
 
 ## 5. 演示层（spike/ZzClawTerm）：不换行模式
 
@@ -131,14 +135,19 @@ dirty（拼接行与物理行多对一），第一版前端在不换行模式下
   max(0, maxCellCount - cols)，单步 = 1 列。
 - **光标跟随**：光标拼接列 < offset 或 >= offset+cols 时调 offset
   使光标可见（贴边滚动，不居中）。
-- **选区**：鼠标显示坐标 (row, col) → (拼接行 = row + 顶部历史偏
-  移, 拼接列 = col + offset) → fromStitched → 引擎 setSelection/
-  extendSelection；复制文本经引擎既有选区提取，得到完整拼接行
-  （含屏外部分）。
+- **选区**：鼠标显示坐标 (row, col) →（拼接行 = 当前拼接视口顶 +
+  row，拼接列 = col + offset）→ fromStitched → 引擎 setSelection/
+  extendSelection；复制文本经引擎既有选区提取（selectedText），得到
+  完整拼接行（含屏外部分）。选中格在渲染时反色高亮（spike 最小视觉
+  反馈）。
 - **搜索高亮**：searchMatch 的 ZzLogicalRange → toStitched 换算
   到拼接坐标显示；命中在屏外横向区时高亮不可见属正常（滚动可见）。
-- **历史滚动回看**：显示层既有滚动（历史+屏幕统一空间）在拼接
-  视图下照常工作——拼接行序空间与物理统一空间同构。
+  spike 无搜索 UI，本条为 ZzClawTerm 集成预备，spike 不落地。
+- **历史滚动回看**：不换行模式下纵向滚动以**拼接行**为单位——
+  最大偏移 = 完全落在历史区的拼接行数（startLine + 链行数 <=
+  物理历史行数；跨缝链归屏幕侧），前端按 sourceLine/
+  sourceLineCount 与 historyView().lineCount() 自算，Core 不加
+  API。自动换行模式下纵向滚动维持既有物理行语义不变。
 
 ## 6. 与既有机制的交互
 
