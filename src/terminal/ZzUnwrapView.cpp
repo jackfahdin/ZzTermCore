@@ -81,10 +81,6 @@ public:
         ensureFresh();
         return entries_;
     }
-    // 不触发重建的缓存访问器：stitchedSourceLine/stitchedSourceLineCount
-    // 标 noexcept，不得经 entries() 触发可能分配的重建（句柄调用契约
-    // 本就要求先经 lineAt/lineCount 建立索引，同 ZzLineView 句柄口径）。
-    [[nodiscard]] const std::vector<Entry>& entriesCached() const noexcept { return entries_; }
     [[nodiscard]] int maxCellCount()
     {
         ensureFresh();
@@ -192,23 +188,23 @@ ZzCellView ZzUnwrapView::stitchedCellAt(std::size_t index, int col) const
     return impl_->cellAt(index, col);
 }
 
-std::int64_t ZzUnwrapView::stitchedSourceLine(std::size_t index) const noexcept
+std::int64_t ZzUnwrapView::stitchedSourceLine(std::size_t index) const
 {
-    return impl_->entriesCached()[index].startLine;
+    return impl_->entries()[index].startLine;
 }
 
-int ZzUnwrapView::stitchedSourceLineCount(std::size_t index) const noexcept
+int ZzUnwrapView::stitchedSourceLineCount(std::size_t index) const
 {
-    return impl_->entriesCached()[index].rows;
+    return impl_->entries()[index].rows;
 }
 
 int ZzStitchedLineView::cellCount() const { return owner_->stitchedCellCount(index_); }
 ZzCellView ZzStitchedLineView::cellAt(int col) const { return owner_->stitchedCellAt(index_, col); }
-std::int64_t ZzStitchedLineView::sourceLine() const noexcept
+std::int64_t ZzStitchedLineView::sourceLine() const
 {
     return owner_->stitchedSourceLine(index_);
 }
-int ZzStitchedLineView::sourceLineCount() const noexcept
+int ZzStitchedLineView::sourceLineCount() const
 {
     return owner_->stitchedSourceLineCount(index_);
 }

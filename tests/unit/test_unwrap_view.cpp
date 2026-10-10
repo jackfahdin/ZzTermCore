@@ -63,6 +63,9 @@ static void testStitchChain()
     ZZ_TEST_EXPECT(line.sourceLineCount() == 3);
     ZZ_TEST_EXPECT(stitchedText(view, 0) == std::string(25, 'x'));
     ZZ_TEST_EXPECT(view.maxCellCount() == 25);
+    feedStr(term, "\r\nb"); // 另起短行：多链混合 maxCellCount 仍为链长
+    ZZ_TEST_EXPECT(view.lineCount() == 2); // [x 链, b]
+    ZZ_TEST_EXPECT(view.maxCellCount() == 25);
 }
 
 // 3. 跨历史-屏幕缝的链照常拼接，sourceLine 指历史区链头
@@ -117,6 +120,27 @@ static void testCoordinateMapping()
     ZZ_TEST_EXPECT(view.fromStitched(view.toStitched(ZzLogicalPos{1, 4}).line,
                                      view.toStitched(ZzLogicalPos{1, 4}).col)
                    == ZzLogicalPos{1, 4});
+    // 反向往返：toStitched∘fromStitched = id
+    ZZ_TEST_EXPECT(view.toStitched(view.fromStitched(0, 14)) == ZzStitchedPos{0, 14});
+}
+
+// 5b. feed 驱动索引失效重建：首查 sourceLine 直接命中（重建路径），
+// 再喂折链后重查须反映最新链合并
+static void testFeedInvalidation()
+{
+    ZzTerminal term(10, 4, ZzBackendKind::Native, 100);
+    feedStr(term, "a\r\n"); // 行0: a；光标行 1
+    const ZzUnwrapView& view = term.unwrapView();
+    // 全新视图首查即 sourceLine（索引未建，须经 ensureFresh 重建）
+    ZZ_TEST_EXPECT(view.lineAt(0).sourceLine() == 0);
+    ZZ_TEST_EXPECT(view.lineCount() == 4); // [a, 空, 空, 空]
+    feedStr(term, "xxxxxxxxxxxxxxxxxxxxxxxxx"); // 25 x：行1/2 满(w)，行3 五 x
+    // 双代计数已变，重查触发重建：[a, x 链(3 物理行合并)] = 2 拼接行
+    ZZ_TEST_EXPECT(view.lineCount() == 2);
+    ZZ_TEST_EXPECT(stitchedText(view, 0) == "a");
+    ZZ_TEST_EXPECT(stitchedText(view, 1) == std::string(25, 'x'));
+    ZZ_TEST_EXPECT(view.lineAt(1).sourceLine() == 1);
+    ZZ_TEST_EXPECT(view.lineAt(1).sourceLineCount() == 3);
 }
 
 // 6. 空缓冲：maxCellCount=0，拼接行 = 物理空行
@@ -163,6 +187,7 @@ int main()
     testStitchAcrossHistorySeam();
     testStitchWideCharSeam();
     testCoordinateMapping();
+    testFeedInvalidation();
     testEmptyBuffer();
     testAlternateScreen();
     testStitchStableAcrossResize();

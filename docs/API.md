@@ -359,9 +359,11 @@ M17b 新增的拼接行只读视图，与 RenderView/HistoryView 平行的第三
   句柄——`cellCount()` 链有效全长、`cellAt(col)` 跨链寻址、
   `sourceLine()` 链头统一物理行号、`sourceLineCount()` 链行数。
 - 坐标空间：`ZzStitchedPos`（拼接行索引 + 拼接列）与选区/搜索的
-  `ZzLogicalPos` 折链合并逻辑空间**逐项恒等**——拼接行索引 == 逻辑
-  行号、拼接列 == 逻辑列（内容坐标，不含 wrapped 行尾部填充格，逐行
-  裁尾口径）。选区/搜索场景无需换算：（拼接行，拼接列）直接喂
+  `ZzLogicalPos` 折链合并逻辑空间**内容列逐项恒等**——拼接行索引 ==
+  逻辑行号、拼接列 == 逻辑列（内容坐标，不含 wrapped 行尾部填充格，
+  逐行裁尾口径）。限度：链尾补白列属逻辑空间独有（选区层不裁链尾，
+  非 wrapped 链尾行保持整宽），拼接空间按有效全长钳位，无对应拼接列。
+  选区/搜索场景无需换算：（拼接行，拼接列）直接喂
   `setSelection`/`extendSelection`，searchMatch 的 ZzLogicalRange
   直接按拼接坐标显示。
 - `toStitched`/`fromStitched` 换算的是「统一物理坐标 ↔ 拼接坐标」

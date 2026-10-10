@@ -50,9 +50,12 @@ resize（M15-M17e）、搜索、选区语义零改动。
 ZzSelectionText.cpp:116-128），col 为内容坐标（不含 wrapped 行尾部
 填充格，逐行裁尾）。本特性的「拼接后的完整行」另名**拼接行
 （stitched line）**，类型 `ZzUnwrapView` / `ZzStitchedLineView`——
-「拼接行」是视图层术语，其坐标空间与 ZzLogicalPos **逐项恒等**
+「拼接行」是视图层术语，其坐标空间与 ZzLogicalPos **内容列逐项恒等**
 （拼接行索引 == 逻辑行号、拼接列 == 逻辑列，两套独立实现互为印证：
-选区 testSelectAcrossSoftWrap 与拼接映射往返用例）。
+选区 testSelectAcrossSoftWrap 与拼接映射往返用例）。限度：链尾补白列
+属逻辑空间独有——选区层不裁链尾（非 wrapped 链尾行保持整宽，
+ZzSelectionText.cpp:46-57），拼接空间按有效全长钳位，链尾补白区无
+对应拼接列。
 
 ## 4. Core：拼接行视图 API
 
@@ -95,8 +98,8 @@ class ZzStitchedLineView {
 public:
     [[nodiscard]] int cellCount() const;                // 链有效全长（各物理行裁尾后有效段累加；惰性重建分配内存，不标 noexcept）
     [[nodiscard]] ZzCellView cellAt(int col) const;     // 跨链寻址
-    [[nodiscard]] std::int64_t sourceLine() const noexcept; // 链头统一行号
-    [[nodiscard]] int sourceLineCount() const noexcept;     // 链行数（1 = 无折）
+    [[nodiscard]] std::int64_t sourceLine() const;  // 链头统一行号（首查触发重建分配内存，不标 noexcept）
+    [[nodiscard]] int sourceLineCount() const;      // 链行数（1 = 无折；同上不标 noexcept）
 };
 ```
 

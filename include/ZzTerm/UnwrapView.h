@@ -36,13 +36,15 @@ public:
      * @brief 链头统一物理行号（历史+屏幕统一物理空间；非 ZzLogicalPos::line
      *        的折链合并逻辑行号，两者仅无折链时相等）。
      * @return 统一物理行号（链头可能在历史区）。
+     * @note 首次查询触发索引重建（分配内存），故不标 noexcept。
      */
-    [[nodiscard]] std::int64_t sourceLine() const noexcept;
+    [[nodiscard]] std::int64_t sourceLine() const;
     /**
      * @brief 链行数。
      * @return 链内物理行数（1 = 无折）。
+     * @note 首次查询触发索引重建（分配内存），故不标 noexcept。
      */
-    [[nodiscard]] int sourceLineCount() const noexcept;
+    [[nodiscard]] int sourceLineCount() const;
 
 private:
     friend class ZzUnwrapView;
@@ -106,6 +108,6 @@ private:
     // 供 ZzStitchedLineView 回调（detail，非公共契约）。
     [[nodiscard]] int stitchedCellCount(std::size_t index) const;
     [[nodiscard]] ZzCellView stitchedCellAt(std::size_t index, int col) const;
-    [[nodiscard]] std::int64_t stitchedSourceLine(std::size_t index) const noexcept;
-    [[nodiscard]] int stitchedSourceLineCount(std::size_t index) const noexcept;
+    [[nodiscard]] std::int64_t stitchedSourceLine(std::size_t index) const;
+    [[nodiscard]] int stitchedSourceLineCount(std::size_t index) const;
 };
