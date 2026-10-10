@@ -157,7 +157,7 @@ Grid 的 shrinkLines/growLines）：
 -   扩行（M17d 起）：Primary 且光标下方所有行为空行（会话活在底部）
     时，经 HistoryPullCallback 从最新历史回抽行注入屏幕顶部；不足
     部分底部补空行。光标下方有非空行时纯底部补空，不动历史。详见
-    §9「扩行回填（M17d）」。
+    §9「扩行回填（M17d/M17e）」。
 -   Alternate 缓冲区无回调路径：尾部截断或补空。
 
 两个回调在 backend 构造时接线（ZzNativeBackend.cpp）：
@@ -222,17 +222,32 @@ resize 后前端不需要知道重组细节：
 -   M17d：扩行回填（扩行回抽条件放宽为 Primary 且光标下方全空行即
     回抽，折链对齐向下取整；ED 3 清滚动区接线）——
     `superpowers/specs/2026-10-09-m17d-grow-refill-design.md`。
+-   M17e：扩行填满（既成空洞纳入回填预算：触发时先丢弃光标下方
+    b 行既成空行、回抽请求量 k→k+b，历史充足时屏幕填满、历史不足
+    时与 M17d 等价）——
+    `superpowers/specs/2026-10-10-m17e-grow-fill-design.md`。
 
 Contour 基准对照：third_party/contour 的 Grid.cpp——growColumns /
 shrinkColumns（统一流重组，列变基准）、shrinkLines / growLines（行变
 基准）。
 
-## 9. 扩行回填（M17d）
+## 9. 扩行回填（M17d/M17e）
 
 M17c 复验暴露「空白海」事故：窗口缩至极小再拉满后内容堆顶、底部大面积
 空白、提示符悬空（spike trace3 留痕离线重放实证，contour 参照后端跑同一
 剧本同现欠填——既存语义缺口，非 M17c 回归）。M17d 放宽扩行回抽条件并
 补齐 ED3 清历史。
+
+-   M17e 既成空洞回填：M17d 触发回填时底部仍残留光标下方 b 行既成
+    空行（内容未真正沉底）。M17e 起触发时（扩 k 行、光标下方 b 行
+    全空）先丢弃光标下方 b 行既成空行（isEmpty 行，含空续行——
+    删除等于截短链尾或删独立空行，无需修补旗标，链安全见规格
+    §3.4），HistoryPullCallback 请求量从扩行增量 k 改为 k+b；
+    历史充足（p=k+b）时底部零空行、屏幕填满、提示符沉底；历史
+    不足时底部空行数与 M17d 完全相同（三分支等价性见规格 §3.3）。
+    折链对齐向下取整语义不变，仅请求量变大（接线层 n 初值从
+    min(k, H) 变为 min(k+b, H)）。规格
+    `superpowers/specs/2026-10-10-m17e-grow-fill-design.md`。
 
 -   触发条件：Primary 缓冲且**光标下方所有行均为空行**（空行 = 整行
     空白 cell）时回抽。旧条件「光标贴旧末行」是新条件的子集（贴末行
@@ -263,5 +278,6 @@ M17c 复验暴露「空白海」事故：窗口缩至极小再拉满后内容堆
 
 与 contour 后端的 parity：扩行回填为有意偏离（contour growLines 仅
 光标贴末行回抽，偏离登记见 tests/unit/test_backend_compat.cpp 用例
-26 testGrowRefillDeviation）；ED3 为 parity 补齐（contour 原生支持，
+26 testGrowRefillDeviation；M17e 既成空洞回填属该偏离的加深，
+不新增登记类别）；ED3 为 parity 补齐（contour 原生支持，
 对照见用例 27 testEd3ClearScrollbackParity）。

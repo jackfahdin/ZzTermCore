@@ -357,9 +357,15 @@ tests 验证；native 后端按 v1 语义契约实现同一行为。
 从历史回抽填满、光标沉底（光标下方全空行即回抽），contour 核心仅光标
 贴旧末行回抽（CUP 抬离末行后不回抽、底部补空，第三方冻结不改）。
 动机：用户核心诉求「任意缩拉后内容填满屏幕、提示符沉底」（trace3
-留痕实证 contour 同现欠填）。偏离登记见
-docs/Scrollback-and-Reflow.md「扩行回填（M17d）」小节与
-tests/unit/test_backend_compat.cpp 的 M17d 偏离用例
+留痕实证 contour 同现欠填）。M17e 起回填预算纳入光标下方既成
+空洞：触发时先丢弃光标下方 b 行既成空行，回抽请求量从 k 改为
+k+b（折链对齐向下取整语义不变，仅请求量变大）——历史充足
+（p=k+b）时底部零空行、屏幕填满、提示符沉底；历史不足时底部
+空行数与 M17d 完全相同（三分支等价性见规格
+superpowers/specs/2026-10-10-m17e-grow-fill-design.md §3.3，
+偏离加深、不新增登记类别）。偏离登记见
+docs/Scrollback-and-Reflow.md「扩行回填（M17d/M17e）」小节与
+tests/unit/test_backend_compat.cpp 的 M17d/M17e 偏离用例
 （testGrowRefillDeviation）。回抽折链对齐在 HistoryPullCallback
 接线层向下取整，dangling 预防全域化、对 M16c 顶补同生效；contour
 的 LogicalLines 天然链对齐，此为向 contour 靠拢的加固，非偏离。
