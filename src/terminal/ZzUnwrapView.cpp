@@ -188,7 +188,7 @@ int ZzUnwrapView::stitchedCellCount(std::size_t index) const
 
 ZzCellView ZzUnwrapView::stitchedCellAt(std::size_t index, int col) const
 {
-    impl_->entries(); // 确保索引新鲜
+    (void)impl_->entries(); // 确保索引新鲜
     return impl_->cellAt(index, col);
 }
 
