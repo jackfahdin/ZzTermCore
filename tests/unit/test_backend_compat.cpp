@@ -605,10 +605,11 @@ std::string rowTextOf(const ZzTerminal& term, int row)
     return out;
 }
 
-// 26. 扩行回填 parity 偏离登记（M17d）：行数增加且光标下方全空时，native
-// 从历史回抽填满、光标沉底（M17d 语义）；contour 核心仅光标贴旧末行回抽，
-// CUP 抬离末行后不回抽、底部补空（第三方冻结不改）。b 类真实语义分歧，
-// 分别断言钉住，不强行对齐。
+// 26. 扩行回填 parity 偏离登记（M17d 起、M17e 加深）：行数增加且光标下方
+// 全空时，native 从历史回抽填满——M17e 起先丢弃光标下方既成空行、回抽预算
+// 含既成空洞（k→k+b），屏幕填满、光标沉底；contour 核心仅光标贴旧末行
+// 回抽，CUP 抬离末行后不回抽、底部补空（第三方冻结不改）。b 类真实语义
+// 分歧，分别断言钉住，不强行对齐。
 void testGrowRefillDeviation()
 {
     ZzTerminal native(10, 4, ZzBackendKind::Native, 100);
@@ -625,11 +626,11 @@ void testGrowRefillDeviation()
             reinterpret_cast<const std::byte*>("\x1b[3;1H"), 6)); // CUP 光标行 2
         term->resize(10, 6);
     }
-    // native：回抽 b,c 顶插——屏幕 b,c,d,e,f,空；光标行 4；历史剩 a
-    ZZ_CHECK(native.historyView().lineCount() == 1);
-    ZZ_CHECK(rowTextOf(native, 0) == "b");
-    ZZ_CHECK(rowTextOf(native, 1) == "c");
-    ZZ_CHECK(native.cursor().position.row == 4);
+    // native：丢 1 空行、回抽 a,b,c 全取——屏幕 a,b,c,d,e,f；光标行 5
+    ZZ_CHECK(native.historyView().lineCount() == 0);
+    ZZ_CHECK(rowTextOf(native, 0) == "a");
+    ZZ_CHECK(rowTextOf(native, 1) == "b");
+    ZZ_CHECK(native.cursor().position.row == 5);
     // contour：不回抽——屏幕 d,e,f 在顶、底部补空；光标行 2；历史仍 3
     ZZ_CHECK(contour.historyView().lineCount() == 3);
     ZZ_CHECK(rowTextOf(contour, 0) == "d");

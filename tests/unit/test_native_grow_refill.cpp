@@ -1,5 +1,5 @@
 // M17d facade 级测试：扩行回填端到端、回抽折链对齐（向下取整）、
-// ED 3 清滚动区、clear 序列后扩行不复活。
+// ED 3 清滚动区、clear 序列后扩行不复活、M17e 折链对齐（请求量 k+b）。
 // 回归搭档：test_native_rowresize / test_native_reflow_topfill 等须保持绿。
 #include <cstdint>
 #include <cstdio>
@@ -71,20 +71,22 @@ static void testGrowRefillEndToEnd()
     ZZ_TEST_EXPECT(term.cursor().position.row == 4); // 2 + 2 沉底
 }
 
-// 2. 新语义区分器：光标被 CUP 抬离末行、下方全空 → 回抽（旧语义不回抽）
+// 2. M17e：CUP 抬离末行 + 下方 1 行既成空洞（b=1）→ 请求 k+b=3，
+//    历史全取填满、底部零空行、光标沉底
 static void testGrowRefillCursorAboveBlankTail()
 {
     ZzTerminal term(10, 4, ZzBackendKind::Native, 100);
     feedSixLines(term);                       // 历史 a,b,c；屏幕 d,e,f
     feedStr(term, "\x1b[3;1H");               // CUP：光标行 2（f 行），行 3 空
-    ZZ_TEST_EXPECT(term.resize(10, 6));       // 扩 2：回抽 b,c 顶插
-    ZZ_TEST_EXPECT(term.historyView().lineCount() == 1); // 剩 a
-    ZZ_TEST_EXPECT(screenRowText(term, 0) == "b");
-    ZZ_TEST_EXPECT(screenRowText(term, 1) == "c");
-    ZZ_TEST_EXPECT(screenRowText(term, 2) == "d");
-    ZZ_TEST_EXPECT(screenRowText(term, 3) == "e");
-    ZZ_TEST_EXPECT(screenRowText(term, 4) == "f");
-    ZZ_TEST_EXPECT(term.cursor().position.row == 4); // 2 + 2
+    ZZ_TEST_EXPECT(term.resize(10, 6));       // 扩 2 + 空洞 1：回抽 a,b,c 全取
+    ZZ_TEST_EXPECT(term.historyView().lineCount() == 0);
+    ZZ_TEST_EXPECT(screenRowText(term, 0) == "a");
+    ZZ_TEST_EXPECT(screenRowText(term, 1) == "b");
+    ZZ_TEST_EXPECT(screenRowText(term, 2) == "c");
+    ZZ_TEST_EXPECT(screenRowText(term, 3) == "d");
+    ZZ_TEST_EXPECT(screenRowText(term, 4) == "e");
+    ZZ_TEST_EXPECT(screenRowText(term, 5) == "f"); // 底部零空行
+    ZZ_TEST_EXPECT(term.cursor().position.row == 5); // 2 + 3 沉底
 }
 
 // 3. 折链对齐：扩 2 但历史第 2 行深处是链中段 → 向下取整只取 1 行，
@@ -141,6 +143,32 @@ static void testClearSequenceNoRefill()
     ZZ_TEST_EXPECT(term.cursor().position.row == 0);
 }
 
+// 6. M17e 折链对齐：请求量 k+b 参与向下取整——被取块首行必为链头，
+//    跨缝整链留在历史
+static void testGrowFillChainAligned()
+{
+    ZzTerminal term(10, 4, ZzBackendKind::Native, 100);
+    feedStr(term, "xxxxxxxxxxxxxxx\r\n"); // 行 0 十 x（wrapped）折行 1 五 x
+    feedStr(term, "b\r\n");
+    feedStr(term, "c\r\n");
+    feedStr(term, "d\r\n");
+    feedStr(term, "e\r\n");
+    feedStr(term, "f\r\n");
+    // 历史 [x*10(w), x*5, b, c]（H=4）；屏幕 d,e,f + 光标空行 3
+    ZZ_TEST_EXPECT(term.historyView().lineCount() == 4);
+    feedStr(term, "\x1b[3;1H"); // CUP 光标行 2（f 行），下方行 3 空（b=1）
+    ZZ_TEST_EXPECT(term.resize(10, 6));
+    // 请求 k+b=3：接缝行 x*10(w) wrapped=true → 向下取整到 2（取 b,c）
+    ZZ_TEST_EXPECT(term.historyView().lineCount() == 2); // 整链留历史
+    ZZ_TEST_EXPECT(historyLineText(term, 0) == "xxxxxxxxxx");
+    ZZ_TEST_EXPECT(historyLineText(term, 1) == "xxxxx");
+    ZZ_TEST_EXPECT(screenRowText(term, 0) == "b"); // 非对齐会取到 "xxxxx"
+    ZZ_TEST_EXPECT(screenRowText(term, 1) == "c");
+    ZZ_TEST_EXPECT(screenRowText(term, 2) == "d");
+    ZZ_TEST_EXPECT(term.cursor().position.row == 4); // 2 + 2
+    ZZ_TEST_EXPECT(screenRowText(term, 5).empty());  // 余量补空
+}
+
 int main()
 {
     testGrowRefillEndToEnd();
@@ -148,6 +176,7 @@ int main()
     testGrowRefillChainAligned();
     testEd3ClearsHistory();
     testClearSequenceNoRefill();
+    testGrowFillChainAligned();
     if (g_failures != 0) {
         std::fprintf(stderr, "%d failure(s)\n", g_failures);
         return 1;
