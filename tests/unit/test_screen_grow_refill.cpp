@@ -1,5 +1,6 @@
 // ZzScreen 扩行回填测试（M17d）：回抽条件从「光标贴末行」放宽为
 //「光标下方全空行」（会话活在底部）；部分回填/布局保护。
+// M17e 起请求量含既成空洞，见 test_screen_grow_fill.cpp。
 // 回归搭档：test_screen_rowresize.cpp（M15 八用例，含贴底回抽/Alternate）须保持绿。
 #include <cstdio>
 #include <string>
@@ -58,11 +59,11 @@ static void testGrowRefillBelowCursorBlank()
     writeRow(scr, 1, "c1");                  // 行 2/3 空
     scr.setCursorPosition(ZzPosition{1, 0}); // 光标行 1（非末行 3），下方全空
     scr.setHistoryPullCallback([](std::size_t maxLines) {
-        ZZ_TEST_EXPECT(maxLines == 2); // 索取数 = 扩行数
+        ZZ_TEST_EXPECT(maxLines == 4); // M17e：索取数 = 扩行数 k + 既成空洞 b
         std::vector<ZzLine> pulled;
         pulled.push_back(makeTextLine(10, "h0"));
         pulled.push_back(makeTextLine(10, "h1"));
-        return pulled;
+        return pulled; // 只返回 2 行：部分回填
     });
     scr.resize(10, 6); // 扩 2：回抽 2 行注入顶部（旧语义光标不贴底不回抽）
     ZZ_TEST_EXPECT(rowText(scr.lineAt(0), 2) == "h0");
@@ -81,7 +82,7 @@ static void testGrowRefillCursorOnBlankRowPartial()
     writeRow(scr, 1, "c1");                  // 行 2/3/4 空
     scr.setCursorPosition(ZzPosition{2, 0}); // 光标在空行 2 上，下方行 3/4 空
     scr.setHistoryPullCallback([](std::size_t maxLines) {
-        ZZ_TEST_EXPECT(maxLines == 2);
+        ZZ_TEST_EXPECT(maxLines == 4);
         std::vector<ZzLine> pulled;
         pulled.push_back(makeTextLine(10, "m0"));
         return pulled; // 历史只剩 1 行：部分回填

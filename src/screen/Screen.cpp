@@ -61,7 +61,8 @@ void ZzScreen::resize(int cols, int rows)
 // 压入历史（无回调则丢弃，同 reflowBuffer 溢出语义）；光标随内容平移。
 // 扩行：M17d 起 Primary 且光标下方全空行（会话活在底部）时经
 // HistoryPullCallback 回抽注入顶部（偏离 contour 仅贴末行回抽，compat
-// 用例 26 登记），不足底部补空。
+// 用例 26 登记）；M17e 起先丢弃光标下方既成空行、回抽预算含既成空洞
+//（k → k+b），历史不足时净效果同 M17d；不足部分底部补空。
 
 // M17d：空行判定——整行 cell 均 isEmpty（覆盖默认格/擦除格/宽字符续格；
 // 显式写入的空格 cell 非 isEmpty，视为内容，保守不回抽）。
@@ -109,7 +110,14 @@ void ZzScreen::resizeBuffer(Buffer& buf, int cols, int rows, bool mayUseHistory)
             }
         }
         if (mayUseHistory && historyPullCallback_ && liveAtBottom) {
-            auto pulled = historyPullCallback_(static_cast<std::size_t>(k));
+            // M17e：先丢弃光标下方既成空行（无内容可丢；空续行删除安全，
+            // 规格 2026-10-10-m17e §3.4），回填预算从 k 扩为 k+b——历史
+            // 充足时屏幕填满、提示符沉底；历史不足时净效果与 M17d 相同
+            //（规格 §3.3 等价性证明）。
+            const int blankTail = oldRows - 1 - buf.cursor.position.row;
+            if (blankTail > 0)
+                buf.lines.erase(buf.lines.end() - blankTail, buf.lines.end());
+            auto pulled = historyPullCallback_(static_cast<std::size_t>(k + blankTail));
             if (!pulled.empty()) {
                 buf.lines.insert(buf.lines.begin(),
                                  std::make_move_iterator(pulled.begin()),
