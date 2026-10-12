@@ -331,13 +331,16 @@ RenderView 覆盖屏幕区，HistoryView 覆盖 scrollback 历史区。
 - `ZzTerminal::historyView()` 返回 `const ZzHistoryView&`，借用 Terminal，
   不得比 Terminal 长寿。
 - `ZzHistoryView` 为纯虚接口：`lineCount` / `lineAt` / `droppedLineCount` /
-  `generation`。
+  `generation`；`primaryLineCount` 为非纯虚（默认回退 `lineCount()`）。
 - 坐标：index 属于 [0, lineCount())，0 = 最旧历史行；
   绝对行号 = droppedLineCount() + index（选区锚点平移/应用侧归档对齐用）。
 - `lineAt(index)` 返回 ZzLineView 借用句柄：feed/resize/clear 或下一次
   lineAt 调用后失效（contour 为视图内部单行缓冲覆写，native 借 scrollback
   const 引用）。行宽恒等于终端当前列宽（resize 经 reflow 维持）。
-- Alternate 屏 lineCount() 恒 0（Alternate 无历史），回 Primary 恢复。
+- Alternate 屏 lineCount() 恒 0（Alternate 无历史），回 Primary 恢复；
+  `primaryLineCount()` 为 buffer 无关口径——Alternate 期间仍返回 Primary
+  历史真实行数（native 覆写为 scrollback 真实行数），供应用侧读回对账
+  锚点使用（Alternate 期间列变 reflow 照样重组 Primary 历史）。
 - 变化侦测用 generation()（append/裁剪/reflow/clear/Alternate 切换递增，
   允许保守多增）；禁止每帧全扫历史，滚动查看按需取可见行。
 - 线程：非线程安全，与 ZzTerminal 同线程。

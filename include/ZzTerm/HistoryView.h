@@ -37,6 +37,20 @@ public:
     [[nodiscard]] virtual std::size_t lineCount() const noexcept = 0;
 
     /**
+     * @brief Primary 历史真实行数（buffer 无关口径；应用侧读回对账用）。
+     * @return Primary 历史行数；Alternate 屏活动期间仍返回真实行数
+     *       （区别于 lineCount() 的契约性 0）。
+     * @note Alternate 期间列变 reflow 照样重组 Primary 历史，对账锚点
+     *       （如读回桥的追加游标复位）须用本口径而非可见口径。
+     * @note 默认实现回退 lineCount()（后端无 buffer 无关口径时的保守
+     *       降级）；native 后端覆写为 scrollback 真实行数。
+     */
+    [[nodiscard]] virtual std::size_t primaryLineCount() const noexcept
+    {
+        return lineCount();
+    }
+
+    /**
      * @brief 第 index 行只读句柄。
      * @param index 行号（0 = 最旧历史行，须小于 lineCount()）。
      * @return 该行只读访问句柄。

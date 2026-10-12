@@ -15,6 +15,7 @@ public:
     ZzNativeHistoryView(const ZzScreen& screen, const ZzScrollback& scrollback,
                         const std::uint64_t& generation) noexcept;
     [[nodiscard]] std::size_t lineCount() const noexcept override;
+    [[nodiscard]] std::size_t primaryLineCount() const noexcept override;
     [[nodiscard]] ZzLineView lineAt(std::size_t index) const override;
     [[nodiscard]] std::uint64_t droppedLineCount() const noexcept override;
     [[nodiscard]] std::uint64_t generation() const noexcept override;

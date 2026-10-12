@@ -30,6 +30,11 @@ std::size_t ZzNativeHistoryView::lineCount() const noexcept
     return scrollback_->lineCount();
 }
 
+std::size_t ZzNativeHistoryView::primaryLineCount() const noexcept
+{
+    return scrollback_->lineCount(); // buffer 无关：Alternate 期间仍真实行数
+}
+
 ZzLineView ZzNativeHistoryView::lineAt(std::size_t index) const
 {
     return ZzLineView(&scrollback_->lineAt(index), &cellAtThunk, &cellCountThunk,

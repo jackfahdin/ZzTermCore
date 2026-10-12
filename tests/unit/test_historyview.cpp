@@ -138,13 +138,21 @@ static void testAlternateZero()
     ZzTerminal term(10, 4, ZzBackendKind::Native, 100);
     feedEightLines(term);
     ZZ_TEST_EXPECT(term.historyView().lineCount() == 5);
+    ZZ_TEST_EXPECT(term.historyView().primaryLineCount() == 5); // Primary 下同口径
     const std::uint64_t g0 = term.historyView().generation();
     feedStr(term, "\x1b[?1049h"); // 进 Alternate：历史不可见
     ZZ_TEST_EXPECT(term.historyView().lineCount() == 0);
+    // buffer 无关口径：Alternate 期间仍返回 Primary 历史真实行数
+    ZZ_TEST_EXPECT(term.historyView().primaryLineCount() == 5);
     ZZ_TEST_EXPECT(term.historyView().generation() > g0);
+    // Alternate 期间列变 reflow 照样重组 Primary 历史（不可见但存在）
+    ZZ_TEST_EXPECT(term.resize(20, 4));
+    ZZ_TEST_EXPECT(term.historyView().lineCount() == 0);
+    ZZ_TEST_EXPECT(term.historyView().primaryLineCount() == 5); // 短行不折，行数不变
     const std::uint64_t g1 = term.historyView().generation();
     feedStr(term, "\x1b[?1049l"); // 回 Primary：历史恢复可见
     ZZ_TEST_EXPECT(term.historyView().lineCount() == 5);
+    ZZ_TEST_EXPECT(term.historyView().primaryLineCount() == 5);
     ZZ_TEST_EXPECT(term.historyView().generation() > g1);
 }
 
