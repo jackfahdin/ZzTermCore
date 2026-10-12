@@ -207,10 +207,15 @@ std::unique_ptr<ZzPty> ZzPty::spawn(const ZzPtyConfig& cfg)
     // Vim PR 19589 同款修复；M12 CI 迭代 R1-R6 六轮实证定位）。
     si.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
     si.lpAttributeList = attrList;
+    // M18：传自定义 Unicode 环境块时必须置 CREATE_UNICODE_ENVIRONMENT，
+    // 否则 lpEnvironment 按 ANSI 解释（MSDN CreateProcessW lpEnvironment 节）。
+    DWORD createFlags = EXTENDED_STARTUPINFO_PRESENT;
+    if (!envBlock.empty())
+        createFlags |= CREATE_UNICODE_ENVIRONMENT;
     PROCESS_INFORMATION pi {};
     const BOOL created = ::CreateProcessW(
         nullptr, cmdline.data(), nullptr, nullptr, FALSE,
-        EXTENDED_STARTUPINFO_PRESENT,
+        createFlags,
         envBlock.empty() ? nullptr : envBlock.data(),
         cwdW.empty() ? nullptr : cwdW.c_str(),
         &si.StartupInfo, &pi);
