@@ -33,3 +33,9 @@ const ZzHistoryView& ZzTerminalBackend::historyView() const noexcept
 {
     return g_emptyHistoryView;
 }
+
+bool ZzTerminalBackend::prependHistoryLines(std::vector<ZzLine> lines)
+{
+    (void)lines;
+    return false; // 默认不支持（contour 后端暂不提供）
+}

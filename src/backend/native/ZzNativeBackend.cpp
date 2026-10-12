@@ -289,6 +289,18 @@ bool ZzNativeBackend::resize(int cols, int rows)
 }
 
 const ZzRenderView& ZzNativeBackend::renderView() const noexcept { return renderView_; }
+
+bool ZzNativeBackend::prependHistoryLines(std::vector<ZzLine> lines)
+{
+    if (screen_.activeBuffer() == ZzScreenBuffer::Alternate)
+        return false; // Alternate 永不注入（与 prependPrimaryLines 同口径）
+    if (lines.empty())
+        return true; // 空输入空操作
+    scrollback_->prependOldest(std::move(lines));
+    ++historyGeneration_; // M19：注入代计数递增（同 append/reflow 口径）
+    return true;
+}
+
 ZzSize ZzNativeBackend::size() const noexcept { return screen_.size(); }
 ZzCursorState ZzNativeBackend::cursor() const noexcept { return screen_.cursor(); }
 bool ZzNativeBackend::isAlternateScreen() const noexcept

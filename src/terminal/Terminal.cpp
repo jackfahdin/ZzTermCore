@@ -97,6 +97,11 @@ bool ZzTerminal::resize(int cols, int rows)
 }
 const ZzRenderView& ZzTerminal::renderView() const noexcept { return impl_->backend->renderView(); }
 const ZzHistoryView& ZzTerminal::historyView() const noexcept { return impl_->backend->historyView(); }
+
+bool ZzTerminal::prependHistoryLines(std::vector<ZzLine> lines)
+{
+    return impl_->backend->prependHistoryLines(std::move(lines));
+}
 const ZzUnwrapView& ZzTerminal::unwrapView() const noexcept { return *impl_->unwrapView; }
 ZzSize ZzTerminal::size() const noexcept { return impl_->backend->size(); }
 ZzCursorState ZzTerminal::cursor() const noexcept { return impl_->backend->cursor(); }

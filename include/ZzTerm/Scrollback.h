@@ -23,6 +23,7 @@
  *
  * 行序约定：index 0 为最旧一行，index lineCount()-1 为最新一行
  * （紧邻屏幕上方）。logical line 归属规则见 Line.h 注释。
+ * 绝对行号基线 = totalDropped + totalPrepended（M19）。
  */
 
 /// @brief 历史后端统计信息（为分层/监控/Inspector 预留）。
@@ -35,6 +36,7 @@ struct ZzScrollbackStats {
     std::size_t coldLines = 0;   ///< Cold 层（mmap 文件）行数，预留。
     std::uint64_t totalAppended = 0; ///< 累计入库行数（含随后被裁的）；为 M5 绝对行号选区坐标铺路。
     std::uint64_t totalDropped  = 0; ///< 累计因容量裁剪丢弃的行数；clear 不复位。
+    std::uint64_t totalPrepended = 0; ///< 累计经 prependOldest 注入的行数（M19）。
 };
 
 /**
@@ -104,6 +106,20 @@ public:
      *       stableBase 回退同构，选区锚点按不透明行号处理）。
      */
     [[nodiscard]] virtual std::vector<ZzLine> takeNewest(std::size_t n) = 0;
+
+    /**
+     * @brief 向最旧端注入一批行（M19 读回注入原语；旧到新顺序，以值移交所有权）。
+     * @param lines 待注入行（行宽必须等于终端当前列宽，同 append 约定）。
+     * @note 注入不触发容量裁剪（允许瞬时超容量；后续 append 的裁剪从最旧端
+     *       先裁注入行）。capacity==0 时即注即裁（计入 totalDropped）。
+     * @note 注入使 stats().totalPrepended 同步增加；HistoryView 的
+     *       droppedLineCount 基线为 totalDropped+totalPrepended：注入 N 行
+     *       使基线 +N、既有行索引顺移 +N，注入行占据紧邻新基线上方的
+     *       低位号段，绝对行号（基线+index）坐标系保持无洞单调。
+     * @note totalAppended 不变（注入不是 append）；调用后既有 lineAt
+     *       引用失效（同 append 失效规则）。
+     */
+    virtual void prependOldest(std::vector<ZzLine> lines) = 0;
 
     /**
      * @brief 斩断最新历史行的出链（wrapped 置 false，M17c erase 斩链）。

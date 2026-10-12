@@ -116,6 +116,60 @@ public:
         trimToCapacity();
     }
 
+    void prependOldest(std::vector<ZzLine> lines) override
+    {
+        const std::size_t n = lines.size();
+        if (n == 0)
+            return;
+        totalPrepended_ += n;
+        if (capacity_ == 0) { // 即注即裁（等价 append 的零容量语义）
+            totalDropped_ += n;
+            return;
+        }
+        // 头部插入，维持 phys = headOffset_ + index 定长寻址不变量：
+        // 空闲槽足够则回填头块；不足则前插整块再回填。
+        // 注意：trimToCapacity 的部分裁剪是 head.erase 真擦除，头块前段
+        // headOffset_ 个槽位在向量里并不存在——回填须先把槽位补回来
+        // （插入占位行，随即被注入行覆盖），否则 chunks_[chunk][inner]
+        // 写入会覆盖既有首行并打乱寻址。
+        if (n > headOffset_) {
+            const std::size_t need = n - headOffset_;
+            const std::size_t newChunks =
+                (need + kChunkLines - 1) / kChunkLines;
+            if (headOffset_ > 0) {
+                // 原头块补齐为完整块：前 headOffset_ 个槽位曾裁空，补占位行
+                // 使「非头块向量下标 == phys % kChunkLines」不变量对齐；
+                // 占位槽位随即被下方写入覆盖（写入终点恰为原头块前段末尾）。
+                chunks_.front().insert(chunks_.front().begin(), headOffset_, ZzLine{});
+            }
+            for (std::size_t i = 0; i < newChunks; ++i)
+                chunks_.emplace_front();
+            headOffset_ += newChunks * kChunkLines;
+        } else {
+            // 头块裁空槽足够：补回前段 n 个占位槽位（曾随裁擦拭除）。
+            chunks_.front().insert(chunks_.front().begin(), n, ZzLine{});
+        }
+        headOffset_ -= n;
+        // 按寻址公式逐行写入 [headOffset_, headOffset_+n)（与 lineAt 同构）。
+        // 新前插块是空 vector：按需扩容到目标槽位（inner 单调递增，等价
+        // 顺序 push_back）；旧块槽位已由上方占位补齐，直接覆盖。
+        for (std::size_t i = 0; i < n; ++i) {
+            const std::size_t phys  = headOffset_ + i;
+            const std::size_t chunk = phys / kChunkLines;
+            const std::size_t inner =
+                (phys % kChunkLines) - (chunk == 0 ? headOffset_ : 0);
+            approxBytes_ += sizeof(ZzLine) +
+                            static_cast<std::size_t>(lines[i].cellCount()) *
+                                sizeof(ZzCell);
+            auto& vec = chunks_[chunk];
+            if (vec.size() <= inner)
+                vec.resize(inner + 1);
+            vec[inner] = std::move(lines[i]);
+        }
+        totalLines_ += n;
+        // 不调用 trimToCapacity：注入允许瞬时超容量（规格定案 3）
+    }
+
     [[nodiscard]] std::vector<ZzLine> takeNewest(std::size_t n) override
     {
         std::vector<ZzLine> out;
@@ -174,6 +228,7 @@ public:
         s.hotLines = totalLines_; // 当前全部位于 Hot(RAM) 层。
         s.totalAppended = totalAppended_;
         s.totalDropped = totalDropped_;
+        s.totalPrepended = totalPrepended_;
         return s;
     }
 
@@ -208,6 +263,7 @@ private:
     std::size_t headOffset_ = 0; ///< 头部块被部分裁剪的槽位数（块 0 向量位置 0 对应定长槽位 headOffset_）。
     std::uint64_t totalAppended_ = 0; ///< 累计入库行数（clear 不复位）。
     std::uint64_t totalDropped_  = 0; ///< 累计裁剪丢弃行数（clear 不复位）。
+    std::uint64_t totalPrepended_ = 0; ///< 累计最旧端注入行数（M19，clear 不复位）。
 };
 
 } // namespace

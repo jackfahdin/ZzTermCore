@@ -37,6 +37,7 @@ public:
     void sendFocus(bool focused) override;
     [[nodiscard]] const ZzIPhysicalLineSource& lineSource() const noexcept override { return lineSource_; }
     [[nodiscard]] const ZzHistoryView& historyView() const noexcept override { return historyView_; }
+    [[nodiscard]] bool prependHistoryLines(std::vector<ZzLine> lines) override;
 
     // ---- facade 的 screen()/scrollback() 委托用（Native 限定访问） ----
     [[nodiscard]] ZzScreen& screen() noexcept { return screen_; }

@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <span>
 #include <string>
+#include <vector>
 
 #include "ZzTerm/Terminal.h"
 
@@ -43,6 +44,30 @@ static void feedEightLines(ZzTerminal& term)
         s += "\r\n";
         feedStr(term, s);
     }
+}
+
+// M19：构造注入用行（各测试文件自带脚手架是既有惯例，副本同 test_scrollback.cpp）。
+static ZzLine makeLine(int cols, const std::string& text, bool wrapped)
+{
+    ZzLine line(cols);
+    for (int i = 0; i < (int)text.size() && i < cols; ++i) {
+        ZzCell c;
+        c.setWidth(ZzCellWidth::Narrow);
+        c.setCodePoint((char32_t)text[(std::size_t)i]);
+        line.setCell(i, c);
+    }
+    line.setWrapped(wrapped);
+    return line;
+}
+
+// 屏幕第 row 行全部格文本拼接（空白格 text 为空串自然跳过）。
+static std::string screenLineText(const ZzTerminal& term, int row)
+{
+    const ZzLineView line = term.renderView().lineAt(row);
+    std::string out;
+    for (int col = 0; col < line.cellCount(); ++col)
+        out += line.cellAt(col).text;
+    return out;
 }
 
 static void testEmptyInitial()
@@ -123,6 +148,58 @@ static void testAlternateZero()
     ZZ_TEST_EXPECT(term.historyView().generation() > g1);
 }
 
+// M19.6 绝对行号稳定 + generation 递增 + 屏幕不动
+static void testTerminalPrependHistoryAbsoluteStable()
+{
+    ZzTerminal term(10, 3, ZzBackendKind::Native, 100);
+    // 喂 5 行产生 2 行历史（3 行屏幕装不下）
+    for (int i = 0; i < 5; ++i)
+        term.feed(std::as_bytes(std::span("line\r\n", 6)));
+    const auto& hv = term.historyView();
+    const std::size_t histBefore = hv.lineCount();
+    const std::uint64_t droppedBefore = hv.droppedLineCount();
+    const std::uint64_t genBefore = hv.generation();
+    const ZzCursorState cursorBefore = term.cursor();
+    const std::string screenRow0Before = screenLineText(term, 0); // 记录屏幕首行文本
+    const std::string histRow0Before = historyLineText(term, 0);  // 记录最旧历史行文本
+    // 注入 2 行
+    std::vector<ZzLine> older;
+    older.push_back(makeLine(10, "older-one", false));
+    older.push_back(makeLine(10, "older-two", false));
+    ZZ_TEST_EXPECT(term.prependHistoryLines(std::move(older)) == true);
+    ZZ_TEST_EXPECT(hv.lineCount() == histBefore + 2);
+    ZZ_TEST_EXPECT(hv.droppedLineCount() == droppedBefore + 2); // 基线平移
+    // 既有行身份稳定：注入前 idx 0 的行顺移到 idx 2（内容一致）。
+    //（简报原稿断言 droppedBefore == droppedLineCount()-2+2，与上一行
+    //  基线平移断言自相矛盾——基线 = totalDropped+totalPrepended 下
+    //  绝对行号 dropped+idx 随基线+索引同步 +2N 平移、无洞连续；
+    //  此处改断言行身份保持，见任务报告。）
+    ZZ_TEST_EXPECT(historyLineText(term, 2) == histRow0Before);
+    ZZ_TEST_EXPECT(hv.generation() > genBefore);
+    // 屏幕与光标不动
+    ZZ_TEST_EXPECT(term.cursor().position.row == cursorBefore.position.row);
+    ZZ_TEST_EXPECT(term.cursor().position.col == cursorBefore.position.col);
+    ZZ_TEST_EXPECT(screenLineText(term, 0) == screenRow0Before); // 屏幕首行文本与注入前一致
+}
+
+// M19.7 Alternate 拒绝
+static void testTerminalPrependHistoryAlternateRejected()
+{
+    ZzTerminal term(10, 3, ZzBackendKind::Native, 100);
+    term.feed(std::as_bytes(std::span("\x1b[?1049h", 8)));
+    std::vector<ZzLine> older;
+    older.push_back(makeLine(10, "older", false));
+    ZZ_TEST_EXPECT(term.prependHistoryLines(std::move(older)) == false);
+    ZZ_TEST_EXPECT(term.historyView().lineCount() == 0); // Alternate 恒 0
+}
+
+// M19.8 空输入 true 空操作
+static void testTerminalPrependHistoryEmpty()
+{
+    ZzTerminal term(10, 3, ZzBackendKind::Native, 100);
+    ZZ_TEST_EXPECT(term.prependHistoryLines({}) == true);
+}
+
 int main()
 {
     testEmptyInitial();
@@ -132,6 +209,9 @@ int main()
     testGenerationBumpsOnScrollOut();
     testGenerationBumpsOnReflow();
     testAlternateZero();
+    testTerminalPrependHistoryAbsoluteStable();
+    testTerminalPrependHistoryAlternateRejected();
+    testTerminalPrependHistoryEmpty();
     if (g_failures != 0) {
         std::fprintf(stderr, "%d failure(s)\n", g_failures);
         return 1;

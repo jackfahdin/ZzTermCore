@@ -11,6 +11,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "ZzLineSource.h"
 #include "ZzTerm/HistoryView.h"
@@ -53,4 +54,6 @@ public:
     /// 历史行只读视图（M14；借用语义同 renderView）。
     /// 非纯虚：默认返回兜底空视图（lineCount 恒 0），后端按能力覆写。
     [[nodiscard]] virtual const ZzHistoryView& historyView() const noexcept;
+    /// 向 Primary 历史最旧端注入行（M19）；默认不支持（返回 false）。
+    [[nodiscard]] virtual bool prependHistoryLines(std::vector<ZzLine> lines);
 };
