@@ -1,5 +1,7 @@
 # M19 历史最旧端注入原语 实现计划
 
+> **勘误指针（2026-10-12）：** 本计划多处写的「基线 = totalDropped + totalPrepended」加法口径在实现期被证实与「绝对行号稳定」目标矛盾，已按规格勘误 E-2 改为**减法口径**（基线 = totalDropped − totalPrepended + 归还额度不变量）；计划正文保留时点原样，以规格文件为准。另：prependOldest 返回 bool（额度不足拒绝），prepend 成功路径对选区/搜索锚点施加正移（onLinesPrepended）。
+
 > **面向 AI 代理的工作者：** 必需子技能：使用 superpowers:subagent-driven-development（推荐）或 superpowers:executing-plans 逐任务实现此计划。步骤使用复选框（`- [ ]`）语法来跟踪进度。
 
 **目标：** 给 ZzTermCore 加「向 Primary 历史最旧端注入行」原语（ZzTerminal::prependHistoryLines），供应用侧历史读回桥使用；绝对行号体系对既有行零扰动。
