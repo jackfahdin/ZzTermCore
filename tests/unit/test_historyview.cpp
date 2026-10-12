@@ -204,6 +204,41 @@ static void testTerminalPrependHistoryEmpty()
     ZZ_TEST_EXPECT(term.prependHistoryLines({}) == true);
 }
 
+// M19.10 选区/搜索锚点跨注入稳定（E-2 审查修复：注入使既有内容索引顺移
+// +n，锚点须同步正移跟随内容；lastDropped 同步观测基线，否则下次 feed 的
+// 裁剪 delta 会误食注入的基线回退）
+static void testTerminalPrependSelectionAnchorStable()
+{
+    ZzTerminal term(10, 3, ZzBackendKind::Native, 5); // 历史容量 5
+    // 喂 10 行互异内容：滚出 L0..L7 共 8 行，容量 5 裁 L0..L2（D=3），
+    // 历史持 L3..L7（逻辑行 0..4），屏幕 L8/L9/空行。
+    for (int i = 0; i < 10; ++i)
+        feedStr(term, "L" + std::to_string(i) + "\r\n");
+    // 选中逻辑行 1（= L4）+ 搜索 L4：锚点落在同一内容行
+    term.setSelection({1, 0}, {2, 0});
+    const std::string selBefore = term.selectedText();
+    ZZ_TEST_EXPECT(selBefore == "L4\n"); // 整行选区带跨逻辑行换行
+    ZZ_TEST_EXPECT(term.search("L4") == 1);
+    ZzLogicalPos ms, me;
+    ZZ_TEST_EXPECT(term.searchMatch(0, ms, me));
+    ZZ_TEST_EXPECT(ms.line == 1);
+    // 注入 2 行（额度 3 足够）：既有内容索引顺移 +2
+    std::vector<ZzLine> older;
+    older.push_back(makeLine(10, "older-one", false));
+    older.push_back(makeLine(10, "older-two", false));
+    ZZ_TEST_EXPECT(term.prependHistoryLines(std::move(older)) == true);
+    // 锚点跟随原内容：选区文本不变、match 顺移到逻辑行 3
+    ZZ_TEST_EXPECT(term.selectedText() == "L4\n");
+    ZZ_TEST_EXPECT(term.searchMatch(0, ms, me));
+    ZZ_TEST_EXPECT(ms.line == 3);
+    // 注入后再 feed 触发裁剪：滚出 L8 → 历史 8 行裁 3（o1/o2/L3），
+    // 净平移 +2（注入）−3（裁剪）= −1，L4 落逻辑行 0
+    feedStr(term, "L10\r\n");
+    ZZ_TEST_EXPECT(term.selectedText() == "L4\n");
+    ZZ_TEST_EXPECT(term.searchMatch(0, ms, me));
+    ZZ_TEST_EXPECT(ms.line == 0);
+}
+
 int main()
 {
     testEmptyInitial();
@@ -216,6 +251,7 @@ int main()
     testTerminalPrependHistoryAbsoluteStable();
     testTerminalPrependHistoryAlternateRejected();
     testTerminalPrependHistoryEmpty();
+    testTerminalPrependSelectionAnchorStable();
     if (g_failures != 0) {
         std::fprintf(stderr, "%d failure(s)\n", g_failures);
         return 1;

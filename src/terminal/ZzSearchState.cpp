@@ -49,6 +49,16 @@ void ZzSearchState::onLinesDropped(std::uint64_t delta) noexcept
     matches_.resize(w);
 }
 
+void ZzSearchState::onLinesPrepended(std::uint64_t n) noexcept
+{
+    // 正移无移除/clamp 需求：两端同加保持区间与升序，内容顺移不丢行。
+    const auto shift = static_cast<std::int64_t>(n);
+    for (auto& m : matches_) {
+        m.start.line += shift;
+        m.end.line += shift;
+    }
+}
+
 void ZzSearchState::clampTo(std::int64_t lineCount) noexcept
 {
     std::size_t w = 0;

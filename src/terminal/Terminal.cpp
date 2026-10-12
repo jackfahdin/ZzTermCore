@@ -100,9 +100,27 @@ const ZzHistoryView& ZzTerminal::historyView() const noexcept { return impl_->ba
 
 bool ZzTerminal::prependHistoryLines(std::vector<ZzLine> lines)
 {
+    const std::size_t histBefore = impl_->backend->lineSource().historyLineCount();
     const bool ok = impl_->backend->prependHistoryLines(std::move(lines));
-    if (ok)
+    if (ok) {
+        // 实际持行数 = 历史行数增量（capacity==0 即注即裁时增量为 0，
+        // 内容不动不正移；Alternate/额度不足走 false 分支不到这里）。
+        const std::uint64_t held = static_cast<std::uint64_t>(
+            impl_->backend->lineSource().historyLineCount() - histBefore);
+        if (held > 0) {
+            // 注入归还使既有内容索引顺移 +held（绝对行号基线 −held）：
+            // 选区/搜索锚点同步正移跟随内容（onLinesDropped 的反向对称，
+            // M19 定案 2 E-2「选区锚点跨注入稳定」）。
+            impl_->selection.onLinesPrepended(held);
+            impl_->searchState.onLinesPrepended(held);
+        }
+        // 不变量：lastDropped 恒等于最近一次观测的 droppedLineCount 基线。
+        // 注入使基线 −held（capacity==0 即注即裁则 +n），必须就地同步观测值，
+        // 否则 noteSelectionAfterFeed 的 delta=dropped−lastDropped 会把注入
+        // 造成的基线变化误算进裁剪量，锚点净平移失真。
+        impl_->lastDropped = impl_->backend->lineSource().droppedLineCount();
         impl_->cachedLogicalCount = -1; // 历史行数已变：计数缓存置脏（同可变逃生舱口径）
+    }
     return ok;
 }
 const ZzUnwrapView& ZzTerminal::unwrapView() const noexcept { return *impl_->unwrapView; }

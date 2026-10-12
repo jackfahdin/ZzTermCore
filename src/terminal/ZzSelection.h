@@ -18,6 +18,9 @@ public:
     // 序号，规格 5.1；计划头部精化 2）。start 平移为负 clamp 到 {0,0}；
     // 两端都平移为负（内容全部丢弃）时选区清空。
     void onLinesDropped(std::uint64_t delta) noexcept;
+    // 历史最旧端注入归还 n 个物理行后正移锚点（M19 E-2：既有内容索引
+    // 顺移 +n，锚点跟随内容；与 onLinesDropped 反向对称）。空选区为空操作。
+    void onLinesPrepended(std::uint64_t n) noexcept;
     // line clamp 到 [0, lineCount)；空选区为空操作。col 不在此 clamp
     //（逻辑行长度由提取层按行 clamp）。
     void clampTo(std::int64_t lineCount) noexcept;

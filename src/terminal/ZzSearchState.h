@@ -19,6 +19,9 @@ public:
     // 历史头部丢弃 delta 个物理行后平移全部 match：两端全丢的移除，
     // 存活起点负值 clamp 到 {0,0}（语义同 ZzSelection::onLinesDropped）。
     void onLinesDropped(std::uint64_t delta) noexcept;
+    // 历史最旧端注入归还 n 个物理行后正移全部 match（M19 E-2：既有内容
+    // 索引顺移 +n；与 onLinesDropped 反向对称）。空匹配列表为空操作。
+    void onLinesPrepended(std::uint64_t n) noexcept;
     // line clamp 到 [0, lineCount)：起点越界的 match 移除，终点 clamp
     //（语义同 ZzSelection::clampTo；col 保持快照原值，查询不 clamp——
     // 前端绘制按行 clamp，精确文本经提取层按行 clamp）。

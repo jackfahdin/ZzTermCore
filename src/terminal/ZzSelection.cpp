@@ -66,6 +66,16 @@ void ZzSelection::onLinesDropped(std::uint64_t delta) noexcept
     extent_ = e;
 }
 
+void ZzSelection::onLinesPrepended(std::uint64_t n) noexcept
+{
+    if (empty())
+        return;
+    // 正移无规范化/clamp 需求：两端同加保持相对序，内容顺移不丢行。
+    const auto shift = static_cast<std::int64_t>(n);
+    anchor_.line += shift;
+    extent_.line += shift;
+}
+
 void ZzSelection::clampTo(std::int64_t lineCount) noexcept
 {
     if (empty())
