@@ -4,6 +4,8 @@
 
 #if defined(_WIN32)
 
+#include <cwchar>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -51,6 +53,44 @@ std::wstring quoteArg(const std::wstring& arg)
     }
     out.append(backslashes * 2, L'\\');
     out += L'"';
+    return out;
+}
+
+// M18：合并环境块（双 NUL 结尾宽字符串）：父环境 + cfg.env 覆盖同名。
+// Windows 环境块约定按键（大写不敏感）字母序排列。
+struct ZzCaseInsensitiveLess {
+    bool operator()(const std::wstring& a, const std::wstring& b) const
+    {
+        return ::CompareStringOrdinal(a.c_str(), -1, b.c_str(), -1, TRUE) == CSTR_LESS_THAN;
+    }
+};
+
+std::vector<wchar_t> buildEnvBlock(const std::vector<std::string>& extra)
+{
+    std::map<std::wstring, std::wstring, ZzCaseInsensitiveLess> merged;
+    if (LPWCH block = ::GetEnvironmentStringsW()) {
+        for (LPCWSTR p = block; *p != L'\0'; p += std::wcslen(p) + 1) {
+            const std::wstring entry(p);
+            const auto eq = entry.find(L'=');
+            if (eq != std::wstring::npos)
+                merged[entry.substr(0, eq)] = entry.substr(eq + 1);
+        }
+        ::FreeEnvironmentStringsW(block);
+    }
+    for (const std::string& kv : extra) {
+        const auto eq = kv.find('=');
+        if (eq == std::string::npos)
+            continue; // 非法条目（无 =）跳过
+        merged[toWide(kv.substr(0, eq))] = toWide(kv.substr(eq + 1)); // 同键覆盖
+    }
+    std::vector<wchar_t> out;
+    for (const auto& [key, value] : merged) {
+        out.insert(out.end(), key.begin(), key.end());
+        out.push_back(L'=');
+        out.insert(out.end(), value.begin(), value.end());
+        out.push_back(L'\0');
+    }
+    out.push_back(L'\0'); // 终止双 NUL
     return out;
 }
 
@@ -152,6 +192,12 @@ std::unique_ptr<ZzPty> ZzPty::spawn(const ZzPtyConfig& cfg)
         cmdline += quoteArg(toWide(cfg.argv[i]));
     }
 
+    // M18：工作目录与环境块（均为空时 nullptr = 纯继承，旧行为不变）
+    const std::wstring cwdW = toWide(cfg.cwd);
+    std::vector<wchar_t> envBlock;
+    if (!cfg.env.empty())
+        envBlock = buildEnvBlock(cfg.env);
+
     STARTUPINFOEXW si {};
     si.StartupInfo.cb  = sizeof(si);
     // STARTF_USESTDHANDLES + 空 std 句柄：阻止内核把父进程的标准句柄复制给
@@ -162,9 +208,12 @@ std::unique_ptr<ZzPty> ZzPty::spawn(const ZzPtyConfig& cfg)
     si.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
     si.lpAttributeList = attrList;
     PROCESS_INFORMATION pi {};
-    const BOOL created = ::CreateProcessW(nullptr, cmdline.data(), nullptr, nullptr, FALSE,
-                                          EXTENDED_STARTUPINFO_PRESENT, nullptr, nullptr,
-                                          &si.StartupInfo, &pi);
+    const BOOL created = ::CreateProcessW(
+        nullptr, cmdline.data(), nullptr, nullptr, FALSE,
+        EXTENDED_STARTUPINFO_PRESENT,
+        envBlock.empty() ? nullptr : envBlock.data(),
+        cwdW.empty() ? nullptr : cwdW.c_str(),
+        &si.StartupInfo, &pi);
     const DWORD createErr = ::GetLastError();
     ::DeleteProcThreadAttributeList(attrList);
     if (!created) {
