@@ -436,3 +436,7 @@ toStitched/fromStitched 涉及。
   `ZzStitchedPos`（Types.h）与 `ZzTerminal::unwrapView` 非虚方法，
   向后兼容的 minor 新增（M14 historyView 先例），次版本号口径沿用
   项目版本策略不变；纯视图层派生缓存，引擎语义零改动，无迁移负担。
+- M18：`ZzPtyConfig` 聚合尾部纯新增 `cwd`/`env` 两字段（子进程工作
+  目录与环境变量注入，空 = 继承父进程，旧行为逐字节不变），M14
+  先例口径的向后兼容 minor 新增；Unix 侧 fork 后 chdir + fork 前
+  合并环境，`ZzTerminal`/`ZzScreen` 无签名变化。

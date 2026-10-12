@@ -328,7 +328,8 @@ range，不修改原始 VT Cell 属性。
 ## 15. PTY 与独立 Demo
 
 `ZzTermPty`：Linux/macOS 使用 forkpty/openpty，Windows 使用
-ConPTY。Unix PTY 已在 v1 实现并验证。
+ConPTY。Unix PTY 已在 v1 实现并验证。M18 起 `ZzPtyConfig` 支持
+cwd/env（子进程工作目录与环境变量注入）。
 
 `ZzTermDemo` 必须独立于 ZzClawTerm，可运行
 bash/zsh/PowerShell/cmd、vim/neovim、tmux、htop、less。

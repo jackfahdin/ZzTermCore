@@ -66,6 +66,28 @@ std::unique_ptr<ZzPty> ZzPty::spawn(const ZzPtyConfig& cfg)
     }
     args.push_back(nullptr);
 
+    // M18：环境合并在 fork 前完成（子进程保持纯 async-signal-safe）——
+    // env 为空时 nullptr 走 execvp 纯继承（与旧行为逐字节一致）。
+    extern char** environ; // POSIX 全局
+    std::vector<std::string> mergedEnv;
+    std::vector<char*> envp;
+    if (!cfg.env.empty()) {
+        for (char** e = environ; *e != nullptr; ++e)
+            mergedEnv.emplace_back(*e);
+        for (const std::string& kv : cfg.env) {
+            const std::string key = kv.substr(0, kv.find('='));
+            std::erase_if(mergedEnv, [&](const std::string& e) {
+                return e.size() > key.size() && e.compare(0, key.size(), key) == 0
+                       && e[key.size()] == '=';
+            });
+            mergedEnv.push_back(kv); // 后写覆盖先写（同名已删）
+        }
+        envp.reserve(mergedEnv.size() + 1);
+        for (std::string& e : mergedEnv)
+            envp.push_back(e.data());
+        envp.push_back(nullptr);
+    }
+
     // exec 失败回报管道：写端 CLOEXEC——exec 成功时自动关闭，父进程读到 EOF；
     // exec 失败时子进程写入 errno，父进程读到后按失败处理。
     int errPipe[2] = {-1, -1};
@@ -104,7 +126,20 @@ std::unique_ptr<ZzPty> ZzPty::spawn(const ZzPtyConfig& cfg)
         if (slave > STDERR_FILENO) {
             ::close(slave);
         }
-        ::execvp(args[0], args.data());
+        // M18：工作目录（chdir 失败走与 exec 失败相同的 errPipe 通道）
+        if (!cfg.cwd.empty() && ::chdir(cfg.cwd.c_str()) != 0) {
+            const int chdirErrno = errno;
+            (void)!::write(errPipe[1], &chdirErrno, sizeof(chdirErrno));
+            ::_exit(127);
+        }
+        if (cfg.env.empty()) {
+            ::execvp(args[0], args.data());
+        } else {
+            // execve 不搜 PATH：改用 environ 指针替换 + execvp（指针赋值
+            // 为 async-signal-safe，且 macOS 无 execvpe 可移植）。
+            environ = envp.data();
+            ::execvp(args[0], args.data());
+        }
         const int execErrno = errno;
         (void)!::write(errPipe[1], &execErrno, sizeof(execErrno));
         ::_exit(127);

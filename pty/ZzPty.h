@@ -37,6 +37,13 @@ struct ZzPtyConfig {
     int  cols    = 80;             ///< 初始列数（TIOCSWINSZ）。
     int  rows    = 24;             ///< 初始行数（TIOCSWINSZ）。
     bool rawMode = true;           ///< slave 置 raw（cfmakeraw），避免 PTY echo/规范模式干扰 Core 验证（Windows 忽略——ConPTY 无终端行 discipline 概念）。
+    /// 子进程工作目录（空 = 继承父进程 cwd）。Unix fork 后 chdir；
+    /// Windows CreateProcessW lpCurrentDirectory。chdir/目录无效时
+    /// spawn 失败返回 nullptr（Unix errno 保留）。
+    std::string cwd;
+    /// 额外环境变量（"KEY=VALUE" 形），同名覆盖父进程环境。
+    /// 空 = 纯继承（Unix execvp 语义 / Windows lpEnvironment nullptr）。
+    std::vector<std::string> env;
 };
 
 /**
