@@ -44,6 +44,7 @@ bool ZzNativeLineSource::lineWrapped(std::size_t unifiedRow) const
 
 std::uint64_t ZzNativeLineSource::droppedLineCount() const
 {
-    // 绝对行号基线（含 M19 注入计数）：基线平移使注入前后既有行号稳定。
-    return scrollback_.stats().totalDropped + scrollback_.stats().totalPrepended;
+    // 绝对行号基线（M19 减法口径，E-2）：累计裁掉 − 累计注入归还；
+    // 注入归还时基线回退，既有行绝对行号不变。
+    return scrollback_.stats().totalDropped - scrollback_.stats().totalPrepended;
 }

@@ -31,11 +31,19 @@ HistoryView/LineSource 绝对行号基线记账调整；单测；API.md。
    **完全不动**（区别于 prependPrimaryLines）。
 2. **绝对行号稳定**：注入 N 行使 `ZzScrollbackStats` 新增
    `totalPrepended += N`；HistoryView/LineSource 的
-   `droppedLineCount()` 改为返回 `totalDropped + totalPrepended`
-   （绝对行号基线 = 累计裁掉 + 累计注入）。效果：既有行的
-   绝对行号（dropped+idx）在注入前后不变；注入行占据基线低位
-   号段——这些号段对应的行此前已被裁掉并落盘，应用侧追加差分
-   天然跳过注入行，不会重复归档。
+   `droppedLineCount()` 改为返回 `totalDropped − totalPrepended`
+   （绝对行号基线 = 累计裁掉 − 累计注入归还）。效果：既有行的
+   绝对行号（基线+idx）在注入前后不变；注入行归还占用其被裁时
+   的原号段——应用侧追加差分（newest = 基线+lineCount）在注入
+   前后恒等，天然跳过注入行，不会重复归档；选区锚点跨注入稳定。
+   **归还额度不变量**：注入数 n ≤ totalDropped − totalPrepended，
+   否则拒绝（返回 false/空操作）——只能归还真被裁掉且尚未归还
+   的行，杜绝基线下溢；真实读回流（引擎行号与显示绝对号 1:1）
+   该条件恒成立。基线因此可回退，HistoryView「单调不减」的旧
+   口径作废，以本条为准（contour 后端不支持注入，不受影响）。
+   （勘误 E-2：本定案初稿误写为 totalDropped + totalPrepended，
+   该公式使既有行绝对号 +2N 平移且追加差分重注入，数学上与
+   「零扰动」目标矛盾；2026-10-12 实现期核实修正为减法口径。）
 3. **容量**：注入本身不触发裁剪，允许瞬时超容量；下一次
    append 的容量裁剪从最旧端（=注入行）先裁——无害，LogEngine
    是持久权威。注入时 capacity==0 则视为即注即裁
@@ -54,10 +62,12 @@ HistoryView/LineSource 绝对行号基线记账调整；单测；API.md。
 // include/ZzTerm/Scrollback.h（ZzScrollback 新增纯虚）
 /// 向最旧端注入一批行（M19 读回注入原语；旧到新顺序，以值移交）。
 /// 注入不触发容量裁剪（允许瞬时超容量，由后续 append 的裁trim
-/// 先裁注入行）；capacity==0 时即注即裁（计入 totalDropped）。
-/// 注入行使 stats().totalPrepended 同步增加，绝对行号基线
-/// （totalDropped+totalPrepended）对既有行保持稳定。
-virtual void prependOldest(std::vector<ZzLine> lines) = 0;
+/// 先裁注入行）；capacity==0 时即注即裁（计入 totalDropped，不耗额度）。
+/// 注入成功使 stats().totalPrepended 同步增加，绝对行号基线
+/// （totalDropped-totalPrepended）回退 N、既有行绝对号不变。
+/// @return false=归还额度不足（n > totalDropped-totalPrepended），
+///         整体拒绝、不注入任何行；空输入为 true 空操作。
+virtual bool prependOldest(std::vector<ZzLine> lines) = 0;
 
 // ZzScrollbackStats 新增字段
 std::uint64_t totalPrepended = 0; ///< 累计经 prependOldest 注入的行数（M19）
@@ -92,7 +102,7 @@ std::uint64_t totalPrepended = 0; ///< 累计经 prependOldest 注入的行数�
 
 - `ZzNativeHistoryView::droppedLineCount()`（ZzNativeHistoryView.cpp:39-42）
   与 `ZzNativeLineSource::droppedLineCount()`（ZzNativeLineSource.cpp:45-48）：
-  `stats().totalDropped` → `stats().totalDropped + stats().totalPrepended`。
+  `stats().totalDropped` → `stats().totalDropped - stats().totalPrepended`。
 - contour 侧 HistoryView/LineSource 不动（注入默认不支持，
   totalPrepended 恒 0 不经 stats——contour 不消费 ZzScrollback）。
 
@@ -102,8 +112,9 @@ std::uint64_t totalPrepended = 0; ///< 累计经 prependOldest 注入的行数�
    （旧到新），lineAt(3..) 为原历史；跨块边界（headOffset_ 部分
    裁剪态 + 注入 > 空闲槽）用例。
 2. 绝对行号稳定：Terminal 级——feed 出历史，prependHistoryLines
-   N 行，断言既有行 dropped+idx 不变、droppedLineCount()+N、
-   lineCount()+N。
+   N 行，断言既有行 dropped+idx 不变（基线 −N + idx +N 逐行抵消）、
+   droppedLineCount()−N（基线回退）、lineCount()+N；额度不足拒绝
+   用例（n > 额度 → false，历史不变）。
 3. 容量：注满容量后再注入不裁；随后 append 触发裁剪先裁注入行。
 4. Alternate 拒绝：进 Alternate 后 prependHistoryLines 返回 false，
    历史不变。

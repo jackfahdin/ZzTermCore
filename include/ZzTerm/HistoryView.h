@@ -47,10 +47,14 @@ public:
     [[nodiscard]] virtual ZzLineView lineAt(std::size_t index) const = 0;
 
     /**
-     * @brief 历史头部累计裁掉的行数。
-     * @return 单调不减的裁剪计数。
+     * @brief 绝对行号基线（历史最旧端之前经过的行数）。
+     * @return 基线 = 累计裁掉 - 累计注入归还（M19 起，E-2 勘误口径）。
+     * @note 注入归还（prependHistoryLines）使基线回退——本计数不再
+     *       单调不减（旧「单调不减的裁剪计数」口径作废）；容量裁剪单调
+     *       累加方向不变。既有行绝对行号（基线+index）跨注入稳定。
      * @note contour 后端的计数以其下层 Grid 能力为限（列变 reflow 的
-     *       行身份重建不计入，与内部 LineSource 同一口径）。
+     *       行身份重建不计入，与内部 LineSource 同一口径）；contour
+     *       不支持注入，基线不退。
      */
     [[nodiscard]] virtual std::uint64_t droppedLineCount() const noexcept = 0;
 

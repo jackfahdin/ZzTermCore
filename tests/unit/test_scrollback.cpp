@@ -369,34 +369,34 @@ static void testSeverNewestWrappedEmpty()
 // M19.1 注入顺序与寻址：基本情形
 static void testPrependOldestOrder()
 {
-    auto sb = zzCreateChunkedScrollback(100);
+    auto sb = zzCreateChunkedScrollback(6);
     std::vector<ZzLine> batch;
-    batch.push_back(makeLine(4, "c1", false));
-    batch.push_back(makeLine(4, "c2", false));
-    sb->append(std::move(batch));
+    for (int i = 0; i < 9; ++i)
+        batch.push_back(makeLine(4, "c" + std::to_string(i), false));
+    sb->append(std::move(batch)); // 9 进 6：裁 c0..c2（D=3，归还额度 3），持 c3..c8
     std::vector<ZzLine> older;
     older.push_back(makeLine(4, "o1", false));
     older.push_back(makeLine(4, "o2", false));
     older.push_back(makeLine(4, "o3", false));
-    sb->prependOldest(std::move(older));
-    ZZ_TEST_EXPECT(sb->lineCount() == 5);
+    ZZ_TEST_EXPECT(sb->prependOldest(std::move(older)) == true); // 额度恰够
+    ZZ_TEST_EXPECT(sb->lineCount() == 9);
     ZZ_TEST_EXPECT(lineText(sb->lineAt(0), 2) == "o1"); // 最旧端
     ZZ_TEST_EXPECT(lineText(sb->lineAt(2), 2) == "o3");
-    ZZ_TEST_EXPECT(lineText(sb->lineAt(3), 2) == "c1"); // 原历史顺移
-    ZZ_TEST_EXPECT(lineText(sb->lineAt(4), 2) == "c2");
+    ZZ_TEST_EXPECT(lineText(sb->lineAt(3), 2) == "c3"); // 原历史顺移
+    ZZ_TEST_EXPECT(lineText(sb->lineAt(8), 2) == "c8");
     const ZzScrollbackStats st = sb->stats();
     ZZ_TEST_EXPECT(st.totalPrepended == 3);
-    ZZ_TEST_EXPECT(st.totalAppended == 2);  // 注入不算 append
-    ZZ_TEST_EXPECT(st.totalDropped == 0);
+    ZZ_TEST_EXPECT(st.totalAppended == 9);  // 注入不算 append
+    ZZ_TEST_EXPECT(st.totalDropped == 3);
+    ZZ_TEST_EXPECT(st.totalDropped - st.totalPrepended == 0); // 基线回退到 0
 }
 
 // M19.2 部分裁剪态 + 注入量超过头块空闲槽（跨块前插）
 static void testPrependOldestAcrossChunks()
 {
-    auto sb = zzCreateChunkedScrollback(1000);
-    // 先 append 260 行再裁出头块一部分：append 两批并用小容量造部分裁剪
-    // （造 headOffset_ 非零的最简路径：append 300 行到容量 300，再 append
-    //   10 行裁掉最旧 10 行 → headOffset_ = 10）
+    // 容量 10：append 300+10=310 行裁掉 300（D=300，归还额度恰够注入 300），
+    // 部分裁剪造 headOffset_=44（非零），持最新 10 行 b0..b9。
+    auto sb = zzCreateChunkedScrollback(10);
     std::vector<ZzLine> big;
     for (int i = 0; i < 300; ++i)
         big.push_back(makeLine(4, "a" + std::to_string(i % 10), false));
@@ -411,12 +411,13 @@ static void testPrependOldestAcrossChunks()
     std::vector<ZzLine> older;
     for (int i = 0; i < 300; ++i)
         older.push_back(makeLine(4, "z" + std::to_string(i % 10), false));
-    sb->prependOldest(std::move(older));
+    ZZ_TEST_EXPECT(sb->prependOldest(std::move(older)) == true);
     ZZ_TEST_EXPECT(sb->lineCount() == before + 300);
     ZZ_TEST_EXPECT(lineText(sb->lineAt(0), 2) == "z0");
     ZZ_TEST_EXPECT(lineText(sb->lineAt(299), 2) == "z9");
     ZZ_TEST_EXPECT(lineText(sb->lineAt(300), 2) == firstBefore); // 原最旧行顺移后仍衔接
     ZZ_TEST_EXPECT(sb->stats().totalPrepended == 300);
+    ZZ_TEST_EXPECT(sb->stats().totalDropped == 300);
 }
 
 // M19.2b 补充回归：真实部分裁剪态（headOffset_ > 0）下的注入——
@@ -436,13 +437,13 @@ static void testPrependOldestPartialTrimHead()
     ZZ_TEST_EXPECT(sb->lineCount() == 300);
     ZZ_TEST_EXPECT(lineText(sb->lineAt(0), 5) == "L0300");
 
-    // 路径 1：n(20) <= headOffset_(44)：回填头块裁空槽
+    // 路径 1：n(20) <= headOffset_(44)：回填头块裁空槽（额度 D=300 充足）
     std::vector<ZzLine> p1;
     for (int i = 0; i < 20; ++i) {
         std::snprintf(buf, sizeof(buf), "P1%03d", i);
         p1.push_back(makeLine(8, buf, false));
     }
-    sb->prependOldest(std::move(p1));
+    ZZ_TEST_EXPECT(sb->prependOldest(std::move(p1)) == true);
     ZZ_TEST_EXPECT(sb->lineCount() == 320);
     ZZ_TEST_EXPECT(lineText(sb->lineAt(0), 5) == "P1000");
     ZZ_TEST_EXPECT(lineText(sb->lineAt(19), 5) == "P1019");
@@ -454,7 +455,7 @@ static void testPrependOldestPartialTrimHead()
         std::snprintf(buf, sizeof(buf), "P2%03d", i);
         p2.push_back(makeLine(8, buf, false));
     }
-    sb->prependOldest(std::move(p2));
+    ZZ_TEST_EXPECT(sb->prependOldest(std::move(p2)) == true);
     ZZ_TEST_EXPECT(sb->lineCount() == 420);
     ZZ_TEST_EXPECT(lineText(sb->lineAt(0), 5) == "P2000");
     ZZ_TEST_EXPECT(lineText(sb->lineAt(99), 5) == "P2099");
@@ -475,85 +476,126 @@ static void testPrependOldestSinglePartialChunk()
     char buf[8];
     auto sb = zzCreateChunkedScrollback(100);
     std::vector<ZzLine> batch;
-    for (int i = 0; i < 200; ++i) {
+    for (int i = 0; i < 400; ++i) {
         std::snprintf(buf, sizeof(buf), "L%04d", i);
         batch.push_back(makeLine(8, buf, false));
     }
-    sb->append(std::move(batch)); // 200 进 100：裁 100 → 单块 100 行，headOffset_=100
+    // 400 进 100：裁整块 256 + 部分 44（D=300，额度充足），
+    // 剩单块 100 行 L0300..L0399，headOffset_=44（未填满 256-44 槽位上限）
+    sb->append(std::move(batch));
     ZZ_TEST_EXPECT(sb->lineCount() == 100);
-    ZZ_TEST_EXPECT(lineText(sb->lineAt(0), 5) == "L0100");
+    ZZ_TEST_EXPECT(lineText(sb->lineAt(0), 5) == "L0300");
 
     std::vector<ZzLine> older;
-    for (int i = 0; i < 150; ++i) {
+    for (int i = 0; i < 100; ++i) {
         std::snprintf(buf, sizeof(buf), "Q%04d", i);
         older.push_back(makeLine(8, buf, false));
     }
-    sb->prependOldest(std::move(older)); // 150 > headOffset_(100)：前插 1 块
-    ZZ_TEST_EXPECT(sb->lineCount() == 250);
-    for (int i = 0; i < 150; ++i) {
+    // 100 > headOffset_(44)：前插 1 块，原头块成部分填充中间块
+    ZZ_TEST_EXPECT(sb->prependOldest(std::move(older)) == true);
+    ZZ_TEST_EXPECT(sb->lineCount() == 200);
+    for (int i = 0; i < 100; ++i) {
         std::snprintf(buf, sizeof(buf), "Q%04d", i);
         ZZ_TEST_EXPECT(lineText(sb->lineAt((std::size_t)i), 5) == buf);
     }
     for (int i = 0; i < 100; ++i) {
-        std::snprintf(buf, sizeof(buf), "L%04d", 100 + i);
-        ZZ_TEST_EXPECT(lineText(sb->lineAt((std::size_t)(150 + i)), 5) == buf);
+        std::snprintf(buf, sizeof(buf), "L%04d", 300 + i);
+        ZZ_TEST_EXPECT(lineText(sb->lineAt((std::size_t)(100 + i)), 5) == buf);
     }
-    ZZ_TEST_EXPECT(sb->stats().totalPrepended == 150);
+    ZZ_TEST_EXPECT(sb->stats().totalPrepended == 100);
 }
 
-// M19.3 注入不触发裁剪；后续 append 先裁注入行
+// M19.3 注入不触发裁剪；后续 append 先裁注入行（E-2 减法口径重造：
+// 先 append 超容量制造归还额度）
 static void testPrependOldestCapacityDeferred()
 {
     auto sb = zzCreateChunkedScrollback(4);
     std::vector<ZzLine> batch;
-    for (int i = 0; i < 4; ++i)
+    for (int i = 0; i < 6; ++i)
         batch.push_back(makeLine(4, "c" + std::to_string(i), false));
-    sb->append(std::move(batch)); // 满容量 4
+    sb->append(std::move(batch)); // 6 进 4：裁 c0/c1（D=2，额度恰够），持 c2..c5
     std::vector<ZzLine> older;
     older.push_back(makeLine(4, "o1", false));
     older.push_back(makeLine(4, "o2", false));
-    sb->prependOldest(std::move(older));
+    ZZ_TEST_EXPECT(sb->prependOldest(std::move(older)) == true);
     ZZ_TEST_EXPECT(sb->lineCount() == 6); // 瞬时超容量，不裁
     std::vector<ZzLine> next;
     next.push_back(makeLine(4, "n1", false));
     next.push_back(makeLine(4, "n2", false));
     sb->append(std::move(next)); // append 触发裁剪回容量 4
     ZZ_TEST_EXPECT(sb->lineCount() == 4);
-    // 简报原稿此处为 "c0"/"n1"，与同用例 totalDropped==4（裁 o1/o2 + c0/c1）
-    // 自相矛盾；按「先裁注入行再裁原行」语义修正为 c2/n2（见任务报告）。
-    ZZ_TEST_EXPECT(lineText(sb->lineAt(0), 2) == "c2"); // 注入行 o1/o2 先被裁
+    ZZ_TEST_EXPECT(lineText(sb->lineAt(0), 2) == "c4"); // 注入行 o1/o2 与 c2/c3 先被裁
     ZZ_TEST_EXPECT(lineText(sb->lineAt(3), 2) == "n2");
     const ZzScrollbackStats st = sb->stats();
     ZZ_TEST_EXPECT(st.totalPrepended == 2);
-    ZZ_TEST_EXPECT(st.totalDropped == 4); // 裁掉的 2 注入行 + 2 原行
+    ZZ_TEST_EXPECT(st.totalDropped == 6); // 初始裁 2 + 裁掉的 2 注入行 + 2 原行
+    ZZ_TEST_EXPECT(st.totalDropped - st.totalPrepended == 4); // 基线 = 4
 }
 
-// M19.4 零容量：即注即裁
+// M19.4 零容量：即注即裁（不耗归还额度、不计入 totalPrepended）
 static void testPrependOldestZeroCapacity()
 {
     auto sb = zzCreateChunkedScrollback(0);
     std::vector<ZzLine> older;
     older.push_back(makeLine(4, "o1", false));
-    sb->prependOldest(std::move(older));
+    ZZ_TEST_EXPECT(sb->prependOldest(std::move(older)) == true);
     ZZ_TEST_EXPECT(sb->lineCount() == 0);
     ZZ_TEST_EXPECT(sb->stats().totalDropped == 1);
-    ZZ_TEST_EXPECT(sb->stats().totalPrepended == 1);
+    ZZ_TEST_EXPECT(sb->stats().totalPrepended == 0); // 即注即裁不算归还
+}
+
+// M19.9 归还额度不足：整体拒绝，历史不变（E-2）
+static void testPrependOldestQuotaRejected()
+{
+    auto sb = zzCreateChunkedScrollback(4);
+    std::vector<ZzLine> batch;
+    for (int i = 0; i < 6; ++i)
+        batch.push_back(makeLine(4, "c" + std::to_string(i), false));
+    sb->append(std::move(batch)); // D=2，持 c2..c5
+    std::vector<ZzLine> older;
+    older.push_back(makeLine(4, "o1", false));
+    older.push_back(makeLine(4, "o2", false));
+    older.push_back(makeLine(4, "o3", false));
+    ZZ_TEST_EXPECT(sb->prependOldest(std::move(older)) == false); // 3 > 额度 2
+    ZZ_TEST_EXPECT(sb->lineCount() == 4);                         // 历史不变
+    ZZ_TEST_EXPECT(lineText(sb->lineAt(0), 2) == "c2");
+    const ZzScrollbackStats st = sb->stats();
+    ZZ_TEST_EXPECT(st.totalPrepended == 0);
+    ZZ_TEST_EXPECT(st.totalDropped == 2);
+    // 额度恰够则成功（边界）
+    std::vector<ZzLine> two;
+    two.push_back(makeLine(4, "o1", false));
+    two.push_back(makeLine(4, "o2", false));
+    ZZ_TEST_EXPECT(sb->prependOldest(std::move(two)) == true);
+    ZZ_TEST_EXPECT(sb->lineCount() == 6);
+    ZZ_TEST_EXPECT(sb->stats().totalPrepended == 2);
+    // 额度耗尽：再注入 1 行拒绝
+    std::vector<ZzLine> one;
+    one.push_back(makeLine(4, "x1", false));
+    ZZ_TEST_EXPECT(sb->prependOldest(std::move(one)) == false);
+    ZZ_TEST_EXPECT(sb->lineCount() == 6);
 }
 
 // M19.5 注入后 reflow 顺序保持（变列重组覆盖注入行）
 static void testPrependOldestReflow()
 {
-    auto sb = zzCreateChunkedScrollback(100);
+    auto sb = zzCreateChunkedScrollback(6);
     std::vector<ZzLine> batch;
+    batch.push_back(makeLine(4, "d0", false)); // 额度垫底：8 进 6 裁 d0/d1（D=2）
+    batch.push_back(makeLine(4, "d1", false));
     batch.push_back(makeLine(4, "abcd", true));
     batch.push_back(makeLine(4, "efgh", false));
-    sb->append(std::move(batch));
+    batch.push_back(makeLine(4, "d2", false));
+    batch.push_back(makeLine(4, "d3", false));
+    batch.push_back(makeLine(4, "d4", false));
+    batch.push_back(makeLine(4, "d5", false));
+    sb->append(std::move(batch)); // 持 abcd/efgh/d2..d5
     std::vector<ZzLine> older;
     older.push_back(makeLine(4, "wxyz", true));
     older.push_back(makeLine(4, "1234", false));
-    sb->prependOldest(std::move(older));
-    sb->reflow(8);
-    ZZ_TEST_EXPECT(sb->lineCount() == 2);
+    ZZ_TEST_EXPECT(sb->prependOldest(std::move(older)) == true);
+    sb->reflow(8); // 链 wxyz/1234 与 abcd/efgh 各合并 1 行；d2..d5 硬行变宽补白
+    ZZ_TEST_EXPECT(sb->lineCount() == 6);
     ZZ_TEST_EXPECT(lineText(sb->lineAt(0), 8) == "wxyz1234");
     ZZ_TEST_EXPECT(lineText(sb->lineAt(1), 8) == "abcdefgh");
 }
@@ -577,6 +619,7 @@ int main()
     testPrependOldestSinglePartialChunk();
     testPrependOldestCapacityDeferred();
     testPrependOldestZeroCapacity();
+    testPrependOldestQuotaRejected();
     testPrependOldestReflow();
     if (g_failures == 0)
         std::printf("test_scrollback: all passed\n");

@@ -30,6 +30,7 @@ public:
     virtual void lineAt(std::size_t unifiedRow, ZzLine& out) const = 0;
     // 轻量 wrapped 查询（不得触发整行拷贝；供逻辑行链扫描使用）
     [[nodiscard]] virtual bool lineWrapped(std::size_t unifiedRow) const = 0;
-    // 历史头部累计丢弃物理行数（单调不减；供选区锚点平移）
+    // 绝对行号基线（= 累计裁掉 − 累计注入归还，M19 E-2；注入归还时回退，
+    // 既有行绝对号不变；供选区锚点平移）
     [[nodiscard]] virtual std::uint64_t droppedLineCount() const = 0;
 };

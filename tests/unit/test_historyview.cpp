@@ -148,33 +148,37 @@ static void testAlternateZero()
     ZZ_TEST_EXPECT(term.historyView().generation() > g1);
 }
 
-// M19.6 绝对行号稳定 + generation 递增 + 屏幕不动
+// M19.6 绝对行号稳定 + generation 递增 + 屏幕不动（E-2 减法口径）
 static void testTerminalPrependHistoryAbsoluteStable()
 {
-    ZzTerminal term(10, 3, ZzBackendKind::Native, 100);
-    // 喂 5 行产生 2 行历史（3 行屏幕装不下）
-    for (int i = 0; i < 5; ++i)
+    ZzTerminal term(10, 3, ZzBackendKind::Native, 5); // 历史容量 5
+    // 喂 10 行：3 行屏幕装不下滚出 8 行，容量 5 裁掉最旧 3 行（D=3，归还额度 3）
+    for (int i = 0; i < 10; ++i)
         term.feed(std::as_bytes(std::span("line\r\n", 6)));
     const auto& hv = term.historyView();
     const std::size_t histBefore = hv.lineCount();
     const std::uint64_t droppedBefore = hv.droppedLineCount();
+    ZZ_TEST_EXPECT(droppedBefore >= 2); // 前置：额度足够注入 2 行
     const std::uint64_t genBefore = hv.generation();
     const ZzCursorState cursorBefore = term.cursor();
     const std::string screenRow0Before = screenLineText(term, 0); // 记录屏幕首行文本
     const std::string histRow0Before = historyLineText(term, 0);  // 记录最旧历史行文本
-    // 注入 2 行
+    // 注入 2 行（归还真被裁掉的行）
     std::vector<ZzLine> older;
     older.push_back(makeLine(10, "older-one", false));
     older.push_back(makeLine(10, "older-two", false));
     ZZ_TEST_EXPECT(term.prependHistoryLines(std::move(older)) == true);
     ZZ_TEST_EXPECT(hv.lineCount() == histBefore + 2);
-    ZZ_TEST_EXPECT(hv.droppedLineCount() == droppedBefore + 2); // 基线平移
-    // 既有行身份稳定：注入前 idx 0 的行顺移到 idx 2（内容一致）。
-    //（简报原稿断言 droppedBefore == droppedLineCount()-2+2，与上一行
-    //  基线平移断言自相矛盾——基线 = totalDropped+totalPrepended 下
-    //  绝对行号 dropped+idx 随基线+索引同步 +2N 平移、无洞连续；
-    //  此处改断言行身份保持，见任务报告。）
+    ZZ_TEST_EXPECT(hv.droppedLineCount() == droppedBefore - 2); // 基线回退 N
+    // 绝对行号逐行不变：注入前 idx i（绝对号 droppedBefore+i）== 
+    // 注入后 idx i+2（绝对号 基线'+i+2）
+    for (std::size_t i = 0; i < histBefore; ++i)
+        ZZ_TEST_EXPECT(droppedBefore + i == hv.droppedLineCount() + (i + 2));
+    // newest = 基线+lineCount 注入前后恒等（应用追加差分天然跳过注入行）
+    ZZ_TEST_EXPECT(droppedBefore + histBefore == hv.droppedLineCount() + hv.lineCount());
+    // 行身份：注入前 idx 0 的行顺移到 idx 2；注入行占最旧端
     ZZ_TEST_EXPECT(historyLineText(term, 2) == histRow0Before);
+    ZZ_TEST_EXPECT(historyLineText(term, 0) == "older-one");
     ZZ_TEST_EXPECT(hv.generation() > genBefore);
     // 屏幕与光标不动
     ZZ_TEST_EXPECT(term.cursor().position.row == cursorBefore.position.row);

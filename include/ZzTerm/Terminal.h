@@ -152,13 +152,14 @@ public:
      * @brief 向 Primary 历史最旧端注入一批行（M19；应用侧历史读回用）。
      * @param lines 待注入行（旧到新顺序，以值移交所有权；行宽须等于
      *        终端当前列宽）。
-     * @return false 表示拒绝（Alternate 屏活动期间或后端不支持）；
+     * @return false 表示拒绝（Alternate 屏活动期间、后端不支持或归还
+     *         额度不足——注入数超过历史累计裁掉且尚未归还的行数）；
      *         空输入为 true 空操作。
      * @note 屏幕区与光标完全不动（区别于 ZzScreen::prependPrimaryLines
      *       的接缝归还语义）；注入经 HistoryView generation() 递增对
-     *       前端可见；droppedLineCount 基线（totalDropped+totalPrepended）
-     *       随注入平移 +N、既有行索引同步顺移（规格
-     *       2026-10-12-m19-prepend-history-design.md 定案 2）。
+     *       前端可见；droppedLineCount 基线（totalDropped-totalPrepended）
+     *       随注入回退 N、既有行索引顺移 N，既有行绝对行号不变（规格
+     *       2026-10-12-m19-prepend-history-design.md 定案 2，勘误 E-2）。
      */
     [[nodiscard]] bool prependHistoryLines(std::vector<ZzLine> lines);
 

@@ -296,7 +296,8 @@ bool ZzNativeBackend::prependHistoryLines(std::vector<ZzLine> lines)
         return false; // Alternate 永不注入（与 prependPrimaryLines 同口径）
     if (lines.empty())
         return true; // 空输入空操作
-    scrollback_->prependOldest(std::move(lines));
+    if (!scrollback_->prependOldest(std::move(lines)))
+        return false; // 归还额度不足（M19 E-2）：整体拒绝，代计数不变
     ++historyGeneration_; // M19：注入代计数递增（同 append/reflow 口径）
     return true;
 }

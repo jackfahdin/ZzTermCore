@@ -441,13 +441,19 @@ toStitched/fromStitched 涉及。
   先例口径的向后兼容 minor 新增；Unix 侧 fork 后 chdir + fork 前
   合并环境，`ZzTerminal`/`ZzScreen` 无签名变化。
 - M19：历史最旧端注入原语（应用侧历史读回用）。`ZzTerminal` 新增
-  公共方法 `prependHistoryLines`（Alternate 屏活动期间或后端不支持
-  返回 false，空输入 true 空操作；屏幕区与光标完全不动，注入经
-  HistoryView generation() 递增对前端可见）；`ZzScrollback` 新增纯虚
-  `prependOldest`（实现类仅仓内 `ChunkedScrollback` 一个，外部自定义
-  实现需补实现，编译期可发现，M15/M17c 同先例）；`ZzScrollbackStats`
-  聚合尾部新增 `totalPrepended` 字段。口径变化：HistoryView/LineSource
-  的 `droppedLineCount()` 基线由 totalDropped 改为
-  totalDropped + totalPrepended（绝对行号 = 基线 + index；注入使基线
-  与既有行索引同步平移）。内部 `ZzTerminalBackend` 加非纯虚默认实现
+  公共方法 `prependHistoryLines`（Alternate 屏活动期间、后端不支持
+  或归还额度不足返回 false，空输入 true 空操作；屏幕区与光标完全
+  不动，注入经 HistoryView generation() 递增对前端可见）；
+  `ZzScrollback` 新增纯虚 `prependOldest`（返回 bool，false=归还
+  额度不足整体拒绝；实现类仅仓内 `ChunkedScrollback` 一个，外部
+  自定义实现需补实现，编译期可发现，M15/M17c 同先例）；
+  `ZzScrollbackStats` 聚合尾部新增 `totalPrepended` 字段。口径变化
+  （勘误 E-2，初稿加法公式与「既有行绝对行号不变」目标数学矛盾，
+  实为 +2N 平移）：HistoryView/LineSource 的 `droppedLineCount()`
+  基线 = totalDropped - totalPrepended（累计裁掉 − 累计注入归还）；
+  注入 N 行基线回退 N、既有行索引顺移 N，既有行绝对行号
+  （基线+index）不变，newest（基线+lineCount）注入前后恒等；
+  基线因此可回退，HistoryView「单调不减」旧口径作废。归还额度
+  不变量：注入数须 ≤ totalDropped − totalPrepended（只能归还真被
+  裁掉且尚未归还的行）。内部 `ZzTerminalBackend` 加非纯虚默认实现
   （返回 false），contour 后端暂不提供注入。

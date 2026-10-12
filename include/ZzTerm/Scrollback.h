@@ -23,7 +23,8 @@
  *
  * 行序约定：index 0 为最旧一行，index lineCount()-1 为最新一行
  * （紧邻屏幕上方）。logical line 归属规则见 Line.h 注释。
- * 绝对行号基线 = totalDropped + totalPrepended（M19）。
+ * 绝对行号基线 = totalDropped - totalPrepended（M19：注入归还时基线回退，
+ * 既有行索引同步顺移，既有行绝对行号不变）。
  */
 
 /// @brief 历史后端统计信息（为分层/监控/Inspector 预留）。
@@ -110,16 +111,21 @@ public:
     /**
      * @brief 向最旧端注入一批行（M19 读回注入原语；旧到新顺序，以值移交所有权）。
      * @param lines 待注入行（行宽必须等于终端当前列宽，同 append 约定）。
+     * @return false 表示归还额度不足（n > totalDropped - totalPrepended：
+     *         只能归还真被裁掉且尚未归还的行），整体拒绝、不注入任何行；
+     *         空输入为 true 空操作。
      * @note 注入不触发容量裁剪（允许瞬时超容量；后续 append 的裁剪从最旧端
-     *       先裁注入行）。capacity==0 时即注即裁（计入 totalDropped）。
-     * @note 注入使 stats().totalPrepended 同步增加；HistoryView 的
-     *       droppedLineCount 基线为 totalDropped+totalPrepended：注入 N 行
-     *       使基线 +N、既有行索引顺移 +N，注入行占据紧邻新基线上方的
-     *       低位号段，绝对行号（基线+index）坐标系保持无洞单调。
+     *       先裁注入行）。capacity==0 时即注即裁：计入 totalDropped、不耗
+     *       归还额度（totalPrepended 不变），返回 true。
+     * @note 注入成功使 stats().totalPrepended 同步增加；HistoryView 的
+     *       droppedLineCount 基线为 totalDropped-totalPrepended——注入 N 行
+     *       基线回退 N、既有行索引顺移 N，既有行绝对行号（基线+index）不变；
+     *       注入行归还占用其被裁时的原号段（规格
+     *       2026-10-12-m19-prepend-history-design.md 定案 2，勘误 E-2）。
      * @note totalAppended 不变（注入不是 append）；调用后既有 lineAt
      *       引用失效（同 append 失效规则）。
      */
-    virtual void prependOldest(std::vector<ZzLine> lines) = 0;
+    virtual bool prependOldest(std::vector<ZzLine> lines) = 0;
 
     /**
      * @brief 斩断最新历史行的出链（wrapped 置 false，M17c erase 斩链）。

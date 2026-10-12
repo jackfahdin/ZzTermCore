@@ -100,7 +100,10 @@ const ZzHistoryView& ZzTerminal::historyView() const noexcept { return impl_->ba
 
 bool ZzTerminal::prependHistoryLines(std::vector<ZzLine> lines)
 {
-    return impl_->backend->prependHistoryLines(std::move(lines));
+    const bool ok = impl_->backend->prependHistoryLines(std::move(lines));
+    if (ok)
+        impl_->cachedLogicalCount = -1; // 历史行数已变：计数缓存置脏（同可变逃生舱口径）
+    return ok;
 }
 const ZzUnwrapView& ZzTerminal::unwrapView() const noexcept { return *impl_->unwrapView; }
 ZzSize ZzTerminal::size() const noexcept { return impl_->backend->size(); }

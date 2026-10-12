@@ -116,16 +116,20 @@ public:
         trimToCapacity();
     }
 
-    void prependOldest(std::vector<ZzLine> lines) override
+    bool prependOldest(std::vector<ZzLine> lines) override
     {
         const std::size_t n = lines.size();
         if (n == 0)
-            return;
-        totalPrepended_ += n;
-        if (capacity_ == 0) { // 即注即裁（等价 append 的零容量语义）
-            totalDropped_ += n;
-            return;
+            return true; // 空输入空操作
+        if (capacity_ == 0) { // 即注即裁（等价 append 的零容量语义）：
+            totalDropped_ += n; // 不耗归还额度、不计入 totalPrepended_
+            return true;
         }
+        // 归还额度不变量（E-2）：只能归还真被裁掉且尚未归还的行，
+        // 额度不足整体拒绝（不注入任何行，杜绝基线下溢）。
+        if (n > totalDropped_ - totalPrepended_)
+            return false;
+        totalPrepended_ += n;
         // 头部插入，维持 phys = headOffset_ + index 定长寻址不变量：
         // 空闲槽足够则回填头块；不足则前插整块再回填。
         // 注意：trimToCapacity 的部分裁剪是 head.erase 真擦除，头块前段
@@ -168,6 +172,7 @@ public:
         }
         totalLines_ += n;
         // 不调用 trimToCapacity：注入允许瞬时超容量（规格定案 3）
+        return true;
     }
 
     [[nodiscard]] std::vector<ZzLine> takeNewest(std::size_t n) override
