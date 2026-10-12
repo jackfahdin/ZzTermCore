@@ -2,6 +2,7 @@
 // Unix：pwd/printenv；Windows：cmd.exe /c cd 与 echo %VAR%。
 #include <cstdio>
 #include <cstdlib>
+#include <optional>
 #include <span>
 #include <string>
 
@@ -33,13 +34,31 @@ static std::string readAll(ZzPty& pty)
     std::string out;
     std::byte buf[4096];
 #if defined(_WIN32)
-    const DWORD deadline = ::GetTickCount() + 5000;
+    // EOF grace 窗口（移植自 test_pty.cpp testCatRoundTrip 的实证解法）：
+    // ConPTY 渲染线程异步转发输出，首次 EOF（子进程退出且瞬时管空）不能
+    // 直接接受——进程死亡会跑赢尾部输出转发。EOF 后复询：退出码已收且
+    // 连续 10 轮（100ms 间隔）无新数据才结束；30s 全局截止仅作兜底。
+    const DWORD deadline = ::GetTickCount() + 30000;
+    std::optional<int> code;
+    int              quietPolls = 0; // 连续 EOF 轮次（稳定性判据）
     for (;;) {
         const std::ptrdiff_t n = pty.read(std::span<std::byte>(buf, sizeof(buf)));
-        if (n > 0) { out.append(reinterpret_cast<const char*>(buf), (std::size_t)n); continue; }
-        if (n == 0) break;
-        if (static_cast<int>(::GetTickCount() - deadline) >= 0) break;
-        ::Sleep(10);
+        if (n > 0) {
+            out.append(reinterpret_cast<const char*>(buf), (std::size_t)n);
+            quietPolls = 0;
+            continue;
+        }
+        if (n == 0) {
+            if (code && ++quietPolls >= 10)
+                break; // EOF 稳定约 1s 且退出码已收——尾部转发已尽
+            ::Sleep(100); // EOF 时 read 瞬时返回，grace 须显式 Sleep
+        } else {
+            ::Sleep(10); // EAGAIN 等价：无数据但子进程存活
+        }
+        if (!code)
+            code = pty.tryWait();
+        if (static_cast<int>(::GetTickCount() - deadline) >= 0)
+            break; // 兜底
     }
 #else
     for (;;) {
@@ -111,8 +130,17 @@ static void testCwdInjected()
     ZZ_TEST_EXPECT(pty != nullptr);
     if (!pty) return;
     const std::string out = trimRight(readAll(*pty));
-    ZZ_TEST_EXPECT(out == dir); // /tmp 无符号链接歧义（Linux TMPDIR 注意：
-                                // 若失败先核 realpath 口径再改）
+#if defined(_WIN32)
+    // ConPTY 可能夹带控制序列，整行等值放宽为 contains。
+    ZZ_TEST_EXPECT(out.find(dir) != std::string::npos);
+#else
+    // macOS：/tmp 是指向 /private/tmp 的符号链接，子进程 pwd（getcwd
+    // 物理口径）与 /tmp 不等，断言前以 realpath 换算对账（/tmp 恒在）。
+    char resolved[PATH_MAX];
+    const std::string expected =
+        ::realpath(dir.c_str(), resolved) ? std::string(resolved) : dir;
+    ZZ_TEST_EXPECT(out == expected);
+#endif
 }
 
 // 2. cwd 缺省：子进程 pwd == 父进程 cwd（旧行为不变）
@@ -127,7 +155,13 @@ static void testCwdDefault()
     auto pty = ZzPty::spawn(cfg);
     ZZ_TEST_EXPECT(pty != nullptr);
     if (!pty) return;
-    ZZ_TEST_EXPECT(trimRight(readAll(*pty)) == zzGetCwd());
+    const std::string out = trimRight(readAll(*pty));
+#if defined(_WIN32)
+    // ConPTY 可能夹带控制序列，整行等值放宽为 contains。
+    ZZ_TEST_EXPECT(out.find(zzGetCwd()) != std::string::npos);
+#else
+    ZZ_TEST_EXPECT(out == zzGetCwd());
+#endif
 }
 
 // 3. cwd 非法路径：spawn 失败（Unix errno 通道；Windows ERROR_DIRECTORY）
@@ -156,7 +190,13 @@ static void testEnvInjected()
     auto pty = ZzPty::spawn(cfg);
     ZZ_TEST_EXPECT(pty != nullptr);
     if (!pty) return;
-    ZZ_TEST_EXPECT(trimRight(readAll(*pty)) == "marker42");
+    const std::string out = trimRight(readAll(*pty));
+#if defined(_WIN32)
+    // ConPTY 可能夹带控制序列，整行等值放宽为 contains。
+    ZZ_TEST_EXPECT(out.find("marker42") != std::string::npos);
+#else
+    ZZ_TEST_EXPECT(out == "marker42");
+#endif
 }
 
 // 5. env 同名覆盖：后写覆盖先写
@@ -172,7 +212,13 @@ static void testEnvOverride()
     auto pty = ZzPty::spawn(cfg);
     ZZ_TEST_EXPECT(pty != nullptr);
     if (!pty) return;
-    ZZ_TEST_EXPECT(trimRight(readAll(*pty)) == "b");
+    const std::string out = trimRight(readAll(*pty));
+#if defined(_WIN32)
+    // ConPTY 可能夹带控制序列，整行等值放宽为 contains。
+    ZZ_TEST_EXPECT(out.find("b") != std::string::npos);
+#else
+    ZZ_TEST_EXPECT(out == "b");
+#endif
 }
 
 int main()

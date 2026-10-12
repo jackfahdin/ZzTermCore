@@ -51,7 +51,7 @@ ABI：纯新增字段（聚合体尾部），按 M14 先例登记 ABI 新增，
 
 - fork 前：构建合并环境向量——复制 `environ` 全部条目，再按
   `env` 覆盖同名键（先删同名旧条目再压入新条目），转 `char*` 数组；
-- 子进程（保持纯 async-signal-safe）：cwd 非空先 `::chdir(cwd)`，
+- 子进程（保持纯 async-signal-safe）：cwd 非空先 chdir(cwd)，
   失败写 errPipe 的 errno 后 `_exit(127)`（与 exec 失败同通道，
   父进程现有失败处理零改动）；exec 换带环境的形式（见勘误 E-1）；
 - 父进程逻辑不变。
