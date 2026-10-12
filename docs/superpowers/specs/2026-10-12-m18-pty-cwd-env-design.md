@@ -59,7 +59,7 @@ ABI：纯新增字段（聚合体尾部），按 M14 先例登记 ABI 新增，
 勘误 E-1（2026-10-12 实现期发现）：初稿写「execvp 换 execve」，
 实测 execve 不搜 PATH（argv[0] 为程序名时 ENOENT）。落地口径：
 子进程内 `environ = envp.data();`（指针赋值，async-signal-safe）
-后仍走 `::execvp`——合并环境经 environ 全局指针生效，PATH 搜索
+后仍走 execvp——合并环境经 environ 全局指针生效，PATH 搜索
 保留，macOS 无 execvpe 的可移植性坑也一并绕开。
 
 ### 4.2 Windows（pty/windows/ZzPty.cpp）
