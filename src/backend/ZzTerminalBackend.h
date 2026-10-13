@@ -56,4 +56,6 @@ public:
     [[nodiscard]] virtual const ZzHistoryView& historyView() const noexcept;
     /// 向 Primary 历史最旧端注入行（M19）；默认不支持（返回 false）。
     [[nodiscard]] virtual bool prependHistoryLines(std::vector<ZzLine> lines);
+    /** @brief 上一次 resize 期间屏→史净迁移行数（历史尾部未落盘新行数）。 */
+    [[nodiscard]] virtual std::size_t resizeScreenScrollout() const noexcept { return 0; }
 };

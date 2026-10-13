@@ -18,8 +18,10 @@ const ZzLine& lineFrom(const void* storage)
 
 ZzNativeHistoryView::ZzNativeHistoryView(const ZzScreen& screen,
                                          const ZzScrollback& scrollback,
-                                         const std::uint64_t& generation) noexcept
-    : screen_(&screen), scrollback_(&scrollback), generation_(&generation)
+                                         const std::uint64_t& generation,
+                                         const std::uint64_t& clearCount) noexcept
+    : screen_(&screen), scrollback_(&scrollback), generation_(&generation),
+      clearCount_(&clearCount)
 {
 }
 
@@ -51,6 +53,11 @@ std::uint64_t ZzNativeHistoryView::droppedLineCount() const noexcept
 std::uint64_t ZzNativeHistoryView::generation() const noexcept
 {
     return *generation_;
+}
+
+std::uint64_t ZzNativeHistoryView::clearCount() const noexcept
+{
+    return *clearCount_; // M20：ED3 清史累计计数（buffer 无关，命令执行口径）
 }
 
 ZzCellView ZzNativeHistoryView::cellAtThunk(const void* storage, int col)

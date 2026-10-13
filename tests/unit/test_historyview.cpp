@@ -247,6 +247,50 @@ static void testTerminalPrependSelectionAnchorStable()
     ZZ_TEST_EXPECT(ms.line == 0);
 }
 
+// ED3 清史计数：clearCount 单调递增（命令执行口径，空历史再清也计数）；
+// clear 不复位 droppedLineCount（ChunkedScrollback.cpp:270 既有口径）。
+static void test_clearCountIncrementedByEd3()
+{
+    ZzTerminal term(10, 3, ZzBackendKind::Native, 100);
+    feedStr(term, "l1\r\nl2\r\nl3\r\nl4\r\nl5\r\n");
+    ZZ_TEST_EXPECT(term.historyView().clearCount() == 0);
+    feedStr(term, "\x1b[3J");
+    ZZ_TEST_EXPECT(term.historyView().clearCount() == 1);
+    ZZ_TEST_EXPECT(term.historyView().lineCount() == 0);
+    feedStr(term, "\x1b[3J");
+    ZZ_TEST_EXPECT(term.historyView().clearCount() == 2);
+}
+
+// Alternate 期间 ED3 清的是 Primary 历史（NativeCsiDispatch 对 scrollback
+// 无条件生效），clearCount 是 buffer 无关口径同样计入。
+static void test_clearCountCountsEd3InAlternate()
+{
+    ZzTerminal term(10, 3, ZzBackendKind::Native, 100);
+    feedStr(term, "l1\r\nl2\r\nl3\r\nl4\r\n");
+    feedStr(term, "\x1b[?1049h");
+    feedStr(term, "\x1b[3J");
+    ZZ_TEST_EXPECT(term.historyView().clearCount() == 1);
+    feedStr(term, "\x1b[?1049l");
+}
+
+// 缩列屏→史迁移计数：40x6 屏喂 8 条 30 字符行（历史 3，屏 5 行+光标行），
+// 缩列 24 后屏上行折叠溢出 5 行压入历史尾部，resizeScreenScrollout()==5；
+// 历史 3 条 30 字符行在 24 列下各折 2 行（3→6），lineCount()==6+5=11
+//（简报字面量按 Core 折行口径实测修正，断言结构不变）；下次 resize 入口清零重计。
+static void test_resizeScreenScrolloutCountsMigratedLines()
+{
+    ZzTerminal term(40, 6, ZzBackendKind::Native, 100);
+    for (int i = 0; i < 8; ++i) {
+        char buf[64];
+        std::snprintf(buf, sizeof buf, "segment-%d-abcdefghij0123456789\r\n", i);
+        feedStr(term, buf);
+    }
+    ZZ_TEST_EXPECT(term.historyView().lineCount() == 3);
+    term.resize(24, 6);
+    ZZ_TEST_EXPECT(term.resizeScreenScrollout() == 5);
+    ZZ_TEST_EXPECT(term.historyView().lineCount() == 6 + 5);
+}
+
 int main()
 {
     testEmptyInitial();
@@ -260,6 +304,9 @@ int main()
     testTerminalPrependHistoryAlternateRejected();
     testTerminalPrependHistoryEmpty();
     testTerminalPrependSelectionAnchorStable();
+    test_clearCountIncrementedByEd3();
+    test_clearCountCountsEd3InAlternate();
+    test_resizeScreenScrolloutCountsMigratedLines();
     if (g_failures != 0) {
         std::fprintf(stderr, "%d failure(s)\n", g_failures);
         return 1;

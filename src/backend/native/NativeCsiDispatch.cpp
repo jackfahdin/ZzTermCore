@@ -108,9 +108,14 @@ void ZzNativeBackend::dispatchCsi(const ZzParamSequence& seq)
         const int p = paramOr(seq, 0, 0);
         if (p <= 2)
             screen_.eraseInDisplay(static_cast<ZzEraseMode>(p), eraseFill());
-        else if (p == 3 && scrollback_->lineCount() > 0) {
-            scrollback_->clear();
-            ++historyGeneration_; // M14 同口径：可见历史变化必计代；空历史守卫防空转
+        else if (p == 3) {
+            // M20：clearCount 命令执行口径——空历史再清亦计数（buffer 无关，
+            // Alternate 期间清的也是 Primary 历史）。
+            ++historyClearCount_;
+            if (scrollback_->lineCount() > 0) {
+                scrollback_->clear();
+                ++historyGeneration_; // M14 同口径：可见历史变化必计代；空历史守卫防空转
+            }
         }
         break;
     }

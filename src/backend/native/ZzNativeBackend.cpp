@@ -199,13 +199,15 @@ ZzNativeBackend::ZzNativeBackend(int cols, int rows, std::size_t scrollbackMaxLi
     , scrollback_(zzCreateChunkedScrollback(scrollbackMaxLines))
     , lineSource_(screen_, *scrollback_)
     , renderView_(screen_)
-    , historyView_(screen_, *scrollback_, historyGeneration_)
+    , historyView_(screen_, *scrollback_, historyGeneration_, historyClearCount_)
     , sink_(std::make_unique<Sink>(*this))
     , parser_(std::make_unique<ZzVtParser>(sink_.get()))
 {
     // Screen 不知道历史后端：滚出行经回调上移到 Terminal，由 Terminal 入栈。
     screen_.setScrollOutCallback([this](std::vector<ZzLine> lines) {
         scrolledOutPending_ += lines.size();
+        if (resizeActive_)
+            resizeInflow_ += lines.size(); // M20：resize 期间屏→史迁移计数
         scrollback_->append(std::move(lines));
         ++historyGeneration_; // M14：历史 append（含容量裁剪）代计数递增
     });
@@ -266,6 +268,10 @@ bool ZzNativeBackend::resize(int cols, int rows)
     const ZzSize old = screen_.size();
     if (old == ZzSize{cols, rows})
         return false;
+    // M20：resize 期间屏→史净迁移计数——入口清零重计，出口复位。
+    resizeInflow_ = 0;
+    resizeSeamPullback_ = 0;
+    resizeActive_ = true;
     // M4：列变化触发 soft-wrap reflow，先历史后屏幕
     //（屏幕溢出行以新宽度经 ScrollOutCallback 回流到已重组的历史，宽度不变量自洽）。
     if (cols != old.cols) {
@@ -277,6 +283,11 @@ bool ZzNativeBackend::resize(int cols, int rows)
             std::size_t head = histLines - 1;
             while (head > 0 && scrollback_->lineAt(head - 1).wrapped())
                 --head;
+            // M20：接缝回拉行数记为净迁移减项——被拉回的 P 行历史尾链已落盘，
+            // 屏幕溢出让它们最先回到历史（屏顶先溢出），净未落盘行 = 尾部 O−P 行。
+            // 已知残差：链在新列宽重折后行数 P′ 可能与 P 不同（误差 ≤ 链长差，
+            // 仅当 resize 瞬间有长逻辑行跨缝时触发）。
+            resizeSeamPullback_ = histLines - head;
             screen_.prependPrimaryLines(scrollback_->takeNewest(histLines - head));
         }
         scrollback_->reflow(cols);
@@ -285,6 +296,7 @@ bool ZzNativeBackend::resize(int cols, int rows)
     }
     if (rows != old.rows)
         screen_.resize(cols, rows); // M15：行向条件语义（裁光标下方/压历史/回抽），见 Screen.h
+    resizeActive_ = false;
     return true;
 }
 
@@ -303,6 +315,11 @@ bool ZzNativeBackend::prependHistoryLines(std::vector<ZzLine> lines)
 }
 
 ZzSize ZzNativeBackend::size() const noexcept { return screen_.size(); }
+std::size_t ZzNativeBackend::resizeScreenScrollout() const noexcept
+{
+    // M20：净迁移 = resize 期间入史行数 − 接缝回拉行数（残差见 resize() 注释）。
+    return resizeInflow_ > resizeSeamPullback_ ? resizeInflow_ - resizeSeamPullback_ : 0;
+}
 ZzCursorState ZzNativeBackend::cursor() const noexcept { return screen_.cursor(); }
 bool ZzNativeBackend::isAlternateScreen() const noexcept
 {

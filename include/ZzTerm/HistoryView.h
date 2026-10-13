@@ -79,4 +79,13 @@ public:
      *       不得漏增。前端据此刷新滚动条上限，禁止每帧全扫历史。
      */
     [[nodiscard]] virtual std::uint64_t generation() const noexcept = 0;
+
+    /**
+     * @brief 历史清空累计计数（ED 3 等；应用侧对账精确侦测用）。
+     * @return 单调递增的清空次数（命令执行口径，空历史再清亦计数）。
+     * @note 默认实现回退 0（无清空语义/未实现后端的保守降级，调用方退回收缩
+     *       向兜底）；native 覆写为真实计数。Alternate 期间 ED3 清 Primary
+     *       历史同样计入（buffer 无关）。
+     */
+    [[nodiscard]] virtual std::uint64_t clearCount() const noexcept { return 0; }
 };

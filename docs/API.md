@@ -331,7 +331,8 @@ RenderView 覆盖屏幕区，HistoryView 覆盖 scrollback 历史区。
 - `ZzTerminal::historyView()` 返回 `const ZzHistoryView&`，借用 Terminal，
   不得比 Terminal 长寿。
 - `ZzHistoryView` 为纯虚接口：`lineCount` / `lineAt` / `droppedLineCount` /
-  `generation`；`primaryLineCount` 为非纯虚（默认回退 `lineCount()`）。
+  `generation`；`primaryLineCount`（默认回退 `lineCount()`）与 `clearCount`
+  （默认回退 0，M20）为非纯虚。
 - 坐标：index 属于 [0, lineCount())，0 = 最旧历史行；
   绝对行号 = droppedLineCount() + index（选区锚点平移/应用侧归档对齐用）。
 - `lineAt(index)` 返回 ZzLineView 借用句柄：feed/resize/clear 或下一次
@@ -341,6 +342,11 @@ RenderView 覆盖屏幕区，HistoryView 覆盖 scrollback 历史区。
   `primaryLineCount()` 为 buffer 无关口径——Alternate 期间仍返回 Primary
   历史真实行数（native 覆写为 scrollback 真实行数），供应用侧读回对账
   锚点使用（Alternate 期间列变 reflow 照样重组 Primary 历史）。
+- `clearCount()`（M20）为历史清空累计计数（ED 3 等，应用侧对账精确
+  侦测用）：单调递增，命令执行口径——空历史再清亦计数；buffer 无关，
+  Alternate 期间 ED3 清 Primary 历史同样计入。默认实现回退 0（无清空
+  语义/未实现后端的保守降级，调用方退回收缩向兜底），native 覆写为
+  真实计数。
 - 变化侦测用 generation()（append/裁剪/reflow/clear/Alternate 切换递增，
   允许保守多增）；禁止每帧全扫历史，滚动查看按需取可见行。
 - 线程：非线程安全，与 ZzTerminal 同线程。
@@ -460,3 +466,20 @@ toStitched/fromStitched 涉及。
   不变量：注入数须 ≤ totalDropped − totalPrepended（只能归还真被
   裁掉且尚未归还的行）。内部 `ZzTerminalBackend` 加非纯虚默认实现
   （返回 false），contour 后端暂不提供注入。
+- M20：HistoryView 增量 API（应用侧对账精确侦测用，桥侧无法事后区分
+  「重组旧历史」与「屏→史迁移行/清后新滚出行」，行身份已重建、终态
+  不可区分，须 Core 提供精确计数）。`ZzHistoryView` 新增非纯虚
+  `clearCount()`（默认回退 0；ED 3 清史累计计数，命令执行口径——空
+  历史再清亦计数，buffer 无关——Alternate 期间 ED3 清 Primary 历史
+  同样计入；clear 不复位 `droppedLineCount`，ChunkedScrollback 既有
+  口径）；`ZzTerminal` 新增 `resizeScreenScrollout()` 非虚方法——上一
+  次 resize 期间屏→史净迁移行数（历史尾部未落盘新行数），每次 resize
+  入口清零重计。内部 `ZzTerminalBackend` 加非纯虚默认实现（返回 0），
+  contour 后端自动继承保守降级（调用方退回收缩向兜底）；native 覆写为
+  真实计数 = resize 期间 ScrollOut 入史行数 − M16b 接缝回拉行数。接缝
+  回拉减除的理由：被拉回屏幕的 P 行历史尾链已落盘，溢出让它们最先回到
+  历史（屏顶先溢出），净未落盘行 = 尾部 O−P 行。已知残差：链在新列宽
+  重折后行数 P′ 可能与 P 不同（误差 ≤ 链长差，仅当 resize 瞬间有长逻辑
+  行跨缝时触发）；若审查不接受，精化路径是 Screen 在 prependPrimaryLines
+  打标记、reflow 溢出时精确数首链归还行数——本里程碑不展开。两 API 均
+  为带默认实现的虚函数新增（M19 5735ff2 同范式），向后兼容 minor 新增。

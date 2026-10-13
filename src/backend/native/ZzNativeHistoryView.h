@@ -13,12 +13,14 @@ class ZzScrollback;
 class ZzNativeHistoryView final : public ZzHistoryView {
 public:
     ZzNativeHistoryView(const ZzScreen& screen, const ZzScrollback& scrollback,
-                        const std::uint64_t& generation) noexcept;
+                        const std::uint64_t& generation,
+                        const std::uint64_t& clearCount) noexcept;
     [[nodiscard]] std::size_t lineCount() const noexcept override;
     [[nodiscard]] std::size_t primaryLineCount() const noexcept override;
     [[nodiscard]] ZzLineView lineAt(std::size_t index) const override;
     [[nodiscard]] std::uint64_t droppedLineCount() const noexcept override;
     [[nodiscard]] std::uint64_t generation() const noexcept override;
+    [[nodiscard]] std::uint64_t clearCount() const noexcept override;
 
 private:
     static ZzCellView cellAtThunk(const void* storage, int col);
@@ -27,4 +29,5 @@ private:
     const ZzScreen* screen_;
     const ZzScrollback* scrollback_;
     const std::uint64_t* generation_;
+    const std::uint64_t* clearCount_;
 };

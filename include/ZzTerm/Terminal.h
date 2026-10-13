@@ -133,6 +133,18 @@ public:
     bool resize(int cols, int rows);
 
     /**
+     * @brief 上一次 resize 期间屏→史净迁移行数（M20；历史尾部未落盘新行数）。
+     * @return 净迁移行数 = resize 期间 ScrollOut 入史行数 − 接缝回拉行数；
+     *         未实现后端默认回退 0（保守降级，调用方退回收缩向兜底）。
+     * @note native 覆写为真实计数；每次 resize 入口清零重计。接缝回拉减除
+     *       的理由：被拉回屏幕的 P 行历史尾链已落盘，溢出让它们最先回到
+     *       历史（屏顶先溢出），净未落盘行 = 尾部 O−P 行。已知残差：链在
+     *       新列宽重折后行数 P′ 可能与 P 不同（误差 ≤ 链长差，仅当 resize
+     *       瞬间有长逻辑行跨缝时触发）。
+     */
+    [[nodiscard]] std::size_t resizeScreenScrollout() const noexcept;
+
+    /**
      * @brief 获取只读渲染视图（Renderer 的唯一入口）。
      * @return 渲染视图常量引用；借用 Terminal，不得比 Terminal 长寿，
      *         帧内使用、跨帧重新读取其查询结果。

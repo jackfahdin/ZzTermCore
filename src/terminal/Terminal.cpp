@@ -97,6 +97,7 @@ bool ZzTerminal::resize(int cols, int rows)
 }
 const ZzRenderView& ZzTerminal::renderView() const noexcept { return impl_->backend->renderView(); }
 const ZzHistoryView& ZzTerminal::historyView() const noexcept { return impl_->backend->historyView(); }
+std::size_t ZzTerminal::resizeScreenScrollout() const noexcept { return impl_->backend->resizeScreenScrollout(); }
 
 bool ZzTerminal::prependHistoryLines(std::vector<ZzLine> lines)
 {

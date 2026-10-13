@@ -38,6 +38,7 @@ public:
     [[nodiscard]] const ZzIPhysicalLineSource& lineSource() const noexcept override { return lineSource_; }
     [[nodiscard]] const ZzHistoryView& historyView() const noexcept override { return historyView_; }
     [[nodiscard]] bool prependHistoryLines(std::vector<ZzLine> lines) override;
+    [[nodiscard]] std::size_t resizeScreenScrollout() const noexcept override;
 
     // ---- facade 的 screen()/scrollback() 委托用（Native 限定访问） ----
     [[nodiscard]] ZzScreen& screen() noexcept { return screen_; }
@@ -68,7 +69,11 @@ public:
     ZzNativeLineSource           lineSource_; ///< 统一物理行数据源（借用 screen_/scrollback_，须声明在二者之后）。
     ZzNativeRenderView           renderView_; ///< 渲染边界（借用 screen_）。
     std::uint64_t                historyGeneration_ = 0; ///< 历史变化代计数（M14：append/reflow/Alternate 切换递增）。
-    ZzNativeHistoryView          historyView_; ///< 历史只读边界（借用 screen_/scrollback_/historyGeneration_）。
+    std::uint64_t                historyClearCount_ = 0; ///< ED3 清史累计计数（M20：命令执行口径，buffer 无关）。
+    ZzNativeHistoryView          historyView_; ///< 历史只读边界（借用 screen_/scrollback_/historyGeneration_/historyClearCount_）。
+    std::size_t                  resizeInflow_ = 0;        ///< resize 期间 ScrollOut 入史行数（M20）。
+    std::size_t                  resizeSeamPullback_ = 0;  ///< resize 期间 M16b 接缝回拉行数（M20，净迁移减项）。
+    bool                         resizeActive_ = false;    ///< resize 进行中（ScrollOutCallback 计迁移用，M20）。
     std::string                  title_;      ///< OSC 标题（UTF-8）。
     std::size_t                  scrolledOutPending_ = 0; ///< feed 内滚出行计数（回调聚合用）。
     int  savedScrollTop_ = 0;    ///< 切 Alternate 时保存的主屏滚动区上沿（0 起始）。
