@@ -3,6 +3,7 @@
 #include <cerrno>
 #include <csignal>
 #include <cstdio>
+#include <thread>
 #include <vector>
 
 #include <fcntl.h>
@@ -23,6 +24,27 @@ void closeNoIntr(int fd) noexcept
 {
     if (fd >= 0) {
         while (::close(fd) != 0 && errno == EINTR) {
+        }
+    }
+}
+
+/// 幂等置 O_NONBLOCK（收割排空用；调用方可能已设置）。
+void setNonblocking(int fd) noexcept
+{
+    if (fd >= 0) {
+        const int flags = ::fcntl(fd, F_GETFL);
+        if (flags >= 0 && !(flags & O_NONBLOCK)) {
+            (void)::fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+        }
+    }
+}
+
+/// 非阻塞读空 fd 上当前可读的数据（子进程临终输出排空）。
+void drainFd(int fd) noexcept
+{
+    if (fd >= 0) {
+        char buf[4096];
+        while (::read(fd, buf, sizeof(buf)) > 0) {
         }
     }
 }
@@ -169,30 +191,57 @@ std::unique_ptr<ZzPty> ZzPty::spawn(const ZzPtyConfig& cfg)
 
 ZzPty::~ZzPty()
 {
-    // CI 诊断（定位 macOS 300s 卡死点，定位后移除）：析构各阶段检查点
-    std::fprintf(stderr, "ZZPTY-DTOR CP1 entry pid=%d reaped=%d\n",
-                 int(childPid_), int(reaped_));
     if (childPid_ > 0 && !reaped_) {
+        // macOS/BSD 病理：tty 输出队列满时写入方陷入不可中断睡眠，SIGKILL
+        // 也无法即时收尸（CI 实证：阻塞 waitpid 挂住 300s）。收割窗口内必须
+        // 持续排空 master，让子进程临终输出（SIGWINCH 重绘、exit trap 序列）
+        // 始终可写通；Linux 无此病理，同一路径同样安全。
+        setNonblocking(masterFd_);
         ::kill(childPid_, SIGHUP);
-        // 短暂等待子进程响应 SIGHUP；不退出则 SIGKILL，保证不遗留僵尸。
-        for (int i = 0; i < 10; ++i) {
-            int status = 0;
-            if (::waitpid(childPid_, &status, WNOHANG) == childPid_) {
-                break;
-            }
-            if (i == 9) {
+        bool alive = true;
+        for (int round = 0; round < 2 && alive; ++round) {
+            if (round == 1) {
                 ::kill(childPid_, SIGKILL);
-                while (::waitpid(childPid_, &status, 0) < 0 && errno == EINTR) {
-                }
-                break;
             }
-            ::usleep(5 * 1000);
+            const int budgetMs = round == 0 ? 1000 : 2000; // SIGHUP 宽限 1s，SIGKILL 后 2s
+            for (int elapsed = 0; elapsed < budgetMs; elapsed += 5) {
+                int status = 0;
+                const pid_t r = ::waitpid(childPid_, &status, WNOHANG);
+                if (r == childPid_) {
+                    reaped_ = true;
+                    if (WIFEXITED(status)) {
+                        exitCode_ = WEXITSTATUS(status);
+                    } else if (WIFSIGNALED(status)) {
+                        exitCode_ = 128 + WTERMSIG(status);
+                    } else {
+                        exitCode_ = 1;
+                    }
+                    alive = false;
+                    break;
+                }
+                if (r < 0 && errno == ECHILD) { // 已被外部回收
+                    reaped_ = true;
+                    alive = false;
+                    break;
+                }
+                drainFd(masterFd_);
+                ::usleep(5 * 1000);
+            }
         }
-        std::fprintf(stderr, "ZZPTY-DTOR CP2 kill/reap done\n");
+        if (alive) {
+            // 兜底：子进程仍卡在不可中断内核态——分离线程后台收割，析构
+            //（可能在 GUI 线程）永不阻塞。fd 照关：子进程已判死刑。
+            std::fprintf(stderr,
+                         "ZzPty: 子进程 %d SIGKILL 后仍不可收割，转后台收尸\n",
+                         int(childPid_));
+            std::thread([pid = childPid_]() {
+                int status = 0;
+                while (::waitpid(pid, &status, 0) < 0 && errno == EINTR) {
+                }
+            }).detach();
+        }
     }
-    std::fprintf(stderr, "ZZPTY-DTOR CP3 before close(master)\n");
     closeNoIntr(masterFd_);
-    std::fprintf(stderr, "ZZPTY-DTOR CP4 done\n");
 }
 
 int ZzPty::masterFd() const noexcept
