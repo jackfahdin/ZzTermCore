@@ -2,6 +2,7 @@
 
 #include <cerrno>
 #include <csignal>
+#include <cstdio>
 #include <vector>
 
 #include <fcntl.h>
@@ -168,6 +169,9 @@ std::unique_ptr<ZzPty> ZzPty::spawn(const ZzPtyConfig& cfg)
 
 ZzPty::~ZzPty()
 {
+    // CI 诊断（定位 macOS 300s 卡死点，定位后移除）：析构各阶段检查点
+    std::fprintf(stderr, "ZZPTY-DTOR CP1 entry pid=%d reaped=%d\n",
+                 int(childPid_), int(reaped_));
     if (childPid_ > 0 && !reaped_) {
         ::kill(childPid_, SIGHUP);
         // 短暂等待子进程响应 SIGHUP；不退出则 SIGKILL，保证不遗留僵尸。
@@ -184,8 +188,11 @@ ZzPty::~ZzPty()
             }
             ::usleep(5 * 1000);
         }
+        std::fprintf(stderr, "ZZPTY-DTOR CP2 kill/reap done\n");
     }
+    std::fprintf(stderr, "ZZPTY-DTOR CP3 before close(master)\n");
     closeNoIntr(masterFd_);
+    std::fprintf(stderr, "ZZPTY-DTOR CP4 done\n");
 }
 
 int ZzPty::masterFd() const noexcept
