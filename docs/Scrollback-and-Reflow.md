@@ -286,3 +286,36 @@ M17c 复验暴露「空白海」事故：窗口缩至极小再拉满后内容堆
 26 testGrowRefillDeviation；M17e 既成空洞回填属该偏离的加深，
 不新增登记类别）；ED3 为 parity 补齐（contour 原生支持，
 对照见用例 27 testEd3ClearScrollbackParity）。
+
+## 10. contour 后端启用清单（Z3 收官登记）
+
+Z3 账本 :33 决议：contour 后端的滚动/历史读回回退洞不修，仅登记
+启用清单。不修依据：
+
+-   产品唯一构造点写死 Native 后端（ZzClawTerm
+    `src/terminal/ZzCoreTerminalWidget.cpp:65` 构造
+    `term_(80, 24, ZzBackendKind::Native, 10000)`），contour 在
+    产品内不可达，回退洞无实际触发路径。
+-   contour 下历史读回路径本就不工作——`prependHistoryLines` 默认
+    实现直接返回 false（`ZzTerminalBackend.cpp`，contour 未覆写；
+    `HistoryView.h:71` 注释亦载「contour 不支持注入，基线不退」），
+    启用 contour 是历史读回一整包工作，不是单点修补。
+-   M20 两个新 API（`clearCount`、`resizeScreenScrollout`）均为默认
+    回退 0 形态，contour 行为不因 Z3 改变（不好不坏）。
+
+后续若启用 contour 后端，须一并落地以下四项（缺一则滚动/读回
+语义残缺）：
+
+-   `primaryLineCount()` 覆写：Primary 历史行数的 buffer 无关口径
+    （Alternate 期间仍返回 Primary；默认回退 `lineCount()`，见
+    `docs/API.md` M20 条目）。
+-   `clearCount()` 覆写：ED 3 清史累计计数（默认回退 0，见
+    `docs/API.md` M20 条目）。
+-   `resizeScreenScrollout()` 覆写：上一次 resize 屏→史净迁移行数
+    （默认回退 0，调用方退回收缩向兜底，见 `docs/API.md` M20
+    条目）。
+-   `prependHistoryLines()` 支持：历史最旧端注入原语（默认返回
+    false，见 `docs/API.md` M19 条目）。
+
+对应 Core 规格条目：`docs/API.md` M19（历史最旧端注入原语）与
+M20（HistoryView 增量 API）两条。
