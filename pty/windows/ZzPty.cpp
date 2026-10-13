@@ -285,10 +285,26 @@ std::ptrdiff_t ZzPty::read(std::span<std::byte> buf) noexcept
         // 暂无可读：子进程已退出且排空归一 EOF，否则等价 Unix EAGAIN 返回 -1。
         HANDLE hProcess = static_cast<HANDLE>(processHandle_);
         if (hProcess != nullptr && ::WaitForSingleObject(hProcess, 0) == WAIT_OBJECT_0) {
-            return 0;
+            // EOF 宽限：ConPTY 输出管道的写端是控制台宿主进程而非子进程，
+            // 子进程退出信号先于宿主最终渲染落管几毫秒——立刻归一 EOF 会丢
+            // 尾部输出（CI 实证：PowerShell 退出时 T=/C= 行整行丢失）。
+            // 宽限窗内重试 Peek，迟到数据照常读；穷尽才归一 EOF。
+            for (int i = 0; i < 20; ++i) {
+                ::Sleep(5);
+                if (!::PeekNamedPipe(hRead, nullptr, 0, nullptr, &avail, nullptr)) {
+                    return ::GetLastError() == ERROR_BROKEN_PIPE ? 0 : -1;
+                }
+                if (avail != 0) {
+                    break;
+                }
+            }
+            if (avail == 0) {
+                return 0;
+            }
+        } else {
+            ::SetLastError(ERROR_NO_DATA);
+            return -1;
         }
-        ::SetLastError(ERROR_NO_DATA);
-        return -1;
     }
     DWORD n = 0;
     if (!::ReadFile(hRead, buf.data(), static_cast<DWORD>(buf.size()), &n, nullptr)) {
