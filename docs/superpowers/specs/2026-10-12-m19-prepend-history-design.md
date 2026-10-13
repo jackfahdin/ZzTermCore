@@ -127,4 +127,4 @@ std::uint64_t totalPrepended = 0; ///< 累计经 prependOldest 注入的行数�
   ZzTerminal::prependHistoryLines、ZzScrollback::prependOldest、
   ZzScrollbackStats.totalPrepended；droppedLineCount 口径变化 =
   基线含注入计数）。
-- doxygen 注释随代码同步（CI 1.9.8 口径：不用反引号+前导 ::）。
+- doxygen 注释随代码同步（CI 1.9.8 口径：不用反引号+前导 `::`）。
