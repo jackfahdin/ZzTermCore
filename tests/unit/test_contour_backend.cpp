@@ -252,7 +252,13 @@ void testAltScreen()
     backend.feed("ALT");
     {
         auto snap = backend.snapshot();
-        ZZ_CHECK(rowText(snap, 0, 3) == U"ALT");
+        // 上游 01f68347 起 ?1049h 携带光标进入备用屏（contour commit 6d87f7cb，
+        // 对齐 xterm ToAlternate/Windows Terminal/foot；1049l 仍恢复保存光标）。
+        // MAIN 后光标停在 (0,4)，随切屏带入，ALT 落在 (0,4..6)。
+        ZZ_CHECK(snap.at(0, 0).codepoints.empty());
+        ZZ_CHECK(snap.at(0, 4).codepoints == U"A");
+        ZZ_CHECK(snap.at(0, 5).codepoints == U"L");
+        ZZ_CHECK(snap.at(0, 6).codepoints == U"T");
     }
     backend.feed("\x1b[?1049l"); // 回主屏
     ZZ_CHECK(!backend.isAlternateScreen());

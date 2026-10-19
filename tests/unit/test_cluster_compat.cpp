@@ -430,20 +430,20 @@ void testBI2Prepend()
     }
 }
 
-// I-1（B1 79a + U+0301）：整喂 contour 错附 c0 / native 附当前行尾格 c78
-// （contour 整缓冲"前格"定位缺陷，不作 parity 目标）；切 feed 式正常对齐。
+// I-1（B1 79a + U+0301）：组合符附 wrap-pending 前行尾格。旧 pin 6777ff05 的
+// contour 整喂错附 c0（整缓冲"前格"定位缺陷，曾按 b 类分别断言钉住）；上游
+// 01f68347 已修复，整喂/切 feed 两式现均与 native 对齐（附 c78），b 类登记作废。
 void testBI1SoftWrapWhole()
 {
     std::string s(79, 'a');
     s += "\xCC\x81";
-    // 整喂：b 类分别断言。
+    // 整喂：对齐断言。
     Dual d;
     d.feedBoth(s);
-    expectCells(d.contour, 0, { {0, "a\xCC\x81", N}, {1, "a", N}, {78, "a", N} },
-                "I1-contour-整喂");
-    expectCells(d.native, 0, { {0, "a", N}, {77, "a", N}, {78, "a\xCC\x81", N} },
-                "I1-native-整喂");
-    expectCursor(d.native, 0, 79, "I1-native-整喂");
+    for (const ZzTerminal* t : { &d.native, &d.contour }) {
+        expectCells(*t, 0, { {0, "a", N}, {77, "a", N}, {78, "a\xCC\x81", N} }, "I1-整喂对齐");
+        expectCursor(*t, 0, 79, "I1-整喂对齐");
+    }
     // 切 feed：对齐断言。
     Dual d2;
     for (const std::string_view cp : splitCodePoints(s))

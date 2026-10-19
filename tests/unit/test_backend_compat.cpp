@@ -147,6 +147,12 @@ void testCjkWide()
 }
 
 // 6. Alternate Screen（M2：两后端均实现 1049，内容恢复逐格强对照）。
+// alt-write 段为 b 类分别断言（上游 contour 01f68347 起 ?1049h 携带光标进入
+// 备用屏——commit 6d87f7cb，对齐 xterm ToAlternate/Windows Terminal/foot；
+// 1049l 仍恢复 1049h 保存的光标——与 native 的 1049h home 语义构成新分歧，
+// 钉住不强行对齐）：native home 后从 (0,0) 写 ALT；contour 光标随 MAIN 停在
+// (0,4) 被带入备用屏，从 (0,4) 写 ALT。alt-restore 段两侧 MAIN 均恢复原位，
+// 恢复逐格强对照。
 // 光标断言为 b 类分别断言（两后端真实语义分歧，非转换层 bug，钉住不强行对齐）：
 // xterm 语义 1049 = 1048 + 1047，1049l 恢复 1049h 保存的光标，native 对齐
 // xterm 得 (0,4)；Contour 经 RenderBuffer 上报光标，实测自 1049h 起即不再上报
@@ -159,7 +165,14 @@ void testAltScreen()
     ZZ_CHECK(d.native.isAlternateScreen());
     ZZ_CHECK(d.contour.isAlternateScreen());
     d.feedBoth("ALT");
-    checkRowEqual(d.native, d.contour, 0, 3, "alt-write");
+    // b 类：1049h 光标处置分歧（见函数头注释），alt-write 分别断言钉住。
+    ZZ_CHECK(d.native.renderView().lineAt(0).cellAt(0).text == "A");
+    ZZ_CHECK(d.native.renderView().lineAt(0).cellAt(1).text == "L");
+    ZZ_CHECK(d.native.renderView().lineAt(0).cellAt(2).text == "T");
+    ZZ_CHECK(d.contour.renderView().lineAt(0).cellAt(0).text.empty());
+    ZZ_CHECK(d.contour.renderView().lineAt(0).cellAt(4).text == "A");
+    ZZ_CHECK(d.contour.renderView().lineAt(0).cellAt(5).text == "L");
+    ZZ_CHECK(d.contour.renderView().lineAt(0).cellAt(6).text == "T");
     d.feedBoth("\x1b[?1049l");
     ZZ_CHECK(!d.native.isAlternateScreen());
     ZZ_CHECK(!d.contour.isAlternateScreen());

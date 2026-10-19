@@ -483,3 +483,14 @@ toStitched/fromStitched 涉及。
   行跨缝时触发）；若审查不接受，精化路径是 Screen 在 prependPrimaryLines
   打标记、reflow 溢出时精确数首链归还行数——本里程碑不展开。两 API 均
   为带默认实现的虚函数新增（M19 5735ff2 同范式），向后兼容 minor 新增。
+- M21：contour 子模块升级 6777ff05 → 01f68347（上游 master，392 提交），
+  公共 API/ABI 无变化。构建侧：上游 crispy/vtparser/vtpty/vtbackend 改链
+  vendored core-cpp v0.8.0（core::base/log/cli/platform/async），聚合层经
+  add_subdirectory 引入（TUI/TLS/测试全关）；libunicode pin 随上游下限升至
+  v0.9.4；reflection-cpp 不再被四组件使用，移出聚合层；新增
+  CONTOUR_WITH_SYSTEMD=OFF 裁剪。上游行为演进（均为合理演进，测试已按
+  新语义改写并登记）：①?1049h 携带光标进入备用屏（上游 commit
+  6d87f7cb，对齐 xterm/Windows Terminal/foot；1049l 仍恢复保存光标）——
+  与 native 的 1049h home 语义构成新 b 类分歧（test_backend_compat 的
+  alt-write 段分别断言钉住）；②wrap-pending 行尾格的组合符附着的整缓冲
+  定位缺陷修复——I-1 整喂 b 类分歧消灭，test_cluster_compat 转对齐断言。
