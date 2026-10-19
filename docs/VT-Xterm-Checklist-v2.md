@@ -41,7 +41,7 @@ ms；不作为正式性能指标。
 
 ## Build / Backend Boundary
 
--   [x] \[Zz-Adapter\] Contour 固定 commit 的 Git submodule（third_party/contour @ 6777ff05）
+-   [x] \[Zz-Adapter\] Contour 固定 commit 的 Git submodule（third_party/contour @ 01f68347，M21 升级）
 -   [x] \[Zz-Adapter\] 最小 Contour build，不构建顶层完整工程（cmake/ContourBackend.cmake：仅 crispy/vtpty/vtparser/vtbackend）
 -   [x] \[Zz-Adapter\] vtbackend / vtparser / crispy / libunicode
 -   [ ] \[Zz-Adapter\] Windows `/utf-8`

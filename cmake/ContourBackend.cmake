@@ -22,7 +22,8 @@ include("${CMAKE_CURRENT_BINARY_DIR}/cmake/CPM.cmake")
 # --- 第三方依赖（pin 与 Contour cmake/ContourThirdParties.cmake 一致） ---
 CPMAddPackage(NAME GSL GITHUB_REPOSITORY microsoft/GSL GIT_TAG v3.1.0
     OPTIONS "GSL_TEST=OFF" EXCLUDE_FROM_ALL YES)
-CPMAddPackage(NAME libunicode GITHUB_REPOSITORY contour-terminal/libunicode GIT_TAG v0.9.3
+# 上游 01f68347 起 LIBUNICODE_MINIMAL_VERSION=0.9.4（ContourThirdParties.cmake:93）。
+CPMAddPackage(NAME libunicode GITHUB_REPOSITORY contour-terminal/libunicode GIT_TAG v0.9.4
     OPTIONS "LIBUNICODE_TESTING OFF" "LIBUNICODE_BENCHMARK OFF" "LIBUNICODE_TOOLS OFF"
             "LIBUNICODE_EXAMPLES OFF" "BUILD_SHARED_LIBS OFF"
     EXCLUDE_FROM_ALL YES)
@@ -30,11 +31,30 @@ CPMAddPackage(NAME libunicode GITHUB_REPOSITORY contour-terminal/libunicode GIT_
 # 需显式补 PIC，否则 BUILD_SHARED_LIBS=ON 时链接 libZzTermCore.so 报 R_X86_64_PC32。
 set_target_properties(unicode unicode_ucd PROPERTIES POSITION_INDEPENDENT_CODE ON)
 CPMAddPackage("gh:contour-terminal/boxed-cpp#v1.4.3")
-CPMAddPackage("gh:contour-terminal/reflection-cpp#v0.4.0")
 
-foreach(dep IN ITEMS Microsoft.GSL::GSL unicode::unicode boxed-cpp::boxed-cpp reflection-cpp::reflection-cpp)
+# 上游 01f68347 起 crispy/vtparser/vtpty/vtbackend 不再使用 reflection-cpp（仅 contour GUI 自身用）。
+foreach(dep IN ITEMS Microsoft.GSL::GSL unicode::unicode boxed-cpp::boxed-cpp)
     if(NOT TARGET ${dep})
         message(FATAL_ERROR "Contour 第三方依赖 ${dep} 拉取失败")
+    endif()
+endforeach()
+
+# --- core-cpp（上游新增 vendored 基础库：crispy/vtpty/vtbackend 经 core::base/core::log/
+#     core::cli/core::platform/core::async 依赖它；参照 ContourThirdParties.cmake:225-262） ---
+# TLS 仅 vthost 用（core::net_tls），我们不构建 vthost，故 OFF，也不需要 OpenSSL。
+# FETCH_DEPS=OFF：此时仅剩 Threads 一个条件依赖（find_package 即可满足），不触网。
+set(CORE_CPP_FETCH_DEPS OFF)
+set(CORE_CPP_TESTING OFF)
+set(CORE_CPP_WITH_TUI OFF)
+set(CORE_CPP_WITH_TLS OFF)
+set(CORE_CPP_INSTALL OFF)
+set(CORE_CPP_BUILD_EXAMPLES OFF)
+set(CORE_CPP_PEDANTIC OFF)
+add_subdirectory("${ZZTERM_CONTOUR_ROOT}/vendor/core-cpp" "${CMAKE_BINARY_DIR}/contour/vendor/core-cpp"
+    SYSTEM EXCLUDE_FROM_ALL)
+foreach(dep IN ITEMS core::base core::log core::cli core::platform core::async)
+    if(NOT TARGET ${dep})
+        message(FATAL_ERROR "core-cpp vendored 依赖 ${dep} 构建失败")
     endif()
 endforeach()
 
@@ -47,6 +67,7 @@ target_include_directories(contour_tracy SYSTEM INTERFACE
 # --- 裁剪选项（作用于后续 add_subdirectory 的 Contour 子目录） ---
 set(CONTOUR_TESTING OFF)          # 级联关闭 CRISPY_/VTPTY_/VTPARSER_/LIBTERMINAL_TESTING
 set(CONTOUR_WITH_UTEMPTER OFF)    # 避免 Linux 下链接系统 utempter
+set(CONTOUR_WITH_SYSTEMD OFF)     # 避免 Linux 下依赖 libsystemd（上游 vtpty 新增，默认 ON）
 
 # M1b：ZzTermContourBackend 将 PRIVATE 链入 ZzTermCore；
 # BUILD_SHARED_LIBS=ON 时静态库进动态库必须全员 PIC。
@@ -66,7 +87,7 @@ string(REGEX MATCH "^([0-9]+)\\.([0-9]+)\\.([0-9]+)" _zz_vp "${ZZTERM_CONTOUR_VE
 set(ZZTERM_CONTOUR_VERSION_MAJOR "${CMAKE_MATCH_1}")
 set(ZZTERM_CONTOUR_VERSION_MINOR "${CMAKE_MATCH_2}")
 set(ZZTERM_CONTOUR_VERSION_PATCH "${CMAKE_MATCH_3}")
-message(STATUS "Contour backend version: ${ZZTERM_CONTOUR_VERSION} (pinned commit 6777ff05)")
+message(STATUS "Contour backend version: ${ZZTERM_CONTOUR_VERSION} (pinned commit 01f68347)")
 
 # --- 聚合：目录/函数作用域变量注入，顶替 Contour 顶层 project() 的角色 ---
 # Contour 四个子目录的 CMakeLists 没有自己的 project()，会读取
