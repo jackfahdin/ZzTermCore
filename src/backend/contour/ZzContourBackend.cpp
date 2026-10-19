@@ -6,8 +6,11 @@
 #include <vtbackend/render/RenderBuffer.hpp>
 #include <vtbackend/screen/Screen.hpp>
 #include <vtbackend/screen/Terminal.hpp>
+#include <vtbackend/screen/TerminalClocks.hpp>
+#include <vtbackend/shell/SemanticBlockTracker.hpp>
 
-#include <crispy/Environment.hpp>
+#include <core/Environment.hpp>
+#include <core/platform/NativeFileSystem.hpp>
 
 #include <chrono>
 #include <utility>
@@ -157,10 +160,13 @@ struct ZzContourBackend::Impl
         auto bridgePtr = std::make_unique<ZzContourPtyBridge>(
             pageSize, [this](std::string_view data) { listener.onWriteToTransport(std::string(data)); });
         terminal = std::make_unique<vtbackend::Terminal>(eventsImpl,
-                                                         crispy::defaultEnvironment(),
+                                                         core::defaultEnvironment(),
+                                                         core::platform::NativeFileSystem::instance(),
                                                          std::move(bridgePtr),
                                                          settings,
-                                                         std::chrono::steady_clock::now());
+                                                         std::nullopt,
+                                                         vtbackend::TerminalClocks::system(),
+                                                         vtbackend::randomSemanticBlockTokens());
     }
 };
 
