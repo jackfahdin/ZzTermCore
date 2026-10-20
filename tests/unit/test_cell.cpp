@@ -15,6 +15,36 @@ static int g_failures = 0;
         }                                                                     \
     } while (0)
 
+static void testHyperlinkPresenceBit()
+{
+    ZzCell c;
+    ZZ_TEST_EXPECT(!c.hasHyperlink());
+    c.setHyperlink(true);
+    ZZ_TEST_EXPECT(c.hasHyperlink());
+    // 文本重写路径保位
+    c.setCodePoint(U'a');
+    ZZ_TEST_EXPECT(c.hasHyperlink());
+    ZZ_TEST_EXPECT(c.codePoint() == U'a');
+    c.setCluster(7);
+    ZZ_TEST_EXPECT(c.hasHyperlink());
+    ZZ_TEST_EXPECT(c.isCluster() && c.clusterIndex() == 7);
+    // 清位
+    c.setHyperlink(false);
+    ZZ_TEST_EXPECT(!c.hasHyperlink());
+    ZZ_TEST_EXPECT(c.isCluster() && c.clusterIndex() == 7); // 不动文本
+    // reset 清位
+    c.setHyperlink(true);
+    c.reset();
+    ZZ_TEST_EXPECT(!c.hasHyperlink());
+    // 宽度与 hyperlink 互不干扰
+    ZzCell w;
+    w.setWidth(ZzCellWidth::WideLead);
+    w.setHyperlink(true);
+    ZZ_TEST_EXPECT(w.width() == ZzCellWidth::WideLead && w.hasHyperlink());
+    w.setWidth(ZzCellWidth::Narrow);
+    ZZ_TEST_EXPECT(w.hasHyperlink());
+}
+
 int main()
 {
     // 布局不变量（Cell.h 文件头记录了当前尺寸基线）。
@@ -128,6 +158,8 @@ int main()
     qa.setBold(true);
     q2.setAttributes(qa);
     ZZ_TEST_EXPECT(q2 != packed);
+
+    testHyperlinkPresenceBit();
 
     if (g_failures == 0) {
         std::fprintf(stderr, "test_cell: PASS\n");

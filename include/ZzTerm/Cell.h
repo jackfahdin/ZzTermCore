@@ -313,8 +313,8 @@ enum class ZzCellWidth : std::uint8_t {
  *   用于多码位 cluster（combining marks、variation selector、emoji ZWJ
  *   序列等）；
  * - bits [25:24] = width（ZzCellWidth，两模式均空闲——cluster 索引
- *   最高位是 bit 23）；bit 26 预留（未来稀疏扩展）；
- *   bits [29:27]、bit 31 空闲。
+ *   最高位是 bit 23）；bit 26 = hyperlink 存在位（M22，id 存 ZzLine
+ *   稀疏侧表）；bits [29:27]、bit 31 空闲。
  *
  * 取舍说明（Architecture.md 允许的两种方案权衡）：
  * - 未采用 per-cell SSO 小字符串：即使 8 字节 SSO 也会让 sizeof(ZzCell)
@@ -330,7 +330,7 @@ enum class ZzCellWidth : std::uint8_t {
  * bits[29:24]（fgWord_ 承载低 6 位、bgWord_ 承载高 6 位）——ZzColor
  * 编码 bits[29:24] 恒为 0（kind 占 [31:30]、数据最多 [23:0]），该区间
  * 天然空闲。原 reserved_ 字段删除：hyperlink id / decoration 标记等
- * 稀疏扩展点改由 text_ bit 26 或行级稀疏侧表承担。
+ * 稀疏扩展点已落地为 text_ bit 26（hyperlink 存在位，M22）加行级稀疏侧表。
  */
 struct ZzCell {
     /**
@@ -396,7 +396,7 @@ struct ZzCell {
      */
     constexpr void setCodePoint(char32_t cp) noexcept
     {
-        text_ = (text_ & kWidthMask) | (static_cast<std::uint32_t>(cp) & kCodePointMask);
+        text_ = (text_ & (kWidthMask | kHyperlinkFlag)) | (static_cast<std::uint32_t>(cp) & kCodePointMask);
     }
 
     /**
@@ -405,11 +405,30 @@ struct ZzCell {
      */
     constexpr void setCluster(std::uint32_t index) noexcept
     {
-        text_ = (text_ & kWidthMask) | kClusterFlag | (index & kClusterIndexMask);
+        text_ = (text_ & (kWidthMask | kHyperlinkFlag)) | kClusterFlag | (index & kClusterIndexMask);
     }
 
-    /// @brief 清除文本载荷（不改动颜色/属性/宽度）。
-    constexpr void clearText() noexcept { text_ &= kWidthMask; }
+    /// @brief 清除文本载荷（不改动颜色/属性/宽度/hyperlink 存在位）。
+    constexpr void clearText() noexcept { text_ &= (kWidthMask | kHyperlinkFlag); }
+
+    /**
+     * @brief 是否有 OSC 8 超链接（M22）。
+     * @return true 表示本格属于某个超链接；具体 id 在所属 ZzLine 稀疏侧表。
+     */
+    [[nodiscard]] constexpr bool hasHyperlink() const noexcept
+    {
+        return (text_ & kHyperlinkFlag) != 0;
+    }
+
+    /**
+     * @brief 设置 hyperlink 存在位（M22）。
+     * @param v true 置位，false 清位。
+     * @note 只动存在位；id 的登记/清除走 ZzLine::setCellHyperlink。
+     */
+    constexpr void setHyperlink(bool v) noexcept
+    {
+        text_ = v ? (text_ | kHyperlinkFlag) : (text_ & ~kHyperlinkFlag);
+    }
 
     /// @brief 前景色。
     /// @return 当前前景色。
@@ -470,6 +489,7 @@ private:
     static constexpr std::uint32_t kClusterIndexMask = 0xFFFFFFu;   ///< 24 位索引空间
     static constexpr int           kWidthShift       = 24;          ///< width 驻 text_ bits[25:24]
     static constexpr std::uint32_t kWidthMask        = 0x3u << kWidthShift;
+    static constexpr std::uint32_t kHyperlinkFlag    = 1u << 26;          ///< hyperlink 存在位（M22）
     static constexpr std::uint32_t kColorMask        = 0xC0FFFFFFu; ///< kind[31:30] + 数据[23:0]
     static constexpr int           kAttrsEmbedShift  = 24;          ///< attrs 嵌色字 bits[29:24]
     static constexpr std::uint32_t kAttrsEmbedMask   = 0x3Fu;       ///< 每色字承载 6 位
