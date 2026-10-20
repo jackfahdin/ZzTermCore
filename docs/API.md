@@ -510,7 +510,9 @@ toStitched/fromStitched 涉及。
   `hyperlinkId` 字段（0 = 无链接；M18 `ZzPtyConfig` 尾部新增同先例）；
   `ZzRenderView`/`ZzHistoryView` 新增带默认实现的虚方法
   `hyperlinkUri(std::uint16_t)`（默认回退空串，M19/M20 非纯虚新增同
-  范式）——均为向后兼容 minor 新增，无 break；`ZzTerminal`/`ZzScreen`
-  无签名变化。native 后端由 Screen/Scrollback 两侧维护链接表并覆写
+  范式）——均为向后兼容 minor 新增，无 break；`ZzTerminal` 无签名变化，
+  `ZzScreen` 显式删除了隐式拷贝构造/赋值（`include/ZzTerm/Screen.h`
+  顶部 `= delete`，因 hyperlink 池经 `unique_ptr` 独占持有；仓内无拷贝
+  用法，非 ABI break，ABI 层面仍为 minor 新增）。native 后端由 Screen/Scrollback 两侧维护链接表并覆写
   URI 查询；contour 后端覆写映射上游 Grid 的 hyperlink id（单元格 id
   语义双端各自稳定，跨端不钉同值）。

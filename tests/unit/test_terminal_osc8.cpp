@@ -150,6 +150,29 @@ static void testOsc8ReflowSurvivesResize()
     ZZ_TEST_EXPECT(term.renderView().hyperlinkUri(idBefore) == "https://reflow.example");
 }
 
+// M22-5f：EL/ED 擦除被覆盖格时 hyperlinkId 一并归 0（擦除语义覆盖链接属性）。
+static void testOsc8EraseClearsHyperlink()
+{
+    // EL（\x1b[K）：光标回行首后擦到行尾，链接格 hyperlinkId 归 0
+    {
+        ZzTerminal term(40, 5, ZzBackendKind::Native, 100);
+        feedStr(term, "\x1b]8;;https://el.example\x1b\\link\x1b]8;;\x1b\\ tail");
+        ZZ_TEST_EXPECT(linkAt(term, 0, 0) != 0);
+        feedStr(term, "\r\x1b[K");
+        for (int c = 0; c < 40; ++c)
+            ZZ_TEST_EXPECT(linkAt(term, 0, c) == 0);
+    }
+    // ED（\x1b[J）：光标位于链接行之上时，擦到屏尾连带清掉链接行
+    {
+        ZzTerminal term(40, 5, ZzBackendKind::Native, 100);
+        feedStr(term, "\x1b]8;;https://ed.example\x1b\\link\x1b]8;;\x1b\\");
+        ZZ_TEST_EXPECT(linkAt(term, 0, 0) != 0);
+        feedStr(term, "\x1b[H\x1b[J");
+        for (int c = 0; c < 40; ++c)
+            ZZ_TEST_EXPECT(linkAt(term, 0, c) == 0);
+    }
+}
+
 int main()
 {
     testRenderViewHyperlinkDefaults();
@@ -161,6 +184,7 @@ int main()
     testOsc8Malformed();
     testOsc8HistoryScroll();
     testOsc8ReflowSurvivesResize();
+    testOsc8EraseClearsHyperlink();
     if (g_failures != 0) {
         std::fprintf(stderr, "%d failure(s)\n", g_failures);
         return 1;
