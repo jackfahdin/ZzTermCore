@@ -494,3 +494,15 @@ toStitched/fromStitched 涉及。
   与 native 的 1049h home 语义构成新 b 类分歧（test_backend_compat 的
   alt-write 段分别断言钉住）；②wrap-pending 行尾格的组合符附着的整缓冲
   定位缺陷修复——I-1 整喂 b 类分歧消灭，test_cluster_compat 转对齐断言。
+- M21：contour 后端历史能力两件落地、两件登记（行为补全，公共头无签名
+  变化）。落地：`ZzContourHistoryView::primaryLineCount()` 覆写（Alternate
+  期间读主屏 Grid，buffer 无关口径对齐 native）；
+  `ZzContourBackendAdapter::resizeScreenScrollout()` 覆写——contour 变体
+  口径为「resize 前后主屏历史行数净增量，负值归零」：纯行变收缩时与
+  native 净迁移口径等价；列变 reflow 时 contour 重建行身份，数值为近似
+  （已知偏离，不钉双端一致）；扩行回抽为负归零，调用方走收缩向兜底。
+  登记（contour 上游能力缺口，维持默认回退）：`clearCount()`——contour
+  ED3 清史不转发 Events 监听器且清的是 currentScreen（与 xterm/native
+  「恒清 Primary」分歧），解封条件为上游提供清史事件并 Align 语义；
+  `prependHistoryLines()`——contour Grid 无最旧端注入 API，解封条件为
+  上游提供注入原语。规格：docs/superpowers/specs/2026-10-19-m21-contour-history-pair-design.md。

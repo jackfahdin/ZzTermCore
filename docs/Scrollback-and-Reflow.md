@@ -319,3 +319,9 @@ Z3 账本 :33 决议：contour 后端的滚动/历史读回回退洞不修，仅
 
 对应 Core 规格条目：`docs/API.md` M19（历史最旧端注入原语）与
 M20（HistoryView 增量 API）两条。
+
+M21 状态更新（2026-10-20）：`primaryLineCount()` 与
+`resizeScreenScrollout()` 已落地（后者为变体口径，见 API.md M21）；
+`clearCount()` 与 `prependHistoryLines()` 确认为 contour 上游能力缺口
+（ED3 无事件钩子 + Grid 无最旧端注入 API），维持登记，解封条件见
+API.md M21 条目。上游 PR 评估为独立后续事项。
