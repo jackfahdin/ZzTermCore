@@ -48,6 +48,13 @@ if(TARGET test_reflow)
     target_sources(test_reflow PRIVATE "${CMAKE_SOURCE_DIR}/src/screen/Reflow.cpp")
 endif()
 
+# test_hyperlink_pool 直接调用内部实现（src/screen，无 ZZTERM_API 导出）：
+# shared 构建下须把实现文件编进测试可执行文件。
+if(TARGET test_hyperlink_pool)
+    target_include_directories(test_hyperlink_pool PRIVATE "${CMAKE_SOURCE_DIR}/src")
+    target_sources(test_hyperlink_pool PRIVATE "${CMAKE_SOURCE_DIR}/src/screen/HyperlinkPool.cpp")
+endif()
+
 # test_selection / test_selection_text 直接调用 src/terminal 内部实现（无
 # ZZTERM_API 导出）：shared 构建下须把实现文件编进测试可执行文件。
 if(TARGET test_selection)

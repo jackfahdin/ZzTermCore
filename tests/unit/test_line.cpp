@@ -52,9 +52,42 @@ static void testLine()
     ZZ_TEST_EXPECT(line.cellAt(3).isEmpty());
 }
 
+static void testHyperlinkSideTable()
+{
+    ZzLine line(10);
+    ZZ_TEST_EXPECT(line.hyperlinkIdAt(3) == 0); // 无侧表恒 0
+    line.setCellHyperlink(3, 42);
+    ZZ_TEST_EXPECT(line.hyperlinkIdAt(3) == 42);
+    ZZ_TEST_EXPECT(line.cellAt(3).hasHyperlink());
+    ZZ_TEST_EXPECT(line.hyperlinkIdAt(4) == 0); // 邻格不受影响
+    line.setCellHyperlink(3, 0);                // id=0 清除
+    ZZ_TEST_EXPECT(line.hyperlinkIdAt(3) == 0);
+    ZZ_TEST_EXPECT(!line.cellAt(3).hasHyperlink());
+}
+
+static void testHyperlinkSideTableShift()
+{
+    ZzLine line(8);
+    line.setCellHyperlink(5, 9);
+    line.eraseCells(0, 2);      // 左移 2 格：id 必须跟到 col 3
+    ZZ_TEST_EXPECT(line.hyperlinkIdAt(3) == 9);
+    ZZ_TEST_EXPECT(line.hyperlinkIdAt(5) == 0);
+    line.insertCells(0, 1);     // 右移 1 格：id 跟到 col 4
+    ZZ_TEST_EXPECT(line.hyperlinkIdAt(4) == 9);
+    line.resize(3);             // 截断：col 4 越界丢弃
+    ZZ_TEST_EXPECT(line.cellCount() == 3);
+    line.resize(8);             // 补零增长
+    ZZ_TEST_EXPECT(line.hyperlinkIdAt(4) == 0);
+    line.setCellHyperlink(2, 7);
+    line.clear();               // 清零
+    ZZ_TEST_EXPECT(line.hyperlinkIdAt(2) == 0);
+}
+
 int main()
 {
     testLine();
+    testHyperlinkSideTable();
+    testHyperlinkSideTableShift();
 
     if (g_failures == 0) {
         std::fprintf(stderr, "test_line: PASS\n");

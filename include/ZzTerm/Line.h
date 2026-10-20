@@ -124,8 +124,25 @@ public:
      */
     [[nodiscard]] std::string_view clusterText(std::uint32_t index) const noexcept;
 
+    /**
+     * @brief 设置指定列的 hyperlink id（M22；Core 内部使用）。
+     * @param col 列号，0 <= col < cellCount()。
+     * @param id hyperlinkId（0 = 清除本格链接标记）。
+     * @note id != 0 时置 cell bit26 并登记侧表（按需分配，大小对齐列数）；
+     *       id == 0 时清 bit26（侧表条目保留但不可达）。
+     */
+    void setCellHyperlink(int col, std::uint16_t id);
+
+    /**
+     * @brief 指定列的 hyperlink id。
+     * @param col 列号。
+     * @return hyperlinkId；无链接（bit26 未置）或越界时返回 0。
+     */
+    [[nodiscard]] std::uint16_t hyperlinkIdAt(int col) const noexcept;
+
 private:
     std::vector<ZzCell>      cells_;    ///< 单元格数组（不对外暴露）。
     std::vector<std::string> clusters_; ///< grapheme cluster 侧表（见 Cell.h 取舍说明）。
+    std::vector<std::uint16_t> hyperlinks_; ///< hyperlink id 稀疏侧表（M22）；空 = 无链接行
     bool                     wrapped_ = false; ///< soft wrap 标记。
 };
