@@ -97,11 +97,13 @@ public:
 
     /// @brief 不可拷贝（池经 unique_ptr 独占持有）；可移动。
     ZzScreen(const ZzScreen&) = delete;
-    /// @brief 不可拷贝赋值（同上）。
+    /// @brief 不可拷贝赋值。
+    /// @return 不可达（已删除）。
     ZzScreen& operator=(const ZzScreen&) = delete;
     /// @brief 移动构造（整体转移双缓冲、池与回调；源对象仅可析构/被赋值）。
     ZzScreen(ZzScreen&&) noexcept;
     /// @brief 移动赋值（同上）。
+    /// @return 本对象引用。
     ZzScreen& operator=(ZzScreen&&) noexcept;
 
     /**
