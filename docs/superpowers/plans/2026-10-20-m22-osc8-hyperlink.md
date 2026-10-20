@@ -1308,7 +1308,7 @@ paintWrapped / paintUnwrapped 的逐格绘制循环内（写文本/背景之后�
 - [ ] **步骤 6：验收文档**
 
 新建 `docs/acceptance/v0.5-manual-acceptance.md`（照 v0.4 格式），用例：
-1. `printf '\e]8;;https://www.example.com\e\\example链接\e]8;;\e\\\n'`——Ctrl 悬停：下划线+手型+tooltip 显示完整 URI；Ctrl+点击：浏览器打开
+1. `printf '\\e]8;;https://www.example.com\\e\\example链接\\e]8;;\\e\\\n'`——Ctrl 悬停：下划线+手型+tooltip 显示完整 URI；Ctrl+点击：浏览器打开
 2. 长 URL 折行：悬停任一段，两段一起高亮
 3. 同 id 两段链接（`id=x`）：同 2
 4. 设置关闭 hyperlinkEnabled：Ctrl+点击无反应，悬停无下划线
