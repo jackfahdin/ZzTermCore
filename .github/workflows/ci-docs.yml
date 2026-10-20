@@ -10,9 +10,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: 安装 Doxygen 与 Graphviz（dot 供依赖图渲染，缺失在 WARN_AS_ERROR 下即失败）
+      # apt 源的 Doxygen 版本过旧（WARN_AS_ERROR 行为与新版差异大），改用官方发布的最新稳定版二进制
+      - name: 安装最新稳定版 Doxygen 与 Graphviz（dot 供依赖图渲染，缺失在 WARN_AS_ERROR 下即失败）
         run: |
           sudo apt-get update
-          sudo apt-get install -y doxygen graphviz
+          sudo apt-get install -y graphviz
+          tag=$(curl -s https://api.github.com/repos/doxygen/doxygen/releases/latest | jq -r .tag_name)
+          ver=$(echo "$tag" | sed 's/^Release_//; s/_/./g')
+          echo "最新稳定版 Doxygen: $ver"
+          curl -sL -o /tmp/doxygen.tar.gz "https://github.com/doxygen/doxygen/releases/download/${tag}/doxygen-${ver}.linux.bin.tar.gz"
+          tar xzf /tmp/doxygen.tar.gz -C /tmp
+          sudo install -m 0755 /tmp/doxygen-${ver}/bin/* /usr/local/bin/
+          doxygen --version
       - name: 生成 API 文档（warning 即失败）
         run: doxygen Doxyfile
