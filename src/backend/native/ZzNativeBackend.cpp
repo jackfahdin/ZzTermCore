@@ -5,6 +5,7 @@
 
 #include "unicode/GraphemeBreak.h"
 #include "unicode/Utf8Encode.h"
+#include "screen/HyperlinkPool.h"
 
 #include <algorithm>
 #include <string>
@@ -450,6 +451,8 @@ void ZzNativeBackend::putChar(char32_t cp)
 
     // M7b 聚簇续接（无状态回望，T2 裁定表）：新码点与前格 cluster 判续，
     // 续则并入前格不推进光标（宽度/画笔/软换行边界语义逐条按裁定表）。
+    // 设计取舍（M22）：并入时继承前格既有链接标记，不另设链接；前格无链接
+    // 而新码位落在 OSC 8 链接区间内的边角语义第一版不做。
     if (zzTryClusterContinue(screen_, cp, cur, didWrap, wasWrapPending)) {
         noteScreenDirty();
         return;
@@ -463,6 +466,8 @@ void ZzNativeBackend::putChar(char32_t cp)
     cell.setAttributes(penAttrs_);
     clearWidePairAt(cur);
     screen_.putCell(cur, cell);
+    if (currentHyperlinkId_ != 0)
+        screen_.setCellHyperlink(cur, currentHyperlinkId_);
     if (width == 2) {
         ZzCell cont;
         cont.setWidth(ZzCellWidth::WideContinuation);
@@ -471,6 +476,8 @@ void ZzNativeBackend::putChar(char32_t cp)
         const ZzPosition contPos{cur.row, cur.col + 1};
         clearWidePairAt(contPos);
         screen_.putCell(contPos, cont);
+        if (currentHyperlinkId_ != 0)
+            screen_.setCellHyperlink(contPos, currentHyperlinkId_);
     }
     noteScreenDirty();
 
@@ -589,9 +596,52 @@ void ZzNativeBackend::dispatchOsc(std::string_view payload)
     if (sep == std::string_view::npos)
         return;
     const std::string_view code = payload.substr(0, sep);
+    if (code == "8") {
+        dispatchOsc8Hyperlink(payload.substr(sep + 1));
+        return;
+    }
     if (code != "0" && code != "1" && code != "2")
         return; // 仅窗口/图标标题（OSC 0/1/2），其余安全忽略
     title_ = std::string(payload.substr(sep + 1));
     if (activeChanges_)
         activeChanges_->titleChanged = true;
+}
+
+void ZzNativeBackend::dispatchOsc8Hyperlink(std::string_view rest)
+{
+    // rest = "params;URI"：URI 内特殊字符按协议须百分号编码，故第二个 ';'
+    // 之后的全部内容即 URI（含 ';' 亦不歧义）。
+    const std::size_t sep2 = rest.find(';');
+    if (sep2 == std::string_view::npos)
+        return; // 缺 URI 段：忽略
+    const std::string_view params = rest.substr(0, sep2);
+    const std::string_view uri = rest.substr(sep2 + 1);
+
+    if (uri.empty()) { // 关闭链接
+        osc8Uri_.clear();
+        osc8UserId_.clear();
+        currentHyperlinkId_ = 0;
+        return;
+    }
+    for (const char ch : uri)
+        if (static_cast<unsigned char>(ch) < 0x20)
+            return; // URI 含控制字符：整条忽略
+
+    // params：以 ':' 分隔的 key=value，只认 id
+    std::string_view userId;
+    std::size_t pos = 0;
+    while (pos <= params.size()) {
+        const std::size_t colon = params.find(':', pos);
+        const std::string_view kv = params.substr(
+            pos, colon == std::string_view::npos ? colon : colon - pos);
+        if (kv.starts_with("id="))
+            userId = kv.substr(3);
+        if (colon == std::string_view::npos)
+            break;
+        pos = colon + 1;
+    }
+
+    osc8Uri_ = std::string(uri);
+    osc8UserId_ = std::string(userId);
+    currentHyperlinkId_ = screen_.hyperlinkPool().intern(osc8Uri_, osc8UserId_);
 }

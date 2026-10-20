@@ -51,6 +51,8 @@ public:
     void dispatchCsi(const ZzParamSequence& seq);
     void dispatchEsc(std::string_view intermediates, char final);
     void dispatchOsc(std::string_view payload);
+    /// OSC 8 超链接开/关（dispatchOsc 的 "8" 分支，rest 为 "params;URI" 段）。
+    void dispatchOsc8Hyperlink(std::string_view rest);
     void sgr(const ZzParamSequence& seq);
     void dispatchDecPrivate(const ZzParamSequence& seq); // DEC 私有 CSI（? 前缀）
     void switchToAlternate(bool saveCursor); // 1049h/1047h 进入备用屏幕
@@ -85,6 +87,9 @@ public:
     ZzCellAttributes            penAttrs_; ///< 当前画笔属性（SGR）。
     ZzColor penFg_ = ZzColor::Default();  ///< 当前画笔前景色。
     ZzColor penBg_ = ZzColor::Default();  ///< 当前画笔背景色。
+    std::string    osc8Uri_;             ///< OSC 8 当前链接 URI（空 = 无活动链接）。
+    std::string    osc8UserId_;          ///< OSC 8 id= 参数（跨段关联键）。
+    std::uint16_t  currentHyperlinkId_ = 0; ///< 当前链接的池 id（0 = 无）。
     ZzTermChanges* activeChanges_ = nullptr; ///< feed 期间的变化聚合目标。
     bool ambiguousWide_ = false; ///< Ambiguous 按 2 列（CJK 模式）。
     ZzInputEncoder encoder_; ///< 输入编码器（模式位由 CSI/ESC 分发同步，M3a）。
