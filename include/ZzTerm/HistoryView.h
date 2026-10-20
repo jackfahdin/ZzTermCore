@@ -17,6 +17,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <string>
 
 /**
  * @brief 历史行只读视图接口（双后端统一）。
@@ -88,4 +89,18 @@ public:
      *       历史同样计入（buffer 无关）。
      */
     [[nodiscard]] virtual std::uint64_t clearCount() const noexcept { return 0; }
+
+    /**
+     * @brief 按 hyperlinkId 查链接 URI（M22，历史行语境）。
+     * @param hyperlinkId 历史行 ZzCellView::hyperlinkId 读到的 id。
+     * @return URI 字符串；id 为 0、未登记或已被 LRU 淘汰时返回空串（视为无链接）。
+     * @note 同 id 即同链接（含 OSC 8 `id=` 跨段关联）：前端做跨段高亮时
+     *       以 hyperlinkId 相等为判据，无需解析 URI。
+     * @note 默认实现返回空串（无链接后端的保守降级）。
+     */
+    [[nodiscard]] virtual std::string hyperlinkUri(std::uint16_t hyperlinkId) const
+    {
+        (void)hyperlinkId;
+        return {};
+    }
 };

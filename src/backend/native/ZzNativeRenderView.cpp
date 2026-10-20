@@ -4,6 +4,7 @@
 #include <ZzTerm/Screen.h>
 
 #include "unicode/Utf8Encode.h"
+#include "screen/HyperlinkPool.h"
 
 namespace {
 
@@ -37,6 +38,13 @@ bool ZzNativeRenderView::rowDirty(int row) const noexcept { return screen_->rowD
 
 ZzCellRange ZzNativeRenderView::dirtyRange(int row) const noexcept { return screen_->dirtyRange(row); }
 
+std::string ZzNativeRenderView::hyperlinkUri(std::uint16_t hyperlinkId) const
+{
+    if (const auto* entry = screen_->hyperlinkPool().lookup(hyperlinkId))
+        return entry->uri;
+    return {};
+}
+
 ZzCellView ZzNativeRenderView::cellAtThunk(const void* storage, int col)
 {
     const ZzLine& line = lineFrom(storage);
@@ -51,6 +59,7 @@ ZzCellView ZzNativeRenderView::cellAtThunk(const void* storage, int col)
     view.background = cell.background();
     view.attributes = cell.attributes();
     view.width      = cell.width();
+    view.hyperlinkId = line.hyperlinkIdAt(col);
     return view;
 }
 

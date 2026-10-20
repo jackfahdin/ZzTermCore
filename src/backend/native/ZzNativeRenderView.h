@@ -16,6 +16,7 @@ public:
     [[nodiscard]] std::uint64_t dirtyGeneration() const noexcept override;
     [[nodiscard]] bool rowDirty(int row) const noexcept override;
     [[nodiscard]] ZzCellRange dirtyRange(int row) const noexcept override;
+    [[nodiscard]] std::string hyperlinkUri(std::uint16_t hyperlinkId) const override;
 
 private:
     static ZzCellView cellAtThunk(const void* storage, int col);

@@ -21,6 +21,7 @@ public:
     [[nodiscard]] std::uint64_t droppedLineCount() const noexcept override;
     [[nodiscard]] std::uint64_t generation() const noexcept override;
     [[nodiscard]] std::uint64_t clearCount() const noexcept override;
+    [[nodiscard]] std::string hyperlinkUri(std::uint16_t hyperlinkId) const override;
 
 private:
     static ZzCellView cellAtThunk(const void* storage, int col);

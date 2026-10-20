@@ -23,8 +23,18 @@ static void feedStr(ZzTerminal& term, std::string_view s)
     term.feed(std::as_bytes(std::span{s.data(), s.size()}));
 }
 
+// 任务 6：契约默认值路径——无 OSC 8 时 hyperlinkId 恒 0、hyperlinkUri(0) 为空串。
+static void testRenderViewHyperlinkDefaults()
+{
+    ZzTerminal term(20, 5, ZzBackendKind::Native, 100);
+    feedStr(term, "ab");
+    ZZ_TEST_EXPECT(term.renderView().lineAt(0).cellAt(0).hyperlinkId == 0);
+    ZZ_TEST_EXPECT(term.renderView().hyperlinkUri(0).empty());
+}
+
 int main()
 {
+    testRenderViewHyperlinkDefaults();
     // 任务 4 补全 OSC 8 端到端用例。
     if (g_failures != 0) {
         std::fprintf(stderr, "%d failure(s)\n", g_failures);

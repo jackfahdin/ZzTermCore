@@ -20,7 +20,8 @@ struct ZzCellView {
     ZzColor          foreground = ZzColor::Default();   ///< 前景色（默认 Default）
     ZzColor          background = ZzColor::Default();   ///< 背景色（默认 Default）
     ZzCellAttributes attributes;                        ///< 样式属性位（粗体/斜体/下划线等）
-    ZzCellWidth      width      = ZzCellWidth::Narrow;  ///< 单元格宽度（Narrow/Wide）
+    ZzCellWidth      width       = ZzCellWidth::Narrow; ///< 单元格宽度（Narrow/Wide）
+    std::uint16_t    hyperlinkId = 0;                   ///< OSC 8 链接 id（M22；0 = 无链接）
 };
 
 /// \brief 行只读访问句柄：类型擦除值语义（内联存储后端行状态，无堆分配、无寿命问题）。
@@ -117,4 +118,17 @@ public:
      * @return 该行的脏格区间。
      */
     [[nodiscard]] virtual ZzCellRange dirtyRange(int row) const noexcept = 0;
+    /**
+     * @brief 按 hyperlinkId 查链接 URI（M22）。
+     * @param hyperlinkId ZzCellView::hyperlinkId 读到的 id。
+     * @return URI 字符串；id 为 0、未登记或已被 LRU 淘汰时返回空串（视为无链接）。
+     * @note 同 id 即同链接（含 OSC 8 `id=` 跨段关联）：前端做跨段高亮时
+     *       以 hyperlinkId 相等为判据，无需解析 URI。
+     * @note 默认实现返回空串（无链接后端的保守降级）。
+     */
+    [[nodiscard]] virtual std::string hyperlinkUri(std::uint16_t hyperlinkId) const
+    {
+        (void)hyperlinkId;
+        return {};
+    }
 };

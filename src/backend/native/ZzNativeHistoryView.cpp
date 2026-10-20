@@ -5,6 +5,7 @@
 #include <ZzTerm/Scrollback.h>
 
 #include "unicode/Utf8Encode.h"
+#include "screen/HyperlinkPool.h"
 
 namespace {
 
@@ -60,6 +61,13 @@ std::uint64_t ZzNativeHistoryView::clearCount() const noexcept
     return *clearCount_; // M20：ED3 清史累计计数（buffer 无关，命令执行口径）
 }
 
+std::string ZzNativeHistoryView::hyperlinkUri(std::uint16_t hyperlinkId) const
+{
+    if (const auto* entry = screen_->hyperlinkPool().lookup(hyperlinkId))
+        return entry->uri;
+    return {};
+}
+
 ZzCellView ZzNativeHistoryView::cellAtThunk(const void* storage, int col)
 {
     const ZzLine& line = lineFrom(storage);
@@ -74,6 +82,7 @@ ZzCellView ZzNativeHistoryView::cellAtThunk(const void* storage, int col)
     view.background = cell.background();
     view.attributes = cell.attributes();
     view.width      = cell.width();
+    view.hyperlinkId = line.hyperlinkIdAt(col);
     return view;
 }
 
