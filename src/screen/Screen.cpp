@@ -4,6 +4,7 @@
 #include <iterator>
 
 #include "Reflow.h"
+#include "HyperlinkPool.h"
 
 // ZzScreen 实现骨架（M0）。
 // 说明：本文件实现网格级原语；光标相对滚动区换算、DECAWM 换行、
@@ -28,6 +29,7 @@ ZzScreen::ZzScreen(int cols, int rows)
     , scrollTop_(0)
     , scrollBottom_(std::max(rows, 1) - 1)
     , tabStops_(static_cast<std::size_t>(std::max(cols, 1)), 0)
+    , hyperlinkPool_(std::make_unique<ZzHyperlinkPool>())
 {
     primary_.resize(cols_, rows_);
     alternate_.resize(cols_, rows_);
@@ -35,6 +37,11 @@ ZzScreen::ZzScreen(int cols, int rows)
     for (int c = 8; c < cols_; c += 8)
         tabStops_[static_cast<std::size_t>(c)] = 1;
 }
+
+// 不完整类型 ZzHyperlinkPool 在本翻译单元闭合，特殊成员函数在此默认化。
+ZzScreen::~ZzScreen() = default;
+ZzScreen::ZzScreen(ZzScreen&&) noexcept = default;
+ZzScreen& ZzScreen::operator=(ZzScreen&&) noexcept = default;
 
 ZzSize ZzScreen::size() const noexcept
 {
@@ -287,6 +294,26 @@ void ZzScreen::setLineWrapped(int row, bool wrapped) noexcept
     Buffer& buf = active_ == ZzScreenBuffer::Primary ? primary_ : alternate_;
     buf.lines[static_cast<std::size_t>(row)].setWrapped(wrapped);
     markRowDirty(row);
+}
+
+ZzHyperlinkPool& ZzScreen::hyperlinkPool() noexcept
+{
+    return *hyperlinkPool_;
+}
+
+const ZzHyperlinkPool& ZzScreen::hyperlinkPool() const noexcept
+{
+    return *hyperlinkPool_;
+}
+
+void ZzScreen::setCellHyperlink(ZzPosition pos, std::uint16_t id) noexcept
+{
+    // 与 putCell 同通道取活动缓冲区可变行；越界忽略。列界由 ZzLine 自查。
+    // 不动 dirty：hyperlink 变化的重绘标脏由调用方走既有 noteScreenDirty 路径。
+    if (pos.row < 0 || pos.row >= rows_)
+        return;
+    Buffer& buf = active_ == ZzScreenBuffer::Primary ? primary_ : alternate_;
+    buf.lines[static_cast<std::size_t>(pos.row)].setCellHyperlink(pos.col, id);
 }
 
 ZzCursorState ZzScreen::cursor() const noexcept

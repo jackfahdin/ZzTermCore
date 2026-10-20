@@ -2,6 +2,8 @@
 
 #include <cstdint>
 #include <functional>
+#include <memory>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -37,6 +39,10 @@ enum class ZzEraseMode : std::uint8_t {
     FromStart = 1, ///< 从开头擦到光标（含）。
     All      = 2  ///< 全部擦除。
 };
+
+/// @brief 终端级 hyperlink id→URI 池（M22）前向声明——内部类型
+///        （src/screen/HyperlinkPool.h），公开头只露引用。
+class ZzHyperlinkPool;
 
 /**
  * @brief 终端工作区。
@@ -84,6 +90,16 @@ public:
      * @param rows 行数（> 0）。
      */
     ZzScreen(int cols, int rows);
+
+    /// @brief 析构（hyperlink 池经 unique_ptr 持有，定义在 Screen.cpp
+    ///        以闭合 ZzHyperlinkPool 不完整类型）。
+    ~ZzScreen();
+
+    /// @brief 不可拷贝（池经 unique_ptr 独占持有）；可移动。
+    ZzScreen(const ZzScreen&) = delete;
+    ZzScreen& operator=(const ZzScreen&) = delete;
+    ZzScreen(ZzScreen&&) noexcept;
+    ZzScreen& operator=(ZzScreen&&) noexcept;
 
     /**
      * @brief 返回网格尺寸。
@@ -189,6 +205,24 @@ public:
      * @param wrapped true 表示本行末尾软换行续接下一 physical row。
      */
     void setLineWrapped(int row, bool wrapped) noexcept;
+
+    /**
+     * @brief 终端级 hyperlink id→URI 池（M22）。
+     * @return 池的引用；随 ZzScreen 存活。
+     * @note 屏幕/历史/Alternate 共用同一 id 空间；行跨域移动 id 稳定。
+     *       LRU 容量 1024，被淘汰 id 的 lookup 返回 nullptr（视为无链接）。
+     *       非 const 重载供 backend 写路径（intern），const 重载供 view 查询。
+     */
+    [[nodiscard]] ZzHyperlinkPool& hyperlinkPool() noexcept;
+    [[nodiscard]] const ZzHyperlinkPool& hyperlinkPool() const noexcept;
+
+    /**
+     * @brief 设置活动缓冲区指定格的 hyperlink id（M22；Core 内部使用）。
+     * @param pos 目标位置（越界忽略）。
+     * @param id hyperlinkId（0 = 清除）。
+     * @note 只写 bit26 + 行侧表；不动 dirty（调用方走既有 noteScreenDirty 路径）。
+     */
+    void setCellHyperlink(ZzPosition pos, std::uint16_t id) noexcept;
 
     // ---- 光标 ----
 
@@ -476,4 +510,5 @@ private:
     ScrollOutCallback   scrollOutCallback_;
     HistoryPullCallback historyPullCallback_;
     SeverSeamLinkCallback severSeamLinkCallback_;
+    std::unique_ptr<ZzHyperlinkPool> hyperlinkPool_; ///< hyperlink id→URI 池（M22）。
 };
