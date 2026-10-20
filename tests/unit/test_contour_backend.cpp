@@ -3,6 +3,8 @@
 #include "ZzContourBackend.h"
 #include "ZzContourPtyBridge.h"
 
+#include <ZzTerm/Terminal.h>
+
 #include <cstdio>
 #include <string>
 #include <string_view>
@@ -337,6 +339,22 @@ void testCjkWideCell()
     ZZ_CHECK(snap.cursor.has_value() && snap.cursor->column == 2);
 }
 
+void feedStr(ZzTerminal& term, const std::string& s)
+{
+    term.feed(std::span<const std::byte>(reinterpret_cast<const std::byte*>(s.data()), s.size()));
+}
+
+// M22：OSC 8 超链接经 facade 端到端——renderView 逐格 hyperlinkId + URI 查询。
+void testContourOsc8()
+{
+    ZzTerminal term(40, 5, ZzBackendKind::Contour, 100);
+    feedStr(term, "\x1b]8;;https://contour.example\x1b\\link\x1b]8;;\x1b\\");
+    const ZzCellView c0 = term.renderView().lineAt(0).cellAt(0);
+    ZZ_CHECK(c0.hyperlinkId != 0);
+    ZZ_CHECK(term.renderView().hyperlinkUri(c0.hyperlinkId) == "https://contour.example");
+    ZZ_CHECK(term.renderView().lineAt(0).cellAt(5).hyperlinkId == 0);
+}
+
 } // namespace
 
 int main()
@@ -359,6 +377,7 @@ int main()
     testDeviceAttributes();
     testChunkBoundaries();
     testCjkWideCell();
+    testContourOsc8();
     if (g_failures != 0)
         std::fprintf(stderr, "test_contour_backend: %d failure(s)\n", g_failures);
     return g_failures == 0 ? 0 : 1;

@@ -3,6 +3,7 @@
 #include "ZzContourBackend.h"
 #include "ZzContourConvert.h"
 
+#include <vtbackend/core/Hyperlink.hpp>
 #include <vtbackend/core/LineFlags.hpp>
 #include <vtbackend/screen/Screen.hpp>
 
@@ -43,6 +44,11 @@ ZzSize ZzContourRenderView::size() const noexcept
 bool ZzContourRenderView::isAlternateScreen() const noexcept
 {
     return backend_->isAlternateScreen();
+}
+
+std::string ZzContourRenderView::hyperlinkUri(std::uint16_t hyperlinkId) const
+{
+    return backend_->hyperlinkUri(hyperlinkId);
 }
 
 ZzLineView ZzContourRenderView::lineAt(int row) const
@@ -93,6 +99,10 @@ ZzCellView ZzContourRenderView::cellAtThunk(const void* storage, int col)
         view.foreground = zzColor(cell.foregroundColor());
         view.background = zzColor(cell.backgroundColor());
         view.attributes = zzAttributes(cell.flags());
+        // M22：逐格 hyperlink id（boxed uint16；0 值格保持默认 0）。
+        const auto hid = gridLine.storage().hyperlinks[static_cast<std::size_t>(col)];
+        if (!!hid)
+            view.hyperlinkId = hid.value;
     }
     return view;
 }

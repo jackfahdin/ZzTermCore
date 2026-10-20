@@ -81,6 +81,8 @@ public:
     [[nodiscard]] ZzLine screenLineSnapshot(int row) const;
     /// \brief 历史第 i 行是否续到下一行（等价快照内 wrapped，轻量路径）。
     [[nodiscard]] bool historyLineWrapped(int historyIndex) const;
+    /// \brief 按 hyperlinkId 查上游 URI（M22）；淘汰/未登记返回空串。
+    [[nodiscard]] std::string hyperlinkUri(std::uint16_t hyperlinkId) const;
     /// \brief Grid stable id 下限（容量裁剪丢弃探测；单调，zero-history 分支可回退）。
     [[nodiscard]] std::int64_t stableFloor() const;
     /// \brief 把缓冲中的终端回传字节（DA 响应等）经 onWriteToTransport 发出。

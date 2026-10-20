@@ -25,6 +25,8 @@ public:
     [[nodiscard]] bool isAlternateScreen() const noexcept override;
     [[nodiscard]] ZzLineView lineAt(int row) const override;
     [[nodiscard]] ZzCursorState cursor() const override;
+    /// \brief 按 hyperlinkId 查上游 URI（M22）；转发到 backend 的 HyperlinkStorage。
+    [[nodiscard]] std::string hyperlinkUri(std::uint16_t hyperlinkId) const override;
     [[nodiscard]] std::uint64_t dirtyGeneration() const noexcept override
     {
         return state_->dirtyGeneration;

@@ -3,6 +3,7 @@
 #include "ZzContourConvert.h"
 #include "ZzContourPtyBridge.h"
 
+#include <vtbackend/core/Hyperlink.hpp>
 #include <vtbackend/render/RenderBuffer.hpp>
 #include <vtbackend/screen/Screen.hpp>
 #include <vtbackend/screen/Terminal.hpp>
@@ -94,6 +95,11 @@ ZzLine zzSnapshotContourLine(const vtbackend::Line& line, int cols, bool nextLin
                     cell.setCodePoint(soa.codepoints[col]);
             }
             out.setCell(col, cell);
+            // M22：逐格 hyperlink id 带进 ZzLine 稀疏侧表（boxed uint16，0 值格跳过）。
+            // 须在 setCell 之后调用：setCell 整格覆写会抹掉 setCellHyperlink 置的存在位。
+            const auto hid = soa.hyperlinks[static_cast<std::size_t>(col)];
+            if (!!hid)
+                out.setCellHyperlink(col, hid.value);
         }
     }
     else
@@ -286,6 +292,16 @@ std::int64_t ZzContourBackend::stableFloor() const
 {
     // Screen 无 stableRangeFloor 转发，须走 grid()（Grid.hpp:836，public）。
     return impl_->terminal->currentScreen().grid().stableRangeFloor();
+}
+
+std::string ZzContourBackend::hyperlinkUri(std::uint16_t hyperlinkId) const
+{
+    if (hyperlinkId == 0)
+        return {};
+    // HyperlinkStorage 为 LRU(1024)：淘汰 id 查得空指针，按无链接返回空串。
+    const auto info = impl_->terminal->hyperlinks().hyperlinkById(
+        vtbackend::HyperlinkId(hyperlinkId));
+    return info ? info->uri : std::string {};
 }
 
 void ZzContourBackend::flushReplies()

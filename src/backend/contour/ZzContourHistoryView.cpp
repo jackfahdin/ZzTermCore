@@ -50,6 +50,11 @@ std::uint64_t ZzContourHistoryView::generation() const noexcept
     return *generation_;
 }
 
+std::string ZzContourHistoryView::hyperlinkUri(std::uint16_t hyperlinkId) const
+{
+    return backend_->hyperlinkUri(hyperlinkId);
+}
+
 ZzCellView ZzContourHistoryView::cellAtThunk(const void* storage, int col)
 {
     const ZzLine& line = lineFrom(storage);
@@ -64,6 +69,7 @@ ZzCellView ZzContourHistoryView::cellAtThunk(const void* storage, int col)
     view.background = cell.background();
     view.attributes = cell.attributes();
     view.width      = cell.width();
+    view.hyperlinkId = line.hyperlinkIdAt(col); // M22：快照行侧表逐格 id
     return view;
 }
 

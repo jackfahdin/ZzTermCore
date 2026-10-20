@@ -22,6 +22,8 @@ public:
     [[nodiscard]] ZzLineView lineAt(std::size_t index) const override;
     [[nodiscard]] std::uint64_t droppedLineCount() const noexcept override;
     [[nodiscard]] std::uint64_t generation() const noexcept override;
+    /// \brief 按 hyperlinkId 查上游 URI（M22）；转发到 backend 的 HyperlinkStorage。
+    [[nodiscard]] std::string hyperlinkUri(std::uint16_t hyperlinkId) const override;
 
 private:
     static ZzCellView cellAtThunk(const void* storage, int col);

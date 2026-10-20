@@ -116,6 +116,24 @@ void testScrollbackSaturation()
     ZZ_CHECK(!lastScrollbackChanged);  // 饱和后 scrollbackChanged 停报
 }
 
+// M22：经 lineSource/history 快照路径，hyperlinkId 逐格带进 ZzLine 侧表。
+void testContourSnapshotHyperlink()
+{
+    ZzTerminal term(40, 5, ZzBackendKind::Contour, 100);
+    auto feedStr = [&term](const std::string& s) {
+        term.feed(std::span<const std::byte>(reinterpret_cast<const std::byte*>(s.data()), s.size()));
+    };
+    feedStr("\x1b]8;;https://snap.example\x1b\\snap\x1b]8;;\x1b\\");
+    // 挤一行历史（屏幕 5 行，输出 6+ 行使首行入史）
+    for (int i = 0; i < 6; ++i)
+        feedStr("\n");
+    const ZzLineView hv = term.historyView().lineAt(0);
+    bool found = false;
+    for (int c = 0; c < hv.cellCount(); ++c)
+        if (hv.cellAt(c).hyperlinkId != 0) { found = true; break; }
+    ZZ_CHECK(found);
+}
+
 } // namespace
 
 int main()
@@ -124,6 +142,7 @@ int main()
     testChangesAndDirty();
     testResizeAndCursor();
     testScrollbackSaturation();
+    testContourSnapshotHyperlink();
     if (g_failures != 0)
         std::fprintf(stderr, "test_contour_adapter: %d failure(s)\n", g_failures);
     return g_failures == 0 ? 0 : 1;
