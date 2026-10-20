@@ -7,6 +7,9 @@ OUTPUT_LANGUAGE        = Chinese
 OUTPUT_DIRECTORY       = docs/api-html
 
 INPUT                  = include docs pty
+# 过程文档（规格/计划/探针记录）不属于 API 文档：内文大量 `Class::method()`、
+# 转义序列等写法会触发 WARN_AS_ERROR 的显式链接/命令误解析，逐处规避不可持续。
+EXCLUDE                = docs/superpowers
 RECURSIVE              = YES
 FILE_PATTERNS          = *.h *.hpp *.md
 USE_MDFILE_AS_MAINPAGE = docs/API.md
