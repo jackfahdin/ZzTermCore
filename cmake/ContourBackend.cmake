@@ -117,4 +117,7 @@ zzterm_add_contour_backend()
 # 下方的 ZzTermContourBackend（链接 vtbackend）与测试 test_contour_smoke（链接 vtpty）。
 
 # M1a：ZzContourBackend 核心封装 target（依赖上面聚合好的 vtbackend）。
-add_subdirectory("${CMAKE_SOURCE_DIR}/src/backend/contour" "${CMAKE_BINARY_DIR}/src/backend/contour")
+# 源根用 ZZTERM_CONTOUR_ROOT 反推而非 CMAKE_SOURCE_DIR——作为子工程被
+# add_subdirectory 嵌入时（ZzClawTerm）CMAKE_SOURCE_DIR 指向顶层工程。
+get_filename_component(ZZTERM_CORE_ROOT "${ZZTERM_CONTOUR_ROOT}/../.." ABSOLUTE)
+add_subdirectory("${ZZTERM_CORE_ROOT}/src/backend/contour" "${CMAKE_BINARY_DIR}/src/backend/contour")
