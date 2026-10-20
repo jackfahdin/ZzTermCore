@@ -219,6 +219,12 @@ public:
      *       非 const 重载供 backend 写路径（intern），const 重载供 view 查询。
      */
     [[nodiscard]] ZzHyperlinkPool& hyperlinkPool() noexcept;
+
+    /**
+     * @brief 终端级 hyperlink id→URI 池（M22，const 查询重载）。
+     * @return 池的 const 引用；随 ZzScreen 存活。
+     * @note 语义同非 const 重载；视图层查询走本重载。
+     */
     [[nodiscard]] const ZzHyperlinkPool& hyperlinkPool() const noexcept;
 
     /**
