@@ -79,14 +79,19 @@ int main()
     // （见 tests/perf/records/2026-09-20-m4-reflow.json）；M9a 实测 CI runner
     // （ubuntu-latest，2 vCPU 共享负载）可触及 500ms 旧门控（gcc/clang 均曾
     // 擦线失败），放宽至 1500ms——劣化约 8 倍才触发，仍是有效回归绊线。
+    // M22 校准（2026-10-20）：ZzLine 新增 hyperlink 侧表成员（空态 24B/行），
+    // Debug 构建下本机 narrow 基线 178→约 260ms（+45%，逐格判定外的对象搬运
+    // 成本；Release 实测影响 <15%）。Windows MSVC Debug runner 为本机约 6-7
+    // 倍且负载抖动大（同代码 1376ms/1651ms 抖动实测），1500ms 已贴线，
+    // 放宽至 3000ms——仍覆盖"劣化 10 倍以上"的绊线定位。
     t0 = std::chrono::steady_clock::now();
     sb->reflow(120);
     const double widenMs = millisSince(t0);
-    ZZ_TEST_EXPECT(widenMs < 1500);
+    ZZ_TEST_EXPECT(widenMs < 3000);
     t0 = std::chrono::steady_clock::now();
     sb->reflow(40);
     const double narrowMs = millisSince(t0);
-    ZZ_TEST_EXPECT(narrowMs < 1500);
+    ZZ_TEST_EXPECT(narrowMs < 3000);
 
     // 5. JSON 落盘（cwd，ctest 下为 build/linux-gcc-debug/tests）
     std::ofstream js("zzterm-perf-scrollback.json");
