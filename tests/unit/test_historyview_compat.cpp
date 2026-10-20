@@ -130,12 +130,50 @@ static void testPrimaryLineCountParity()
     ZZ_TEST_EXPECT(contour.historyView().primaryLineCount() == 5);
 }
 
+// M21：纯行变收缩的屏→史迁移计数与 native 对拍（列宽不变、无 reflow，两口径等价）
+static void testResizeScrolloutRowShrinkParity()
+{
+    ZzTerminal native(40, 6, ZzBackendKind::Native, 100);
+    ZzTerminal contour(40, 6, ZzBackendKind::Contour, 100);
+    for (int i = 0; i < 8; ++i) {
+        feedStr(native, "segment\r\n");
+        feedStr(contour, "segment\r\n");
+    }
+    ZZ_TEST_EXPECT(native.historyView().lineCount() == 3);
+    ZZ_TEST_EXPECT(contour.historyView().lineCount() == 3);
+    ZZ_TEST_EXPECT(native.resize(40, 3));  // 行收缩：屏 3 行迁移入史
+    ZZ_TEST_EXPECT(contour.resize(40, 3));
+    ZZ_TEST_EXPECT(native.resizeScreenScrollout() == 3);
+    ZZ_TEST_EXPECT(contour.resizeScreenScrollout() == 3); // 默认回退 0，本断言驱动覆写
+    ZZ_TEST_EXPECT(contour.historyView().lineCount() == 6);
+    // 扩行回抽为负 → 归零（调用方走收缩向兜底）
+    ZZ_TEST_EXPECT(contour.resize(40, 6));
+    ZZ_TEST_EXPECT(contour.resizeScreenScrollout() == 0);
+}
+
+// M21：列变 reflow 钉住变体口径本身（数值 = max(0, 主屏历史净增量)），不与 native 对拍
+static void testResizeScrolloutColumnChangeVariant()
+{
+    ZzTerminal term(40, 6, ZzBackendKind::Contour, 100);
+    for (int i = 0; i < 8; ++i)
+        feedStr(term, "segment-abcdefgh0123456789-abcdefgh0123\r\n"); // 40 列恰好一行
+    const std::size_t before = term.historyView().lineCount();
+    ZZ_TEST_EXPECT(before == 3);
+    ZZ_TEST_EXPECT(term.resize(24, 6)); // 列变触发 reflow
+    const std::size_t after = term.historyView().lineCount();
+    const std::size_t expected = after > before ? after - before : 0;
+    ZZ_TEST_EXPECT(term.resizeScreenScrollout() == expected); // 钉住变体口径定义
+    ZZ_TEST_EXPECT(term.historyView().lineCount() > 0);       // 历史可读不崩
+}
+
 int main()
 {
     testHistoryTextParity();
     testTrimParity();
     testContourGenerationAndAlternate();
     testPrimaryLineCountParity();
+    testResizeScrolloutRowShrinkParity();
+    testResizeScrolloutColumnChangeVariant();
     if (g_failures != 0) {
         std::fprintf(stderr, "%d failure(s)\n", g_failures);
         return 1;

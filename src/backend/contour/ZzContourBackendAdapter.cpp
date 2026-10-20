@@ -70,7 +70,14 @@ public:
         // M14：historyBefore 须在 resize 前捕获——resize 后捕获会使下方行数比较
         // 恒假，纯行变（屏幕顶行压入/回抽历史）漏增代计数。
         const int historyBefore = backend_->historyLineCount();
+        const int primaryHistBefore = backend_->primaryHistoryLineCount();
         backend_->resize(cols, rows);
+        // M21：resize 屏→史迁移计数（contour 变体口径：主屏历史行数净增量，
+        // 负值归零；列变 reflow 重建行身份时为近似值，偏离登记见 API.md M21）
+        const int primaryHistAfter = backend_->primaryHistoryLineCount();
+        resizeScrollout_ = primaryHistAfter > primaryHistBefore
+            ? static_cast<std::size_t>(primaryHistAfter - primaryHistBefore)
+            : 0;
         // 双入口划分（ZzContourLineSource.cpp 文件头结论①）：列变化触发 reflow，
         // floor 前移是行身份重建副产而非真实丢弃——reanchorFloor 直接对齐不累计；
         // 纯行数变化 floor 仅在真实裁剪时前移——noteFloor 累计。
@@ -97,6 +104,7 @@ public:
     }
     ZzCursorState cursor() const noexcept override { return renderView_.cursor(); }
     bool isAlternateScreen() const noexcept override { return backend_->isAlternateScreen(); }
+    std::size_t resizeScreenScrollout() const noexcept override { return resizeScrollout_; }
     const std::string& title() const noexcept override { return title_; }
     void clearDirty() noexcept override { state_.dirtySinceClear = false; }
     void setOutputHandler(std::function<void(std::string_view)> handler) override
@@ -165,6 +173,7 @@ private:
     ZzContourLineSource               lineSource_; // 借用 backend_，须声明在其后
     std::uint64_t                     historyGeneration_ = 0; // M14 历史代计数（historyView_ 借用，须声明在其前）
     std::uint64_t                     lastDropped_ = 0;       // M14 裁剪计数快照（代计数递增判定用）
+    std::size_t                       resizeScrollout_ = 0; // M21：上一次 resize 主屏历史净增量（负值归零）
     ZzContourHistoryView              historyView_;  // 借用 backend_/lineSource_/historyGeneration_，须声明在它们之后
     ZzContourRenderView::State        state_;
     ZzContourRenderView               renderView_;
