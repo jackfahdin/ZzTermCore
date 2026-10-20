@@ -1,5 +1,6 @@
 // ZzUnwrapView 拼接行视图测试（M17b）：拼接正确性、裁尾口径、跨缝链、
-// EAW 宽字符、坐标映射往返、maxCellCount、Alternate、resize 稳定。
+// EAW 宽字符、坐标映射往返、maxCellCount、Alternate、resize 稳定、
+// OSC 8 hyperlinkId 透传（M22a）。
 // 规格 docs/superpowers/specs/2026-10-10-m17b-unwrap-view-design.md。
 #include <cstdint>
 #include <cstdio>
@@ -180,6 +181,28 @@ static void testStitchStableAcrossResize()
     ZZ_TEST_EXPECT(stitchedText(term.unwrapView(), 0) == std::string(25, 'x'));
 }
 
+// 9. OSC 8 链接跨折链透传（M22a）：cellAt 直传底层 ZzCellView，
+// 拼接行两段 hyperlinkId 相同且非 0，链接关闭后的拼接格为 0
+static void testUnwrapHyperlinkPassthrough()
+{
+    ZzTerminal term(10, 5, ZzBackendKind::Native, 100);
+    // 12 字符链接文本在 10 列下折 2 行；z 落在链续行上（拼接行内无链接格）
+    feedStr(term, "\x1b]8;;https://unwrap.example\x1b\\abcdefghijkl\x1b]8;;\x1b\\z");
+    const ZzUnwrapView& view = term.unwrapView();
+    const ZzStitchedLineView line = view.lineAt(0);
+    ZZ_TEST_EXPECT(line.cellCount() == 13);
+    ZZ_TEST_EXPECT(stitchedText(view, 0) == "abcdefghijklz");
+    const std::uint16_t id = line.cellAt(0).hyperlinkId;
+    ZZ_TEST_EXPECT(id != 0);
+    // 跨缝寻址：拼接列 10/11 来自第二物理行，与首格同 id
+    for (int c = 1; c < 12; ++c)
+        ZZ_TEST_EXPECT(line.cellAt(c).hyperlinkId == id);
+    // 链接关闭后的 z 无链接
+    ZZ_TEST_EXPECT(line.cellAt(12).hyperlinkId == 0);
+    // URI 经 renderView 可查
+    ZZ_TEST_EXPECT(term.renderView().hyperlinkUri(id) == "https://unwrap.example");
+}
+
 int main()
 {
     testNoWrapIdentity();
@@ -191,6 +214,7 @@ int main()
     testEmptyBuffer();
     testAlternateScreen();
     testStitchStableAcrossResize();
+    testUnwrapHyperlinkPassthrough();
     if (g_failures != 0) {
         std::fprintf(stderr, "%d failure(s)\n", g_failures);
         return 1;

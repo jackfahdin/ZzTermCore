@@ -137,7 +137,7 @@ compatibility/regression tests。
     title event
 -   [ ] \[Contour\]\[Test\]\[PASS-Native\] Icon title
 -   [ ] \[Contour\]\[Test\] Palette/default colors
--   [ ] \[Contour\]\[Zz-Adapter\]\[Test\] OSC 8 hyperlink
+-   [x] \[Contour\]\[Zz-Adapter\]\[Test\] OSC 8 hyperlink（M22a：解析/存储/reflow/契约 + contour adapter，test_terminal_osc8 / test_unwrap_view 钉住）
 -   [ ] \[Contour\]\[Test\] BEL/ST termination
 -   [ ] \[Contour\]\[Test\] OSC payload protection
 -   [ ] \[Contour\]\[Test\] DCS framework / safe ignore / passthrough

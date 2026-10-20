@@ -506,3 +506,11 @@ toStitched/fromStitched 涉及。
   「恒清 Primary」分歧），解封条件为上游提供清史事件并 Align 语义；
   `prependHistoryLines()`——contour Grid 无最旧端注入 API，解封条件为
   上游提供注入原语。规格：docs/superpowers/specs/2026-10-19-m21-contour-history-pair-design.md。
+- M22：OSC 8 可点击超链接（M22a 落地）。`ZzCellView` 聚合尾部纯新增
+  `hyperlinkId` 字段（0 = 无链接；M18 `ZzPtyConfig` 尾部新增同先例）；
+  `ZzRenderView`/`ZzHistoryView` 新增带默认实现的虚方法
+  `hyperlinkUri(std::uint16_t)`（默认回退空串，M19/M20 非纯虚新增同
+  范式）——均为向后兼容 minor 新增，无 break；`ZzTerminal`/`ZzScreen`
+  无签名变化。native 后端由 Screen/Scrollback 两侧维护链接表并覆写
+  URI 查询；contour 后端覆写映射上游 Grid 的 hyperlink id（单元格 id
+  语义双端各自稳定，跨端不钉同值）。
