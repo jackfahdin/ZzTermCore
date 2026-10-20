@@ -519,6 +519,116 @@ static void testCursorInPaddingFallsBackToChainTail()
     ZZ_TEST_EXPECT(cur.col == 3);
 }
 
+// M22-5a：reflow 落格转移 hyperlink——bit26 随整格拷贝带走，侧表 id 必须显式转移
+static void testReflowPreservesHyperlink()
+{
+    // 8 列单行，col 1-2 带链接 id 9，缩到 5 列折行后链接仍在且 id 不变
+    std::vector<ZzLine> lines;
+    ZzLine line(8);
+    // 填满文本使其成为内容行
+    for (int c = 0; c < 8; ++c) {
+        ZzCell cell;
+        cell.setCodePoint(U'a' + c);
+        cell.setWidth(ZzCellWidth::Narrow);
+        line.setCell(c, cell);
+    }
+    line.setCellHyperlink(1, 9);
+    line.setCellHyperlink(2, 9);
+    line.setWrapped(false);
+    lines.push_back(std::move(line));
+
+    std::vector<ZzLine> out = zzReflowLines(std::move(lines), 8, 5, nullptr, {});
+    ZZ_TEST_EXPECT(out.size() == 2);
+    ZZ_TEST_EXPECT(out[0].wrapped());
+    ZZ_TEST_EXPECT(out[0].hyperlinkIdAt(1) == 9);
+    ZZ_TEST_EXPECT(out[0].hyperlinkIdAt(2) == 9);
+    ZZ_TEST_EXPECT(out[0].hyperlinkIdAt(0) == 0);
+    ZZ_TEST_EXPECT(out[1].hyperlinkIdAt(0) == 0); // 'f' 起无链接
+}
+
+// M22-5b：带链接的空白格算内容，裁尾不得裁掉
+static void testReflowHyperlinkNotTrimmed()
+{
+    // 行尾格带链接但无文本属性差异：裁尾判据必须视其为内容
+    std::vector<ZzLine> lines;
+    ZzLine line(6);
+    for (int c = 0; c < 2; ++c) {
+        ZzCell cell;
+        cell.setCodePoint(U'x');
+        cell.setWidth(ZzCellWidth::Narrow);
+        line.setCell(c, cell);
+    }
+    // col 5：空白格但带链接（极端情形：链接覆盖到空白格）
+    line.setCellHyperlink(5, 3);
+    line.setWrapped(false);
+    lines.push_back(std::move(line));
+
+    std::vector<ZzLine> out = zzReflowLines(std::move(lines), 6, 3, nullptr, {});
+    // 若裁尾把 col 5 当空白裁掉，out 只有 1 行；正确行为是 2 行且 id 3 保留
+    ZZ_TEST_EXPECT(out.size() == 2);
+    ZZ_TEST_EXPECT(out[1].hyperlinkIdAt(2) == 3);
+}
+
+// M22-5c：宽字符续格在 reflow 中重写为新 cell，链接 id 须显式转移（读 srcCol+1）
+static void testReflowWideCharHyperlink()
+{
+    // 10 列：abcd + 中(带链接 id 5) + efgh，缩到 5 列后宽字符落行 1 列 0-1
+    std::vector<ZzLine> lines;
+    ZzLine line(10);
+    for (int c = 0; c < 4; ++c) {
+        ZzCell cell;
+        cell.setCodePoint(U'a' + c);
+        cell.setWidth(ZzCellWidth::Narrow);
+        line.setCell(c, cell);
+    }
+    ZzCell lead;
+    lead.setWidth(ZzCellWidth::WideLead);
+    lead.setCodePoint(0x4E2D);
+    ZzCell cont;
+    cont.setWidth(ZzCellWidth::WideContinuation);
+    line.setCell(4, lead);
+    line.setCell(5, cont);
+    line.setCellHyperlink(4, 5);
+    line.setCellHyperlink(5, 5);
+    for (int c = 6; c < 10; ++c) {
+        ZzCell cell;
+        cell.setCodePoint(U'a' + c - 1);
+        cell.setWidth(ZzCellWidth::Narrow);
+        line.setCell(c, cell);
+    }
+    lines.push_back(std::move(line));
+
+    std::vector<ZzLine> out = zzReflowLines(std::move(lines), 10, 5, nullptr, {});
+    ZZ_TEST_EXPECT(out.size() == 3);
+    ZZ_TEST_EXPECT(out[1].cellAt(0).width() == ZzCellWidth::WideLead);
+    ZZ_TEST_EXPECT(out[1].hyperlinkIdAt(0) == 5); // lead
+    ZZ_TEST_EXPECT(out[1].hyperlinkIdAt(1) == 5); // 续格同链接
+}
+
+// M22-5d：M17a Preserve 快路径（整行 move + resize）侧表随行，钉住不回归
+static void testPreserveKeepsHyperlink()
+{
+    std::vector<ZzLine> lines;
+    ZzLine l0 = makeLine(10, "ABCDEFGHIJ", true);
+    l0.setCellHyperlink(1, 9);
+    l0.setCellHyperlink(2, 9);
+    lines.push_back(std::move(l0));
+    ZzLine l1 = makeLine(10, "klm", false);
+    l1.setCellHyperlink(0, 7);
+    lines.push_back(std::move(l1));
+    ZzReflowCursor cur;
+    cur.chainIndex = 0;
+    cur.chainOffset = 11;
+    auto out = zzReflowLines(std::move(lines), 10, 20, &cur,
+                             ZzReflowCursorChain::Preserve);
+    ZZ_TEST_EXPECT(out.size() == 2); // 链豁免：2 行原样扩宽
+    ZZ_TEST_EXPECT(out[0].cellCount() == 20);
+    ZZ_TEST_EXPECT(out[0].hyperlinkIdAt(1) == 9);
+    ZZ_TEST_EXPECT(out[0].hyperlinkIdAt(2) == 9);
+    ZZ_TEST_EXPECT(out[0].hyperlinkIdAt(0) == 0);
+    ZZ_TEST_EXPECT(out[1].hyperlinkIdAt(0) == 7);
+}
+
 int main()
 {
     testWidenMergesChain();
@@ -539,6 +649,10 @@ int main()
     testPreservePaddingRoundTrip();
     testPreserveThenMergeNoPadding();
     testCursorInPaddingFallsBackToChainTail();
+    testReflowPreservesHyperlink();
+    testReflowHyperlinkNotTrimmed();
+    testReflowWideCharHyperlink();
+    testPreserveKeepsHyperlink();
     if (g_failures == 0)
         std::printf("test_reflow: all passed\n");
     return g_failures;

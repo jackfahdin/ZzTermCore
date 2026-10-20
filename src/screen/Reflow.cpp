@@ -5,11 +5,11 @@
 
 namespace {
 
-/// @brief 完全默认空白格（可裁）：无文本、默认前景背景、无属性。
+/// @brief 完全默认空白格（可裁）：无文本、默认前景背景、无属性、无超链接。
 bool zzIsPlainBlank(const ZzCell& c)
 {
     return c.isEmpty() && c.foreground().isDefault() && c.background().isDefault()
-           && c.attributes().raw() == 0;
+           && c.attributes().raw() == 0 && !c.hasHyperlink();
 }
 
 /// @brief 链处理核（M8b 从 zzReflowLines 抽取）：处理一条完整逻辑行链，
@@ -81,6 +81,9 @@ void zzReflowChain(const ZzLine* chainLines, std::size_t chainLen, int oldCols, 
             if (placed.isCluster())
                 placed.setCluster(row.internCluster(srcLine.clusterText(cell.clusterIndex())));
             row.setCell(outCol, placed);
+            // bit26 随整格拷贝带走，但侧表 id 不随 setCell 转移，须显式登记（M22）。
+            if (placed.hasHyperlink())
+                row.setCellHyperlink(outCol, srcLine.hyperlinkIdAt(srcCol));
             if (w == 2) {
                 // 续格再生规则与 ZzNativeBackend::putChar 一致：
                 // 仅 width + 前景/背景，不带属性。
@@ -89,6 +92,10 @@ void zzReflowChain(const ZzLine* chainLines, std::size_t chainLen, int oldCols, 
                 cont.setForeground(cell.foreground());
                 cont.setBackground(cell.background());
                 row.setCell(outCol + 1, cont);
+                // 续格重写为新 cell（bit26 丢失），显式带链接标记；
+                // 续格在源行的 id 与 lead 相同，读 srcCol + 1。
+                if (const std::uint16_t hid = srcLine.hyperlinkIdAt(srcCol + 1); hid != 0)
+                    row.setCellHyperlink(outCol + 1, hid);
             }
             outCol += w;
             lastContentCol = outCol;

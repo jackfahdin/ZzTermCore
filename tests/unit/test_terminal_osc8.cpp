@@ -120,6 +120,36 @@ static void testOsc8HistoryScroll()
     ZZ_TEST_EXPECT(term.historyView().hyperlinkUri(id) == "https://hist.example");
 }
 
+// M22-5e：端到端——折行链接经 resize 缩列触发 reflow 后 id 非 0 且 URI 稳定。
+static void testOsc8ReflowSurvivesResize()
+{
+    ZzTerminal term(10, 5, ZzBackendKind::Native, 100);
+    // 12 字符链接文本，10 列下折成 2 行（wrapped 链）
+    feedStr(term, "\x1b]8;;https://reflow.example\x1b\\abcdefghijkl\x1b]8;;\x1b\\");
+    const std::uint16_t idBefore = linkAt(term, 0, 0);
+    ZZ_TEST_EXPECT(idBefore != 0);
+    ZZ_TEST_EXPECT(linkAt(term, 1, 0) == idBefore); // 折行第二段同链接
+    // 缩列触发 reflow：12 格重切为 3 行；屏幕 5 行容纳不下，首片段溢出入史。
+    // 不钉死具体行号（行迁移语义属 M15/M20），扫描历史+屏幕全部链接格：
+    // 链接格总数守恒（12）、id 跨 reflow 稳定、URI 仍是原值。
+    term.resize(5, 5);
+    int linkedCells = 0;
+    auto scan = [&](auto& view, int lines, int cols) {
+        for (int r = 0; r < lines; ++r)
+            for (int c = 0; c < cols; ++c) {
+                const std::uint16_t id = view.lineAt(r).cellAt(c).hyperlinkId;
+                if (id != 0) {
+                    ZZ_TEST_EXPECT(id == idBefore);
+                    ++linkedCells;
+                }
+            }
+    };
+    scan(term.historyView(), (int)term.historyView().lineCount(), 5);
+    scan(term.renderView(), 5, 5);
+    ZZ_TEST_EXPECT(linkedCells == 12);
+    ZZ_TEST_EXPECT(term.renderView().hyperlinkUri(idBefore) == "https://reflow.example");
+}
+
 int main()
 {
     testRenderViewHyperlinkDefaults();
@@ -130,6 +160,7 @@ int main()
     testOsc8WideChar();
     testOsc8Malformed();
     testOsc8HistoryScroll();
+    testOsc8ReflowSurvivesResize();
     if (g_failures != 0) {
         std::fprintf(stderr, "%d failure(s)\n", g_failures);
         return 1;
