@@ -69,6 +69,8 @@ public:
     [[nodiscard]] bool isAlternateScreen() const;
     [[nodiscard]] std::string title() const;
     [[nodiscard]] int historyLineCount() const;
+    /// \brief 主屏（Primary）历史行数（buffer 无关口径，Alternate 期间仍读主屏）。
+    [[nodiscard]] int primaryHistoryLineCount() const;
     /// \brief 第 row 行（主屏 0 起）的内容是否自动续到下一行（即该行是自动换行逻辑行的首行）。
     [[nodiscard]] bool lineWrapped(int row) const;
 

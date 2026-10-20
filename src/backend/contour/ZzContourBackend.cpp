@@ -238,6 +238,11 @@ int ZzContourBackend::historyLineCount() const
     return impl_->terminal->currentScreen().historyLineCount().value;
 }
 
+int ZzContourBackend::primaryHistoryLineCount() const
+{
+    return impl_->terminal->primaryScreen().historyLineCount().value;
+}
+
 bool ZzContourBackend::lineWrapped(int row) const
 {
     // Contour 的 LineFlag::Wrapped 标在续行（被绕到的下一行）上；对外语义为

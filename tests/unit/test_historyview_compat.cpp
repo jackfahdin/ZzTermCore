@@ -104,11 +104,38 @@ static void testContourGenerationAndAlternate()
     ZZ_TEST_EXPECT(term.historyView().lineCount() > 0); // 回 Primary 恢复
 }
 
+// M21：primaryLineCount buffer 无关口径双后端对拍
+static void testPrimaryLineCountParity()
+{
+    ZzTerminal native(10, 4, ZzBackendKind::Native, 100);
+    ZzTerminal contour(10, 4, ZzBackendKind::Contour, 100);
+    for (int i = 0; i < 8; ++i) {
+        feedStr(native, "x\r\n");
+        feedStr(contour, "x\r\n");
+    }
+    ZZ_TEST_EXPECT(native.historyView().lineCount() == 5);
+    ZZ_TEST_EXPECT(contour.historyView().lineCount() == 5);
+    ZZ_TEST_EXPECT(contour.historyView().primaryLineCount() == 5); // Primary 下同口径
+    feedStr(native, "\x1b[?1049h");
+    feedStr(contour, "\x1b[?1049h"); // 进 Alternate：可见历史归零
+    ZZ_TEST_EXPECT(contour.historyView().lineCount() == 0);
+    // buffer 无关口径：Alternate 期间仍返回 Primary 历史真实行数
+    //（默认回退 lineCount() 会归 0，本断言驱动覆写落地）
+    ZZ_TEST_EXPECT(contour.historyView().primaryLineCount() == 5);
+    ZZ_TEST_EXPECT(native.historyView().primaryLineCount()
+                   == contour.historyView().primaryLineCount());
+    feedStr(native, "\x1b[?1049l");
+    feedStr(contour, "\x1b[?1049l"); // 回 Primary：历史恢复可见
+    ZZ_TEST_EXPECT(contour.historyView().lineCount() == 5);
+    ZZ_TEST_EXPECT(contour.historyView().primaryLineCount() == 5);
+}
+
 int main()
 {
     testHistoryTextParity();
     testTrimParity();
     testContourGenerationAndAlternate();
+    testPrimaryLineCountParity();
     if (g_failures != 0) {
         std::fprintf(stderr, "%d failure(s)\n", g_failures);
         return 1;

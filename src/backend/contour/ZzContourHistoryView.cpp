@@ -29,6 +29,11 @@ std::size_t ZzContourHistoryView::lineCount() const noexcept
     return static_cast<std::size_t>(backend_->historyLineCount());
 }
 
+std::size_t ZzContourHistoryView::primaryLineCount() const noexcept
+{
+    return static_cast<std::size_t>(backend_->primaryHistoryLineCount());
+}
+
 ZzLineView ZzContourHistoryView::lineAt(std::size_t index) const
 {
     lineBuf_ = backend_->historyLineSnapshot(static_cast<int>(index));
