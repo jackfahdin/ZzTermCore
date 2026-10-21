@@ -90,6 +90,11 @@ endif()
 if(TARGET ZzTermContourBackend)
     add_executable(cluster_probe probe/cluster_probe.cpp)
     target_link_libraries(cluster_probe PRIVATE ZzTermCore) # Contour target 一律 PRIVATE
+
+    # 残行/不满屏归属定位探针（2026-10-21 开放缺陷；开发期工具，不注册 ctest）。
+    # 真实 bash PTY 双后端 tee + 拖拽式 resize 扫掠 + 全状态 dump，详见文件头注释。
+    add_executable(resize_ab_probe probe/resize_ab_probe.cpp)
+    target_link_libraries(resize_ab_probe PRIVATE ZzTermCore ZzTermPty)
 endif()
 
 if(TARGET vtparser)
