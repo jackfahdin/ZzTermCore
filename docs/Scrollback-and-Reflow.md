@@ -287,6 +287,22 @@ M17c 复验暴露「空白海」事故：窗口缩至极小再拉满后内容堆
 不新增登记类别）；ED3 为 parity 补齐（contour 原生支持，
 对照见用例 27 testEd3ClearScrollbackParity）。
 
+### 状态更正（2026-10-21）：残行为未解决开放缺陷
+
+M17e 搁置残行的理由「readline 窄窗重绘死代尸体，终端侧无忠实修法；
+contour 参照残局更丑」被用户实测**证伪**：contour 官方发行版
+（contour 引擎 + 其自有前端，GitHub Releases Windows 安装包）在相同
+操作剧本（满屏内容 → 反复缩列 → 拉回/最大化）下**无残行、无不满屏**。
+当时的 contour 对比走的是我们的 contour adapter 路径而非官方 app，
+对比口径有误。
+
+缺陷定位当前未定——嫌疑两层：native 引擎 reflow 记账，或 ZzClawTerm
+Qt 前端对 resize/reflow 事件的处理。用户因多轮修补未收敛中止了当时的
+迭代。后续以 A/B 实验钉死归属：同一 Qt 前端分别挂 native / contour
+后端跑同一剧本（ZzClawTerm 运行时开关 `ZZ_TERM_BACKEND=contour`，
+contour 编译态构建）。实验结论回来前，本节所有「残行已处置/预期内」
+的表述一律按**未解决**理解。
+
 ## 10. contour 后端启用清单（Z3 收官登记）
 
 Z3 账本 :33 决议：contour 后端的滚动/历史读回回退洞不修，仅登记
