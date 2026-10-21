@@ -206,22 +206,91 @@ void ZzContourBackend::resize(int columns, int rows)
 {
     const int oldColumns = impl_->pageSize.columns.value;
     const int oldRows = impl_->pageSize.lines.value;
+
+    // xterm/native 语义补偿：contour 仅在光标位于页面末行时，行数增长才从 scrollback
+    // 把行拉回页面（Grid::growLines 的门槛，上游刻意如此，见其
+    // resize_grow_lines_with_history_cursor_no_bottom 测试）；光标不在末行时只在页底
+    // 补空行。拖拽扫掠中应用重绘（如 readline 提示符折行回收）会让光标合法地停在
+    // 末行之上一行，此后每次增高都只补空行，内容永久滞留历史、屏幕底部留白。
+    // 补偿分两步（与 native M17e「丢空洞、回抽预算含空洞」对齐）：
+    //   1) 增高前把光标暂移到末行以触发拉回，且把光标正下方的连续既成空行（空洞）
+    //      数加进目标行数——先长到 rows+holes 让回抽预算覆盖空洞，再缩回 rows
+    //      （shrinkLines 只裁底部空行，不动内容、不推历史）；
+    //   2) 事后按实际拉回行数把光标恢复到其内容位置（原行 + 拉回行数）。
+    // 与 contour 光标恰在末行时的自身行为逐点等价，也与 native/xterm 的无条件拉回
+    // 语义对齐。wrapPending 暂移会丢标志（无公共 API 恢复），此时放弃补偿、保持
+    // contour 原生行为。
+    std::optional<vtbackend::CellLocation> danceFrom;
+    int historyBeforeGrow = 0;
+    int holes = 0;
+    if (rows > oldRows)
+    {
+        auto const& screen = impl_->terminal->currentScreen();
+        auto const& cursor = screen.cursor();
+        if (!cursor.wrapPending && cursor.position.line.value + 1 < oldRows
+            && screen.historyLineCount().value > 0)
+        {
+            danceFrom = cursor.position;
+            historyBeforeGrow = screen.historyLineCount().value;
+            // 光标正下方紧邻的连续空行（既成空洞）；遇首条非空行即止——内容行不可丢。
+            auto const& grid = screen.grid();
+            for (int r = cursor.position.line.value + 1; r < oldRows; ++r)
+            {
+                if (!grid.lineAt(vtbackend::LineOffset(r)).isBlank())
+                    break;
+                ++holes;
+            }
+            auto targetLine = vtbackend::LineOffset(oldRows - 1);
+            auto targetColumn = cursor.position.column;
+            if (cursor.originMode)
+            {
+                // moveCursorTo 在 origin 模式下按 margin 原点换算，先逆变换出相对坐标。
+                targetLine -= screen.margin().vertical.from;
+                targetColumn -= screen.margin().horizontal.from;
+            }
+            impl_->terminal->moveCursorTo(targetLine, targetColumn);
+        }
+    }
+
+    const auto applyResize = [this](int cols, int rows) {
+        impl_->pageSize = makePageSize(cols, rows);
+        impl_->terminal->resizeScreen(
+            impl_->pageSize,
+            vtbackend::ImageSize { vtbackend::Width(static_cast<unsigned>(cols) * 8u),
+                                   vtbackend::Height(static_cast<unsigned>(rows) * 17u) });
+    };
+    const auto restoreDancedCursor = [&]() {
+        if (!danceFrom)
+            return;
+        // 实际拉回量 = 历史净减（行增步骤不裁剪：容量内 rotateBuffersRight 只搬不丢）。
+        // 行增后 margin 已重置为整页（from=0），绝对坐标直给即可。
+        const int pulled =
+            historyBeforeGrow - impl_->terminal->currentScreen().historyLineCount().value;
+        impl_->terminal->moveCursorTo(danceFrom->line + vtbackend::LineOffset(pulled),
+                                      danceFrom->column);
+    };
+
     // contour Grid::resize 内部先列后行：列向快路径的再扩宽横扫只覆盖旧页高，
     // 随后行长把旧宽度存储的备用行暴露进页面，写穿旧宽即越界断言。
     // 行列同变时拆成先行后列两步，让列向横扫覆盖新页高（两侧方向均安全：
     // 缩行先收的备用/历史行允许持旧宽度，回收时才再扩宽）。
-    if (columns != oldColumns && rows != oldRows) {
-        impl_->pageSize = makePageSize(oldColumns, rows);
-        impl_->terminal->resizeScreen(
-            impl_->pageSize,
-            vtbackend::ImageSize { vtbackend::Width(static_cast<unsigned>(oldColumns) * 8u),
-                                   vtbackend::Height(static_cast<unsigned>(rows) * 17u) });
+    if (danceFrom) {
+        applyResize(oldColumns, rows + holes); // 行增（回抽预算含既成空洞）
+        // 在行增之后、列变/缩回之前恢复光标：列向 reflow 会改写 historyLineCount
+        // （拉回量便量不准），且 reflow 须基于应用真实光标位置做逻辑行跟踪。
+        restoreDancedCursor();
+        if (holes > 0)
+            applyResize(oldColumns, rows); // 缩回预算行：仅裁页底空行，光标不动
+        if (columns != oldColumns)
+            applyResize(columns, rows); // 列变（reflow）
     }
-    impl_->pageSize = makePageSize(columns, rows);
-    impl_->terminal->resizeScreen(
-        impl_->pageSize,
-        vtbackend::ImageSize { vtbackend::Width(static_cast<unsigned>(columns) * 8u),
-                               vtbackend::Height(static_cast<unsigned>(rows) * 17u) });
+    else if (columns != oldColumns && rows != oldRows) {
+        applyResize(oldColumns, rows);
+        applyResize(columns, rows);
+    }
+    else {
+        applyResize(columns, rows);
+    }
 }
 
 std::pair<int, int> ZzContourBackend::size() const

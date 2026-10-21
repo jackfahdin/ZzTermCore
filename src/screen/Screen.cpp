@@ -67,8 +67,9 @@ void ZzScreen::resize(int cols, int rows)
 // 缩行：先裁光标下方行（不入历史），不够裁时顶部行经 ScrollOutCallback
 // 压入历史（无回调则丢弃，同 reflowBuffer 溢出语义）；光标随内容平移。
 // 扩行：M17d 起 Primary 且光标下方全空行（会话活在底部）时经
-// HistoryPullCallback 回抽注入顶部（偏离 contour 仅贴末行回抽，compat
-// 用例 26 登记）；M17e 起先丢弃光标下方既成空行、回抽预算含既成空洞
+// HistoryPullCallback 回抽注入顶部（contour 核心仅贴末行回抽，adapter
+// ZzContourBackend::resize 补偿为本语义，compat 用例 26 parity 对照）；
+// M17e 起先丢弃光标下方既成空行、回抽预算含既成空洞
 //（k → k+b），历史不足时净效果同 M17d；不足部分底部补空。
 
 // M17d：空行判定——整行 cell 均 isEmpty（覆盖默认格/擦除格/宽字符续格；

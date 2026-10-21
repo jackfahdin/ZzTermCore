@@ -618,12 +618,12 @@ std::string rowTextOf(const ZzTerminal& term, int row)
     return out;
 }
 
-// 26. 扩行回填 parity 偏离登记（M17d 起、M17e 加深）：行数增加且光标下方
-// 全空时，native 从历史回抽填满——M17e 起先丢弃光标下方既成空行、回抽预算
-// 含既成空洞（k→k+b），屏幕填满、光标沉底；contour 核心仅光标贴旧末行
-// 回抽，CUP 抬离末行后不回抽、底部补空（第三方冻结不改）。b 类真实语义
-// 分歧，分别断言钉住，不强行对齐。
-void testGrowRefillDeviation()
+// 26. 扩行回填 parity（M17d/M17e 语义，2026-10-21 起双后端对齐）：行数增加且
+// 光标下方全空时从历史回抽填满——先丢弃光标下方既成空行、回抽预算含既成空洞
+// （k→k+b），屏幕填满、光标沉底。contour 核心仅光标贴旧末行回抽，但 adapter
+// （ZzContourBackend::resize）增高前暂移光标触发拉回、空洞计入目标行数再缩回，
+// 补偿为同一语义（wrapPending 时无公共 API 保标志，放弃补偿属已知残留偏离）。
+void testGrowRefillParity()
 {
     ZzTerminal native(10, 4, ZzBackendKind::Native, 100);
     ZzTerminal contour(10, 4, ZzBackendKind::Contour, 100);
@@ -639,15 +639,13 @@ void testGrowRefillDeviation()
             reinterpret_cast<const std::byte*>("\x1b[3;1H"), 6)); // CUP 光标行 2
         term->resize(10, 6);
     }
-    // native：丢 1 空行、回抽 a,b,c 全取——屏幕 a,b,c,d,e,f；光标行 5
-    ZZ_CHECK(native.historyView().lineCount() == 0);
-    ZZ_CHECK(rowTextOf(native, 0) == "a");
-    ZZ_CHECK(rowTextOf(native, 1) == "b");
-    ZZ_CHECK(native.cursor().position.row == 5);
-    // contour：不回抽——屏幕 d,e,f 在顶、底部补空；光标行 2；历史仍 3
-    ZZ_CHECK(contour.historyView().lineCount() == 3);
-    ZZ_CHECK(rowTextOf(contour, 0) == "d");
-    ZZ_CHECK(contour.cursor().position.row == 2);
+    // 双后端一致：丢 1 空行、回抽 a,b,c 全取——屏幕 a,b,c,d,e,f；光标行 5
+    for (auto* term : {&native, &contour}) {
+        ZZ_CHECK(term->historyView().lineCount() == 0);
+        ZZ_CHECK(rowTextOf(*term, 0) == "a");
+        ZZ_CHECK(rowTextOf(*term, 1) == "b");
+        ZZ_CHECK(term->cursor().position.row == 5);
+    }
 }
 
 // 27. ED 3 清滚动区 parity（M17d）：ESC [ 3 J 清空历史、屏幕与光标不动。
@@ -705,7 +703,7 @@ int main()
     testResizeBothDimsColoredWide();
     testRowResizeParity();
     testEraseSeverDeviation();
-    testGrowRefillDeviation();
+    testGrowRefillParity();
     testEd3ClearScrollbackParity();
     if (g_failures != 0)
         std::fprintf(stderr, "test_backend_compat: %d failure(s)\n", g_failures);

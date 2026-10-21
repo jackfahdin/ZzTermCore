@@ -112,6 +112,42 @@ void testResizeBasic()
     ZZ_CHECK(rowText(snap, 0, 4) == U"Keep");
 }
 
+// 回归（2026-10-21 resize 扫掠底部空白缺陷）：contour Grid::growLines 只在光标位于
+// 页末行时从 scrollback 拉回行；应用重绘（readline 提示符折行回收）把光标合法留在
+// 末行之上后，行数增长只补空行、内容滞留历史。adapter 现暂移光标触发拉回并按实际
+// 拉回量恢复（xterm/native 语义）。本测试构造「缩行→CUU 离开末行→增行」场景钉住。
+void testResizeGrowPullsBackWithRaisedCursor()
+{
+    RecordingEvents events;
+    ZzContourBackend backend(20, 6, events, 100);
+    // 9 行：3 行进历史，页面 L4..L9，光标在末行 (5,2)。
+    backend.feed("L1\r\nL2\r\nL3\r\nL4\r\nL5\r\nL6\r\nL7\r\nL8\r\nL9");
+    ZZ_CHECK(backend.historyLineCount() == 3);
+    // 缩 6→4：光标在末行，两行压入历史。
+    backend.resize(20, 4);
+    ZZ_CHECK(backend.historyLineCount() == 5);
+    // 模拟重绘后光标离开末行（如提示符折行回收）。
+    backend.feed("\x1b[1A");
+    // 增回 4→6：须拉回两行（历史回到 3、页面恢复 L4..L9），光标随内容下移 2 行。
+    backend.resize(20, 6);
+    ZZ_CHECK(backend.historyLineCount() == 3);
+    auto snap = backend.snapshot();
+    ZZ_CHECK(rowText(snap, 0, 2) == U"L4");
+    ZZ_CHECK(rowText(snap, 5, 2) == U"L9");
+    ZZ_CHECK(snap.cursor.has_value() && snap.cursor->line == 4 && snap.cursor->column == 2);
+    // 对照：无历史可拉时保持 contour 原生行为——页底补空行，光标不动。
+    RecordingEvents events2;
+    ZzContourBackend backend2(20, 4, events2, 100);
+    backend2.feed("A\r\nB");
+    backend2.feed("\x1b[1A"); // 光标到 (0,1)，离开末行
+    backend2.resize(20, 6);
+    ZZ_CHECK(backend2.historyLineCount() == 0);
+    auto snap2 = backend2.snapshot();
+    ZZ_CHECK(rowText(snap2, 0, 1) == U"A");
+    ZZ_CHECK(rowText(snap2, 1, 1) == U"B");
+    ZZ_CHECK(snap2.cursor.has_value() && snap2.cursor->line == 0 && snap2.cursor->column == 1);
+}
+
 // SGR 索引色前景在快照中保留颜色身份（不预转 RGB）。
 void testSgrColors()
 {
@@ -362,6 +398,7 @@ int main()
     testBridge();
     testAsciiSnapshot();
     testResizeBasic();
+    testResizeGrowPullsBackWithRaisedCursor();
     testSgrColors();
     testBrightColor();
     testRgbColor();

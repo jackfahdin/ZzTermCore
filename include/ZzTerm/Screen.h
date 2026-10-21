@@ -121,8 +121,8 @@ public:
      *       压入历史（无回调则丢弃，同 reflow 溢出语义），光标随内容平移；
      *       扩行回填（M17d）：Primary 且光标下方全空行（会话活在底部）时经
      *       HistoryPullCallback 从最新历史回抽注入顶部、光标随内容下沉
-     *       （有意偏离 contour 仅贴末行回抽，compat 用例 26 登记），不足
-     *       部分底部补空。Alternate 缓冲无回调路径：尾部截断/补空。
+     *       （contour 核心仅贴末行回抽，adapter 补偿为同一语义，compat
+     *       用例 26 parity 对照），不足部分底部补空。Alternate 缓冲无回调路径：尾部截断/补空。
      * @note 不做列向 reflow；列变化的 soft-wrap reflow 由 reflow() 原语承担，
      *       ZzNativeBackend::resize 协调顺序（先历史后屏幕，M4 已落地）。全屏标脏。
      */

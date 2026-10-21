@@ -439,8 +439,11 @@ toStitched/fromStitched 涉及。
   同步）；CSI ED 3 清滚动区接线（此前分发层忽略，xterm 标准语义：
   不动屏幕/光标，`clear` 后历史真正清空、扩行不回填）。无新公共
   接口（`ZzScrollback::clear()` 为既有接口首次接线）；ABI 无变化。
-  与 contour 后端在扩行回填场景有意偏离（contour 仅光标贴旧末行
-  回抽，偏离登记见 test_backend_compat 的 M17d 用例）。
+  与 contour 后端在扩行回填场景曾为有意偏离（contour 核心仅光标贴
+  旧末行回抽）；2026-10-21 起由 contour adapter（ZzContourBackend::
+  resize 暂移光标触发拉回 + 空洞计入目标行数再缩回）补偿为同一语义，
+  偏离登记撤销（wrapPending 置位时放弃补偿为残留偏离），对照见
+  test_backend_compat 的 M17d/M17e parity 用例（testGrowRefillParity）。
 - M17b：新增公共类 `ZzUnwrapView`/`ZzStitchedLineView`、公共类型
   `ZzStitchedPos`（Types.h）与 `ZzTerminal::unwrapView` 非虚方法，
   向后兼容的 minor 新增（M14 historyView 先例），次版本号口径沿用

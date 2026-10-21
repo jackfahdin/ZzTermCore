@@ -281,11 +281,16 @@ M17c 复验暴露「空白海」事故：窗口缩至极小再拉满后内容堆
     内容会复活回填——kitty/Windows Terminal 行为相同，与主流一致，
     非缺陷。
 
-与 contour 后端的 parity：扩行回填为有意偏离（contour growLines 仅
-光标贴末行回抽，偏离登记见 tests/unit/test_backend_compat.cpp 用例
-26 testGrowRefillDeviation；M17e 既成空洞回填属该偏离的加深，
-不新增登记类别）；ED3 为 parity 补齐（contour 原生支持，
-对照见用例 27 testEd3ClearScrollbackParity）。
+与 contour 后端的 parity：扩行回填自 2026-10-21 起为 **parity**——
+contour 核心的 growLines 确仅光标贴末行回抽（第三方冻结不改），但
+adapter（`ZzContourBackend::resize`）在增高且光标被应用重绘抬离末行时
+暂移光标触发拉回、把光标下方既成空洞计入目标行数再缩回（shrinkLines
+只裁页底空行），补偿为 M17d/M17e 同一语义（对照见
+tests/unit/test_backend_compat.cpp 用例 26 testGrowRefillParity 与
+tests/unit/test_contour_backend.cpp
+testResizeGrowPullsBackWithRaisedCursor；残留偏离：wrapPending 置位时
+无公共 API 保标志，放弃补偿、退回 contour 原生行为）；ED3 为 parity
+补齐（contour 原生支持，对照见用例 27 testEd3ClearScrollbackParity）。
 
 ### 状态更正（2026-10-21，终版）：残行 = readline 行业级已知现象
 
@@ -306,9 +311,14 @@ M17e 搁置残行的判断「readline 窄窗重绘死代尸体，终端侧无忠
   对光标活动链延迟拆链，等应用重绘。代价是行宽不变量需要开口子，
   暂不值得，登记备查。
 
-**contour adapter 的不满屏（扩行后底部空白、光标悬空）是本侧缺陷**
-（adapter 驱动 contour resize 的方式与官方 app 不同——官方有 resize
-合并等驱动策略），与残行不同源，单独登记待修。
+**contour adapter 的不满屏（扩行后底部空白、光标悬空）已于 2026-10-21
+修复**。根因并非此前猜测的「官方 app resize 合并驱动」（源码核查官方
+GUI/vthost 均为逐次 resizeScreen、无去抖），而是 contour
+`Grid::growLines` 的回抽门槛「光标贴末行才从 scrollback 拉回」被
+readline 重绘合法破坏（提示符折行回收后光标停在末行之上一行），此后
+每次增高只补空行、内容永久滞留历史。修复在 adapter
+（`ZzContourBackend::resize`）：增高前暂移光标至末行触发拉回、空洞计入
+目标行数再缩回、事后按实际拉回量恢复光标——与残行不同源。
 
 ## 10. contour 后端启用清单（Z3 收官登记）
 
