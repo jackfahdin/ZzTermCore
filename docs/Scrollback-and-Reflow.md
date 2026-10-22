@@ -370,4 +370,5 @@ M21 状态更新（2026-10-20）：`primaryLineCount()` 与
 `resizeScreenScrollout()` 已落地（后者为变体口径，见 API.md M21）；
 `clearCount()` 与 `prependHistoryLines()` 确认为 contour 上游能力缺口
 （ED3 无事件钩子 + Grid 无最旧端注入 API），维持登记，解封条件见
-API.md M21 条目。上游 PR 评估为独立后续事项。
+API.md M21 条目。上游 PR 已于 2026-10-23 拍板暂缓（代价评估见
+API.md M21 条目末段），双引擎策略下由 native 引擎承载此二功能。

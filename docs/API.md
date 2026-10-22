@@ -513,6 +513,14 @@ toStitched/fromStitched 涉及。
   「恒清 Primary」分歧），解封条件为上游提供清史事件并 Align 语义；
   `prependHistoryLines()`——contour Grid 无最旧端注入 API，解封条件为
   上游提供注入原语。规格：docs/superpowers/specs/2026-10-19-m21-contour-history-pair-design.md。
+  上游 PR 决策（2026-10-23 拍板：暂缓，维持登记）：`clearCount` 自研
+  PR 代价约 1 天（上游 ED3 现调 rowsDropped()，只差 Events 转发，撞车
+  风险低）；`prependHistoryLines` 约 3~5 天（上游 Grid 已重写为
+  ring + stable 行身份体系，注入须维护 syncStableFloor/verifyState
+  全套不变量，撞车风险高）。产品影响：缺 prependHistoryLines = 无限
+  历史冷层读回不可用；缺 clearCount = ED3 清史后落盘对账精度降级
+  （有安全兜底）。双引擎策略下 native 引擎两功能均完整，contour 引擎
+  忽略此二功能即可，不阻塞产品。
 - M22：OSC 8 可点击超链接（M22a 落地）。`ZzCellView` 聚合尾部纯新增
   `hyperlinkId` 字段（0 = 无链接；M18 `ZzPtyConfig` 尾部新增同先例）；
   `ZzRenderView`/`ZzHistoryView` 新增带默认实现的虚方法
