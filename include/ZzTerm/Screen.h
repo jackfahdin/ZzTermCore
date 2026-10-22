@@ -119,7 +119,8 @@ public:
      * @note 行变语义（对齐 contour shrinkLines/growLines）：缩行先裁光标下方
      *       行（不入历史），不够裁时把 Primary 顶部行经 ScrollOutCallback
      *       压入历史（无回调则丢弃，同 reflow 溢出语义），光标随内容平移；
-     *       扩行回填（M17d）：Primary 且光标下方全空行（会话活在底部）时经
+     *       扩行回填（M17d）：Primary 且光标下方全空行（会话活在底部；空行含
+     *       整行 isEmpty 或整行仅默认样式 U+0020，2026-10-22 放宽）时经
      *       HistoryPullCallback 从最新历史回抽注入顶部、光标随内容下沉
      *       （contour 核心仅贴末行回抽，adapter 补偿为同一语义，compat
      *       用例 26 parity 对照），不足部分底部补空。Alternate 缓冲无回调路径：尾部截断/补空。

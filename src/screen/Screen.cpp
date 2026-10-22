@@ -72,13 +72,25 @@ void ZzScreen::resize(int cols, int rows)
 // M17e 起先丢弃光标下方既成空行、回抽预算含既成空洞
 //（k → k+b），历史不足时净效果同 M17d；不足部分底部补空。
 
-// M17d：空行判定——整行 cell 均 isEmpty（覆盖默认格/擦除格/宽字符续格；
-// 显式写入的空格 cell 非 isEmpty，视为内容，保守不回抽）。
+// M17d：空行判定——整行 cell 均 isEmpty，或整行仅为默认样式空格（isEmpty
+// 覆盖默认格/擦除格/宽字符续格；2026-10-22 实测定因：bash/readline 水平
+// 滚动隐藏过宽提示符时以字面空格清行（`\r<空格>\r`），旧判定「显式写入的
+// 空格视为内容」把光标下方清行空格判为内容、否决扩行回抽，提示符永久悬空、
+// 底部空行海。默认前景/背景/无属性的 U+0020 不携带可视信息，按空行计；
+// 带颜色/属性的空格行仍视为内容，保守不回抽、保护布局）。
 static bool zzRowIsBlank(const ZzLine& line) noexcept
 {
-    for (int c = 0; c < line.cellCount(); ++c)
-        if (!line.cellAt(c).isEmpty())
-            return false;
+    for (int c = 0; c < line.cellCount(); ++c) {
+        const ZzCell& cell = line.cellAt(c);
+        if (cell.isEmpty())
+            continue;
+        if (!cell.isCluster() && cell.codePoint() == U' '
+            && cell.foreground() == ZzColor::Default()
+            && cell.background() == ZzColor::Default()
+            && cell.attributes() == ZzCellAttributes {})
+            continue;
+        return false;
+    }
     return true;
 }
 

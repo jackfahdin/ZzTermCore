@@ -115,11 +115,61 @@ static void testGrowNoRefillWhenContentBelow()
     ZZ_TEST_EXPECT(scr.cursor().position.row == 0);
 }
 
+// 4. 默认样式空格行 = 空行（2026-10-22 定因：readline 以字面空格清行，
+// 旧判定把清行空格当内容否决回抽、提示符永久悬空）：光标下方整行默认
+// 样式 U+0020 → 仍触发回抽。
+static void testGrowRefillWhenPlainSpacesBelow()
+{
+    ZzScreen scr(10, 4);
+    writeRow(scr, 0, "c0");
+    writeRow(scr, 2, "    ");                // 行 2 整行默认样式空格（清行残留）
+    scr.setCursorPosition(ZzPosition{1, 0}); // 下方行 2 空格、行 3 空
+    bool pullCalled = false;
+    std::size_t asked = 0;
+    scr.setHistoryPullCallback([&](std::size_t n) {
+        pullCalled = true;
+        asked = n;
+        std::vector<ZzLine> out;
+        out.push_back(makeTextLine(10, "m0"));
+        out.push_back(makeTextLine(10, "m1"));
+        return out;
+    });
+    scr.resize(10, 6); // 扩 2：空格行计入既成空洞（k→k+b）
+    ZZ_TEST_EXPECT(pullCalled);
+    ZZ_TEST_EXPECT(asked == 4); // k(2) + b(2)
+    ZZ_TEST_EXPECT(scr.cursor().position.row == 1 + 2);
+}
+
+// 5. 布局保护收紧后的边界：带颜色的空格行仍是内容 → 不回抽（钉住）。
+static void testGrowNoRefillWhenStyledSpacesBelow()
+{
+    ZzScreen scr(10, 4);
+    writeRow(scr, 0, "c0");
+    for (int i = 0; i < 4; ++i) { // 行 2 整行红底空格（色块 = 布局内容）
+        ZzCell c;
+        c.setWidth(ZzCellWidth::Narrow);
+        c.setCodePoint(U' ');
+        c.setBackground(ZzColor::Indexed(1));
+        scr.putCell(ZzPosition{2, i}, c);
+    }
+    scr.setCursorPosition(ZzPosition{0, 0});
+    bool pullCalled = false;
+    scr.setHistoryPullCallback([&](std::size_t) {
+        pullCalled = true;
+        return std::vector<ZzLine>{};
+    });
+    scr.resize(10, 6);
+    ZZ_TEST_EXPECT(!pullCalled);
+    ZZ_TEST_EXPECT(scr.cursor().position.row == 0);
+}
+
 int main()
 {
     testGrowRefillBelowCursorBlank();
     testGrowRefillCursorOnBlankRowPartial();
     testGrowNoRefillWhenContentBelow();
+    testGrowRefillWhenPlainSpacesBelow();
+    testGrowNoRefillWhenStyledSpacesBelow();
     if (g_failures != 0) {
         std::fprintf(stderr, "%d failure(s)\n", g_failures);
         return 1;

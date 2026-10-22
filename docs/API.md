@@ -444,6 +444,10 @@ toStitched/fromStitched 涉及。
   resize 暂移光标触发拉回 + 空洞计入目标行数再缩回）补偿为同一语义，
   偏离登记撤销（wrapPending 置位时放弃补偿为残留偏离），对照见
   test_backend_compat 的 M17d/M17e parity 用例（testGrowRefillParity）。
+  2026-10-22 空行判定再放宽：整行仅默认样式 U+0020 按空行计
+  （readline 清行空格否决回抽致提示符永久悬空，实测定因），带颜色/
+  属性的空格行仍算内容（布局保护边界见
+  test_screen_grow_refill.cpp 用例 4/5）。
 - M17b：新增公共类 `ZzUnwrapView`/`ZzStitchedLineView`、公共类型
   `ZzStitchedPos`（Types.h）与 `ZzTerminal::unwrapView` 非虚方法，
   向后兼容的 minor 新增（M14 historyView 先例），次版本号口径沿用

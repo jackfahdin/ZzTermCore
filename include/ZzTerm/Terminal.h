@@ -125,7 +125,8 @@ public:
      *       （M16b），缩列跨缝状态保持连续、拉大接回；行变化（M15，双后端语义对齐 contour
      *       shrinkLines/growLines）：缩行先裁光标下方行，不够裁时把
      *       顶部行压入历史（Primary）；扩行回填（M17d）：光标下方
-     *       全空行时从最新历史回抽注入顶部、光标随内容下沉（contour
+     *       全空行时（含整行默认样式空格，2026-10-22 放宽）从最新历史回抽注入顶部、
+     *       光标随内容下沉（contour
      *       侧由 adapter 补偿为同一语义），不足部分底部补空。Alternate 屏不产生历史。
      *       resize 后 RenderView/HistoryView 既有行句柄失效，前端需
      *       重新获取视图。
